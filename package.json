@@ -1,0 +1,51 @@
+{
+  "name": "edukors-editor",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "test": "vitest run",
+    "gen:types": "node scripts/gen-types.mjs",
+    "gen:locales": "python3 scripts/build-locales.py",
+    "update-assets": "node scripts/update-assets.mjs",
+    "app:dev": "tauri dev",
+    "app:build": "tauri build"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.287",
+    "@monaco-editor/react": "^4.7.0",
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-dialog": "^2.8.1",
+    "@tauri-apps/plugin-opener": "^2",
+    "@xyflow/react": "^12.12.0",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "dompurify": "^3.4.16",
+    "elkjs": "^0.12.0",
+    "marked": "^18.0.14",
+    "monaco-editor": "^0.57.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "zod": "^4.6.5",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "@types/dompurify": "^3.0.5",
+    "@types/node": "^26.6.3",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^6.0.2",
+    "json-schema-to-typescript": "^16.0.0",
+    "playwright": "^1.63.0",
+    "typescript": "~6.0.3",
+    "vite": "^8.0.16",
+    "vitest": "^5.0.3"
+  },
+  "description": "Editor visual de cursos Edukors Graph (app para Mac)",
+  "license": "MIT"
+}
