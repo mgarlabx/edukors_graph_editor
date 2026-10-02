@@ -1,93 +1,93 @@
 # Edukors Graph Editor
 
-O Edukors Graph Editor é um *builder* visual, que roda no seu computador, para criar e editar cursos adaptativos no padrão [Edukors Graph](https://github.com/mgarlabx/edukors_graph).
+Edukors Graph Editor is a visual *builder* that runs on your computer, for creating and editing adaptive courses in the [Edukors Graph](https://github.com/mgarlabx/edukors_graph) format.
 
-> No momento, só há versão Mac disponível. Mas esse código poderá ser baixado e alterado para gerar versões Windows e Linux livremente.
+> At the moment, only a Mac version is available. However, this code can be freely downloaded and modified to produce Windows and Linux versions.
 
-## Parte do projeto Edukors Graph
+## Part of the Edukors Graph project
 
-O [Edukors Graph](https://github.com/mgarlabx/edukors_graph) é um padrão aberto para cursos adaptativos, ligado ao projeto [Edukors.org](https://edukors.org). A ideia é antiga na educação: dar a cada estudante o que ele precisa, levando em conta o que ele já sabe. Para isso, o curso é descrito como um grafo. Os **nós** são o que o estudante vê: um texto, um vídeo, um quiz, uma tarefa de escrita avaliada por IA. As **arestas** dizem para onde ele vai em seguida, conforme o que fez até ali. Quem acerta o quiz segue adiante; quem erra recebe uma explicação diferente antes de tentar de novo.
+[Edukors Graph](https://github.com/mgarlabx/edukors_graph) is an open standard for adaptive courses, linked to the [Edukors.org](https://edukors.org) project. The idea is an old one in education: give each student what they need, taking into account what they already know. To do this, the course is described as a graph. The **nodes** are what the student sees: a text, a video, a quiz, a writing task assessed by AI. The **edges** say where they go next, based on what they have done so far. Students who pass the quiz move on; those who don't receive a different explanation before trying again.
 
-O curso inteiro cabe num único arquivo JSON, e o projeto é formado por algumas peças em volta desse arquivo:
+The entire course fits in a single JSON file, and the project is made up of a few pieces built around that file:
 
-- o **schema**, que define o formato do curso;
-- o **builder**, que gera cursos a partir de uma descrição curta, com a ajuda de um assistente de IA;
-- o **player**, um servidor que entrega os cursos aos estudantes, inclusive dentro de um ambiente virtual de aprendizagem (via LTI 1.3);
+- the **schema**, which defines the course format;
+- the **builder**, which generates courses from a short description, with the help of an AI assistant;
+- the **player**, a server that delivers courses to students, including inside a learning management system (via LTI 1.3);
 
-Este editor é outro *builder*, pensado para rodar em ambiente local. No builder do repositório, você conversa com uma IA e recebe o curso pronto. Aqui, você vê o curso como um mapa e o monta ou ajusta com as próprias mãos, com uma IA ao lado se quiser. O resultado é o mesmo arquivo JSON, que o player abre sem nenhuma conversão.
+This editor is another *builder*, designed to run locally. In the repository's builder, you talk to an AI and receive the finished course. Here, you see the course as a map and build or adjust it with your own hands, with an AI alongside if you wish. The result is the same JSON file, which the player opens without any conversion.
 
-## Para que serve
+## What it is for
 
-O editor foi feito para professores e autores de cursos. Com ele você pode:
+The editor was made for teachers and course authors. With it you can:
 
-- desenhar o percurso do curso, decidindo o que o estudante vê e para onde vai depois de cada atividade;
-- escrever o conteúdo de cada etapa, nos idiomas do curso;
-- conferir se o curso está correto antes de publicá-lo;
-- fazer o curso como se fosse um estudante, para ver o que ele verá;
-- pedir a um agente de IA que crie ou altere partes do curso por você.
+- design the course path, deciding what the student sees and where they go after each activity;
+- write the content of each step, in the course's languages;
+- check that the course is correct before publishing it;
+- take the course as if you were a student, to see what they will see;
+- ask an AI agent to create or change parts of the course for you.
 
-## Como funciona
+## How it works
 
-**O mapa.** O curso aparece na tela como um grafo, no estilo de ferramentas como o n8n: cada atividade é uma caixa, e as setas mostram os caminhos possíveis. Dá para arrastar, ligar, copiar e organizar as caixas automaticamente.
+**The map.** The course appears on screen as a graph, in the style of tools like n8n: each activity is a box, and the arrows show the possible paths. You can drag, connect, copy and automatically arrange the boxes.
 
-**O inspetor.** Ao clicar numa caixa, o painel lateral mostra o conteúdo dela num formulário próprio para o tipo de atividade. As regras de cada caminho ("se acertou pelo menos 70% do quiz") são montadas em menus, sem precisar escrever código.
+**The inspector.** When you click a box, the side panel shows its content in a form tailored to the type of activity. The rules for each path ("if at least 70% of the quiz was correct") are built from menus, with no need to write code.
 
-**A validação.** O editor verifica o curso enquanto você trabalha, com as mesmas regras do repositório, e aponta cada problema no lugar em que ele está.
+**Validation.** The editor checks the course as you work, using the same rules as the repository, and points out each problem right where it is.
 
-**O JSON.** Quem prefere pode editar o arquivo diretamente, numa aba própria, que fica sincronizada com o mapa.
+**The JSON.** If you prefer, you can edit the file directly in its own tab, which stays in sync with the map.
 
-**O preview.** Você faz o curso como um estudante, usando o próprio player do projeto. As atividades com IA (textos gerados e avaliações) funcionam de verdade quando você informa uma chave da [OpenRouter](https://openrouter.ai), que fica guardada no Keychain do Mac. Sem a chave, o preview funciona em modo reduzido, e você mesmo escolhe o resultado das avaliações.
+**The preview.** You take the course as a student, using the project's own player. AI activities (generated texts and assessments) work for real when you provide an [OpenRouter](https://openrouter.ai) key, which is stored in the Mac Keychain. Without the key, the preview runs in a reduced mode, and you choose the assessment results yourself.
 
-**As abas.** Vários cursos podem ficar abertos ao mesmo tempo, e dá para copiar atividades de um para outro.
+**Tabs.** Several courses can be open at the same time, and you can copy activities from one to another.
 
-**O agente de IA.** Um painel à direita traz um agente, feito com o Claude, que lê o curso aberto e o altera a pedido. Por padrão, cada alteração espera a sua aprovação, e tudo pode ser desfeito.
+**The AI agent.** A panel on the right provides an agent, built with Claude, that reads the open course and changes it on request. By default, each change waits for your approval, and everything can be undone.
 
-Cada curso é salvo em dois arquivos: `curso.json`, com o curso, e `curso.layout.json`, com a posição das caixas no mapa. O primeiro é o que vai para o player.
+Each course is saved in two files: `course.json`, with the course, and `course.layout.json`, with the position of the boxes on the map. The first one is what goes to the player.
 
-O [guia do professor](docs/guia-do-professor.md) explica o uso passo a passo.
+The [teacher's guide](docs/guia-do-professor.md) (in Portuguese) explains how to use the editor step by step.
 
-## Instalação
+## Installation
 
-O editor funciona em macOS 11 ou mais recente. Por enquanto ele é instalado a partir do código-fonte, o que pede algumas ferramentas, todas gratuitas. Os comandos abaixo são digitados no Terminal.
+The editor runs on macOS 11 or later. For now it is installed from source, which requires a few tools, all of them free. The commands below are typed in Terminal.
 
-**1. Instale as ferramentas.**
+**1. Install the tools.**
 
-- Ferramentas de linha de comando da Apple: `xcode-select --install`
+- Apple command line tools: `xcode-select --install`
 - [Rust](https://rustup.rs): `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
-- [Node.js](https://nodejs.org), versão 22 ou mais recente
+- [Node.js](https://nodejs.org), version 22 or later
 
-**2. Baixe o projeto e instale as dependências.**
+**2. Download the project and install the dependencies.**
 
 ```sh
-git clone https://github.com/<conta>/edukors-graph-editor.git
+git clone https://github.com/<account>/edukors-graph-editor.git
 cd edukors-graph-editor
 npm install
 ```
 
-**3. Abra o editor.**
+**3. Open the editor.**
 
 ```sh
 npm run app:dev
 ```
 
-A primeira vez demora alguns minutos, porque o app é compilado. Nas próximas é rápido.
+The first time takes a few minutes, because the app is compiled. After that it is fast.
 
-Se preferir um aplicativo para deixar na pasta Aplicativos, gere-o com `npm run app:build`. O `.app` e o `.dmg` ficam em `src-tauri/target/release/bundle/`. Como o app ainda não é assinado pela Apple, abra-o da primeira vez com o botão direito → **Abrir**.
+If you prefer an app to keep in your Applications folder, build it with `npm run app:build`. The `.app` and `.dmg` are placed in `src-tauri/target/release/bundle/`. Since the app is not yet signed by Apple, open it the first time with right-click → **Open**.
 
-**4. Opcional: IA no preview.** Crie uma chave na [OpenRouter](https://openrouter.ai) e cole-a em **Preferências** (⌘,).
+**4. Optional: AI in the preview.** Create a key at [OpenRouter](https://openrouter.ai) and paste it into **Preferences** (⌘,).
 
-**5. Opcional: o agente de IA.** O agente usa o [Claude Code](https://code.claude.com) instalado e logado neste Mac. Instale-o, rode `claude` no Terminal e entre na sua conta com `/login`.
+**5. Optional: the AI agent.** The agent uses [Claude Code](https://code.claude.com) installed and logged in on this Mac. Install it, run `claude` in Terminal and sign in to your account with `/login`.
 
-> O agente usa o login pessoal do Claude Code, o que serve para quem usa o editor no próprio Mac. Para distribuir o app a outras pessoas, a Anthropic pede autenticação por chave de API; ver [docs/distribuicao.md](docs/distribuicao.md).
+> The agent uses your personal Claude Code login, which works for people using the editor on their own Mac. To distribute the app to other people, Anthropic requires API key authentication; see [docs/distribuicao.md](docs/distribuicao.md) (in Portuguese).
 
-## Estado do projeto
+## Project status
 
-O editor é experimental, como o próprio padrão Edukors Graph, e o formato dos cursos ainda pode mudar. Por ora, ele roda apenas em macOS.
+The editor is experimental, like the Edukors Graph standard itself, and the course format may still change. For now, it runs only on macOS.
 
-## Para desenvolvedores
+## For developers
 
-A arquitetura do agente, os testes, a estrutura do código e as limitações conhecidas estão em [docs/desenvolvimento.md](docs/desenvolvimento.md). Os testes rodam com `npm test`, e `npm run update-assets` atualiza o schema, o player e os exemplos a partir do repositório [edukors_graph](https://github.com/mgarlabx/edukors_graph).
+The agent architecture, tests, code structure and known limitations are described in [docs/desenvolvimento.md](docs/desenvolvimento.md) (in Portuguese). Tests run with `npm test`, and `npm run update-assets` updates the schema, the player and the samples from the [edukors_graph](https://github.com/mgarlabx/edukors_graph) repository.
 
-## Licença
+## License
 
 [MIT](LICENSE.md). Copyright (c) 2026 Edukors.org - Maurício Garcia.
