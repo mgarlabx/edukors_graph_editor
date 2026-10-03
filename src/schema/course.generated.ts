@@ -41,6 +41,7 @@ export type Node = {
    * Number of the group the node is displayed in, named in 'info.sections' when it has a title. It is only a visual hint for the frontend, so that courses with many nodes can be shown in blocks; it has no effect on the order of the course, which is defined by 'edges'. Defaults to 1.
    */
   section?: number;
+  position?: NodePosition;
   title: LocalizedTextList3;
   /**
    * Content of the node. Its shape depends on 'type'.
@@ -297,6 +298,22 @@ export interface Section {
    */
   number: number;
   title: LocalizedTextList2;
+}
+/**
+ * Where the node sits on the canvas of a builder that lets the author arrange the nodes by hand, so that the layout the author chose survives saving and reopening the course. It is only a visual hint for the builder: it has no effect on the order of the course, which is defined by 'edges', nor on what the student sees, and players ignore it. The units and the origin are those of the builder's own canvas. Without it, the builder lays the node out by itself. Optional.
+ *
+ * This interface was referenced by `Course`'s JSON-Schema
+ * via the `definition` "nodePosition".
+ */
+export interface NodePosition {
+  /**
+   * Horizontal coordinate of the node on the canvas.
+   */
+  x: number;
+  /**
+   * Vertical coordinate of the node on the canvas.
+   */
+  y: number;
 }
 /**
  * A directed link between two nodes. Without 'when' it is unconditional; with 'when' it is only taken when the condition holds.

@@ -576,6 +576,7 @@
   "rule.node-id": "id inválido {value}",
   "rule.node-id-twice": "dos nodos usan este id",
   "rule.node-object": "cada nodo debe ser un objeto",
+  "rule.node-position": "'{axis}' debe ser un número; se encontró {value}",
   "rule.node-prefix": "el id no corresponde al tipo '{type}' (prefijo esperado: '{prefix}')",
   "rule.node-section": "'section' debe ser un entero >= 1; se encontró {value}",
   "rule.node-type": "tipo inválido {value} (uno de {allowed})",

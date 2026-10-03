@@ -5,6 +5,7 @@
  */
 import { courseLangs, useEditor } from "../store/editor";
 import { flushPending } from "../store/docs";
+import { positionsOf } from "../store/layout";
 import { NODE_TYPES } from "../course/nodeTypes";
 import { addNode } from "../course/ops";
 import type { NodeType } from "../schema/types";
@@ -27,11 +28,11 @@ export function insertNode(type: NodeType) {
   flushPending();
   const store = useEditor.getState();
   if (!store.course) return;
-  const positions = store.layout.positions;
+  const positions = positionsOf(store.course);
   const anchor = store.selection.nodes[0] ? positions[store.selection.nodes[0]] : undefined;
   const fallback = { x: Math.max(0, ...Object.values(positions).map((p) => p.x)) + 280, y: 80 };
   let id = "";
   store.update((c) => (id = addNode(c, type, courseLangs(c))), "add");
-  store.setPositions({ ...useEditor.getState().layout.positions, [id]: anchor ? { x: anchor.x + 280, y: anchor.y } : fallback });
+  store.setPositions({ [id]: anchor ? { x: anchor.x + 280, y: anchor.y } : fallback });
   store.reveal({ node: id });
 }

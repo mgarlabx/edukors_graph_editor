@@ -14,6 +14,7 @@ import { applyMessage, emptyTranscript, fromHistory, settle, splitContext, type 
 import { splitUsage } from "../src/agent/usageReport";
 import { diagnose } from "../src/validate";
 import type { Course } from "../src/schema/types";
+import { positionsOf } from "../src/store/layout";
 import { clone, loadSample, SAMPLES } from "./helpers";
 
 const mini = (): Course => clone(loadSample(SAMPLES[0].path));
@@ -159,9 +160,11 @@ describe("agent tools in the editor", () => {
   });
 
   it("give new nodes a place on the canvas", async () => {
-    const a = openDoc(mini(), { path: null, saved: true, layout: { format: "edukors-editor-layout", version: 1, positions: { sm5: { x: 1000, y: 40 } } } });
+    const course = mini();
+    course.nodes.find((n) => n.id === "sm5")!.position = { x: 1000, y: 40 };
+    const a = openDoc(course, { path: null, saved: true });
     await runTool("edit_course", { operations: [{ op: "add_node", node: { type: "bool", title: loc("More?"), content: { question: loc("More?") } }, near: "sm5" }] }, a);
-    expect(editor().layout.positions.b1).toEqual({ x: 1280, y: 40 });
+    expect(positionsOf(editor().course).b1).toEqual({ x: 1280, y: 40 });
   });
 
   it("open a new course and work on it from then on", async () => {

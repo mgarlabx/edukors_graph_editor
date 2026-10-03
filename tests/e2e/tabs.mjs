@@ -16,7 +16,7 @@ const shot = async (name) => page.screenshot({ path: `${out}/${name}.png` });
 const state = () =>
   page.evaluate(() => {
     const s = window.__editor.getState();
-    return { doc: s.docId, ids: s.course?.nodes.map((n) => n.id) ?? [], selection: s.selection.nodes, tabs: window.__docs.getState().order, positions: s.layout.positions, version: s.course?.info.version };
+    return { doc: s.docId, ids: s.course?.nodes.map((n) => n.id) ?? [], selection: s.selection.nodes, tabs: window.__docs.getState().order, positions: Object.fromEntries((s.course?.nodes ?? []).filter((n) => n.position).map((n) => [n.id, n.position])), version: s.course?.info.version };
   });
 const step = async (name, fn) => {
   try {

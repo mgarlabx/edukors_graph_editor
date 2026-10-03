@@ -6,9 +6,10 @@
  * person last wrote, which may since have gone to another tab. Reading it
  * leaves the screen alone; changing it brings it back on screen first, so the
  * person sees what changes, and goes through the store like any other edit:
- * one undo step per call, validated, positions kept in the layout.
+ * one undo step per call, validated, nodes kept where they were on the canvas.
  */
 import { useEditor, isDirty, courseLangs } from "../store/editor";
+import { positionsOf } from "../store/layout";
 import { activateDoc, docState, openDoc, useDocs } from "../store/docs";
 import { docLabel } from "../app/files";
 import { diagnose } from "../validate";
@@ -115,8 +116,8 @@ function editCourse(docId: string | null, args: { operations?: unknown }): ToolR
   const draft = structuredClone(store.course!);
   const applied = applyOperations(draft, args.operations as Operation[]);
   store.replace(draft, `agent:${Date.now()}`);
-  const placed = placeAdded(draft, store.layout.positions, applied.added);
-  if (Object.keys(placed).length) useEditor.getState().setPositions({ ...useEditor.getState().layout.positions, ...placed });
+  const placed = placeAdded(draft, positionsOf(draft), applied.added);
+  if (Object.keys(placed).length) useEditor.getState().setPositions(placed);
   return {
     text: `${heading(id)}: applied ${applied.changes.length} operation${applied.changes.length === 1 ? "" : "s"} as one undo step.\n${applied.changes.map((c) => `- ${c}`).join("\n")}\n\nValidation: ${problems(diagnose(draft))}`,
   };
@@ -140,10 +141,14 @@ function replaceCourse(docId: string | null, args: { course?: unknown }): ToolRe
     onScreen(id);
     const store = useEditor.getState();
     const kept = store.course!.info["course-id"];
+    const before = positionsOf(store.course);
     if (kept) course.info["course-id"] = kept;
     store.replace(course, `agent:${Date.now()}`);
+    // A node written again without its position stays where it was.
+    const given = positionsOf(course);
+    store.setPositions(Object.fromEntries(Object.entries(before).filter(([n]) => !given[n])));
   }
-  const positions = useEditor.getState().layout.positions;
+  const positions = positionsOf(useEditor.getState().course);
   const unplaced = course.nodes.filter((n) => n && !positions[n.id]).length;
   if (unplaced > 1) useEditor.getState().requestLayout();
   return {

@@ -331,6 +331,7 @@ S = {
 "rule.node-id-twice": ("dois nós usam este id", "two nodes use this id", "dos nodos usan este id"),
 "rule.node-prefix": ("o id não combina com o tipo '{type}' (prefixo esperado: '{prefix}')", "id does not match type '{type}' (expected prefix '{prefix}')", "el id no corresponde al tipo '{type}' (prefijo esperado: '{prefix}')"),
 "rule.node-section": ("'section' precisa ser um inteiro >= 1; encontrado {value}", "'section' must be an integer >= 1, found {value}", "'section' debe ser un entero >= 1; se encontró {value}"),
+"rule.node-position": ("'{axis}' precisa ser um número; encontrado {value}", "'{axis}' must be a number, found {value}", "'{axis}' debe ser un número; se encontró {value}"),
 "rule.section-undeclared": ("a seção {number} não está declarada em info.sections", "section {number} is not declared in info.sections", "la sección {number} no está declarada en info.sections"),
 "rule.content-short": ("o conteúdo é curto demais ({count} palavras) para um nó de ensino", "content is very short ({count} words) for a teaching node", "el contenido es demasiado corto ({count} palabras) para un nodo de enseñanza"),
 "rule.from-id": ("precisa ser o id de um nó choice, score ou noul; encontrado {value}", "must be the id of a choice, score or noul node, found {value}", "debe ser el id de un nodo choice, score o noul; se encontró {value}"),

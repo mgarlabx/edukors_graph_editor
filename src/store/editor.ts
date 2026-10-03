@@ -3,8 +3,8 @@
  *
  * The canvas, the inspector and the JSON tab all edit through update(), which
  * copies the course, applies the change, records an undo step and schedules
- * validation. The course held here is exactly what will be saved; positions and
- * everything else the editor keeps live in the layout beside it.
+ * validation. The course held here is exactly what will be saved, the place of
+ * each node included; what else the editor keeps lives in the layout beside it.
  *
  * It holds the course on screen. Other open courses wait in their tabs
  * (store/docs.ts), each with its own history, selection and layout: park()
@@ -14,15 +14,10 @@ import { create } from "zustand";
 import type { Course, CourseNode } from "../schema/types";
 import { diagnose, type Diagnostics } from "../validate";
 import { DEFAULT_STYLE, stringify, type JsonStyle } from "../course/serialize";
-import { emptyLayout, type Layout, type Position } from "./layout";
+import { emptyLayout, placeNodes, type Layout, type Position } from "./layout";
 
 export type Tab = "canvas" | "json" | "preview";
 export type Selection = { nodes: string[]; edge: number | null };
-
-interface Snapshot {
-  course: Course;
-  positions: Record<string, Position>;
-}
 
 const LIMIT = 200;
 const COALESCE_MS = 900;
@@ -37,9 +32,8 @@ export interface DocSlice {
   style: JsonStyle;
   /** the course object as last saved: identity tells whether anything changed */
   savedCourse: Course | null;
-  savedLayout: string | null;
-  past: Snapshot[];
-  future: Snapshot[];
+  past: Course[];
+  future: Course[];
   lastLabel: string | null;
   lastAt: number;
   selection: Selection;
@@ -55,7 +49,7 @@ export interface EditorState extends DocSlice {
   /** what the stage shows; the same whichever course is on screen */
   tab: Tab;
 
-  load(course: Course, opts: { docId: string; path: string | null; style?: JsonStyle; saved?: boolean; layout?: Layout }): void;
+  load(course: Course, opts: { docId: string; path: string | null; style?: JsonStyle; saved?: boolean }): void;
   /** The state of the course on screen, for its tab to keep while another comes in. */
   park(): DocSlice;
   /** A parked course back on screen. */
@@ -64,7 +58,8 @@ export interface EditorState extends DocSlice {
   unload(): void;
   update(change: (draft: Course) => void, label?: string): void;
   replace(course: Course, label?: string): void;
-  setPositions(positions: Record<string, Position>, record?: boolean): void;
+  /** Moves these nodes; the others stay where they are. */
+  setPositions(moves: Record<string, Position>, record?: boolean): void;
   setLayout(change: (draft: Layout) => void): void;
   undo(): void;
   redo(): void;
@@ -80,9 +75,6 @@ export interface EditorState extends DocSlice {
 
 let validateTimer: ReturnType<typeof setTimeout> | undefined;
 
-const snapshot = (s: EditorState): Snapshot | null =>
-  s.course ? { course: s.course, positions: s.layout.positions } : null;
-
 const noDoc = (): DocSlice => ({
   docId: null,
   course: null,
@@ -90,7 +82,6 @@ const noDoc = (): DocSlice => ({
   path: null,
   style: DEFAULT_STYLE,
   savedCourse: null,
-  savedLayout: null,
   past: [],
   future: [],
   lastLabel: null,
@@ -115,7 +106,7 @@ export const useEditor = create<EditorState>()((set, get) => {
   const record = (label: string | undefined) => {
     const s = get();
     const now = Date.now();
-    const snap = snapshot(s);
+    const snap = s.course;
     if (!snap) return;
     if (label && label === s.lastLabel && now - s.lastAt < COALESCE_MS) {
       set({ lastAt: now, future: [] });
@@ -128,7 +119,7 @@ export const useEditor = create<EditorState>()((set, get) => {
     ...noDoc(),
     tab: "canvas",
 
-    load(course, { docId, path, style, saved, layout }) {
+    load(course, { docId, path, style, saved }) {
       set({
         ...noDoc(),
         docId,
@@ -136,8 +127,6 @@ export const useEditor = create<EditorState>()((set, get) => {
         path,
         style: style ?? DEFAULT_STYLE,
         savedCourse: saved ? course : null,
-        layout: layout ?? emptyLayout(),
-        savedLayout: layout ? JSON.stringify(layout) : null,
         canvasLang: course?.info?.["source-language"] ?? "en",
         diagnostics: diagnose(course),
         focus: { fit: true, at: Date.now() },
@@ -153,7 +142,6 @@ export const useEditor = create<EditorState>()((set, get) => {
         path: s.path,
         style: s.style,
         savedCourse: s.savedCourse,
-        savedLayout: s.savedLayout,
         past: s.past,
         future: s.future,
         lastLabel: s.lastLabel,
@@ -194,9 +182,14 @@ export const useEditor = create<EditorState>()((set, get) => {
       scheduleValidation();
     },
 
-    setPositions(positions, recordStep = false) {
+    setPositions(moves, recordStep = false) {
+      const s = get();
+      if (!s.course) return;
+      const course = placeNodes(s.course, moves);
+      if (course === s.course) return;
       if (recordStep) record("move");
-      set((s) => ({ layout: { ...s.layout, positions } }));
+      set({ course });
+      scheduleValidation();
     },
 
     setLayout(change) {
@@ -208,11 +201,10 @@ export const useEditor = create<EditorState>()((set, get) => {
     undo() {
       const s = get();
       const prev = s.past[s.past.length - 1];
-      const cur = snapshot(s);
+      const cur = s.course;
       if (!prev || !cur) return;
       set({
-        course: prev.course,
-        layout: { ...s.layout, positions: prev.positions },
+        course: prev,
         past: s.past.slice(0, -1),
         future: [...s.future, cur],
         lastLabel: null,
@@ -223,11 +215,10 @@ export const useEditor = create<EditorState>()((set, get) => {
     redo() {
       const s = get();
       const next = s.future[s.future.length - 1];
-      const cur = snapshot(s);
+      const cur = s.course;
       if (!next || !cur) return;
       set({
-        course: next.course,
-        layout: { ...s.layout, positions: next.positions },
+        course: next,
         future: s.future.slice(0, -1),
         past: [...s.past, cur],
         lastLabel: null,

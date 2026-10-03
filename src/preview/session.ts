@@ -2,7 +2,7 @@
  * What the preview knows about the simulated student: every state the player
  * wrote, the path taken and why, the calls made to the AI, and the judgements
  * the author forced. Kept in memory for the session only; nothing here is ever
- * written to the course or the layout.
+ * written to the course.
  *
  * One per open course: the store holds the one on screen, and the others wait
  * here until their tab comes back (switchSession).

@@ -1,8 +1,8 @@
 {
-  "date": "2026-10-01",
-  "source": "c5fca31",
+  "date": "2026-10-03",
+  "source": "2e443e3",
   "files": {
-    "src/schema/schema.json": "160d93e1c27a3168",
+    "src/schema/schema.json": "44adacc46ce9caad",
     "assets/course_player.html": "c16f1c0e41ce4a37",
     "assets/course_viewer.html": "9060682c6931cd43",
     "samples/world-cats-1-mini-course.json": "9306685257409698",
@@ -16,6 +16,6 @@
     "player Ai": "5709db91e3f49a47",
     "player JudgeView": "c43d754e5d98f2c1",
     "player Course": "f8958edbef538b7a",
-    "validate_course.py": "898e724e6632ff4a"
+    "validate_course.py": "a766fafbb37cd98f"
   }
 }

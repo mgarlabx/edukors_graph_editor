@@ -1,8 +1,9 @@
 /**
  * Cutting, copying and pasting nodes, through the system clipboard -- within a
  * course, or from one tab to another. What is copied says where it came from:
- * the tab, the languages of its course and where the nodes sat, so a paste in
- * another course keeps their arrangement and speaks that course's languages.
+ * the tab and the languages of its course; each node carries where it sat. So
+ * a paste in another course keeps their arrangement and speaks that course's
+ * languages.
  */
 import { courseLangs, useEditor } from "../store/editor";
 import { deleteEdges, deleteNodes, pasteNodes } from "../course/ops";
@@ -10,7 +11,7 @@ import { fitLanguages } from "../i18n/languages";
 import { NODE_TYPES } from "../course/nodeTypes";
 import { canvasView } from "../canvas/view";
 import { sizeOf } from "../canvas/elk";
-import type { Position } from "../store/layout";
+import { positionsOf, type Position } from "../store/layout";
 import type { Course, CourseEdge, CourseNode } from "../schema/types";
 
 /** Marks clipboard text as nodes copied from this editor. */
@@ -23,7 +24,6 @@ interface Clip {
   from?: string;
   /** the languages of the course they came from, source first */
   langs?: string[];
-  positions?: Record<string, Position>;
 }
 
 /** The canvas is the only place nodes are cut, copied and pasted. */
@@ -39,8 +39,7 @@ export function selectionClip(): string | null {
   const ids = new Set(store.selection.nodes);
   const nodes = store.course.nodes.filter((n) => ids.has(n.id));
   const edges = store.course.edges.filter((x) => ids.has(x.from) && ids.has(x.to));
-  const positions = Object.fromEntries(nodes.filter((n) => store.layout.positions[n.id]).map((n) => [n.id, store.layout.positions[n.id]]));
-  return JSON.stringify({ [CLIP]: true, from: store.docId, langs: courseLangs(store.course), nodes, edges, positions }, null, 2);
+  return JSON.stringify({ [CLIP]: true, from: store.docId, langs: courseLangs(store.course), nodes, edges }, null, 2);
 }
 
 export function deleteSelectedNodes(reason = "delete") {
@@ -90,7 +89,6 @@ export function readClip(text: string): Clip | null {
       edges,
       from: typeof d.from === "string" ? d.from : undefined,
       langs: Array.isArray(d.langs) ? d.langs.filter((l): l is string => typeof l === "string") : undefined,
-      positions: d.positions && typeof d.positions === "object" ? (d.positions as Record<string, Position>) : undefined,
     };
   const nodes = nodeList(d.nodes);
   if (!nodes) return null;
@@ -103,10 +101,11 @@ export function pasteClip(text: string): boolean {
   const store = useEditor.getState();
   if (!clip?.nodes.length || !store.course) return false;
   const nodes = fitLanguages(clip.nodes, clip.langs ?? [], courseLangs(store.course));
+  const positions = positionsOf(store.course);
   let map: Record<string, string> = {};
   store.update((c) => (map = pasteNodes(c, nodes, clip.edges)), "paste");
   const s = useEditor.getState();
-  s.setPositions({ ...s.layout.positions, ...placePasted(map, clip, s.layout.positions, clip.from !== undefined && clip.from === s.docId) });
+  s.setPositions(placePasted(map, clip, positions, clip.from !== undefined && clip.from === s.docId));
   s.select({ nodes: Object.values(map), edge: null });
   return true;
 }
@@ -122,8 +121,9 @@ const NUDGE = 40;
 function placePasted(map: Record<string, string>, clip: Clip, positions: Record<string, Position>, same: boolean): Record<string, Position> {
   const olds = Object.keys(map);
   const types = new Map(clip.nodes.map((n) => [n.id, n.type]));
+  const sat = new Map(clip.nodes.map((n) => [n.id, n.position]));
   const grid = (i: number): Position => ({ x: (i % 4) * 260, y: Math.floor(i / 4) * 160 });
-  const base = new Map(olds.map((id, i) => [id, (same ? positions[id] : undefined) ?? clip.positions?.[id] ?? (same ? { x: 0, y: 0 } : grid(i))]));
+  const base = new Map(olds.map((id, i) => [id, (same ? positions[id] : undefined) ?? sat.get(id) ?? (same ? { x: 0, y: 0 } : grid(i))]));
   let shift: Position = { x: OFFSET, y: OFFSET };
   if (!same) {
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;

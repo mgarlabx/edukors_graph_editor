@@ -1,21 +1,21 @@
 /**
  * New, open, save, save as, close, export (plan 5.8).
  *
- * A course is two files: the course, written in the style it was read in so
- * that opening and saving changes nothing, and the layout beside it, saved on
- * its own whenever the positions change.
+ * A course is one file, written in the style it was read in so that opening
+ * and saving changes nothing. Where the nodes sit is in it too, in each node's
+ * `position`.
  *
  * Each course opens in a tab of its own (store/docs.ts); a file already open
  * is shown, not opened twice.
  */
-import { isTauri, native, pickOpen, pickSave, alertDialog } from "./platform";
+import { native, pickOpen, pickSave, alertDialog } from "./platform";
 import { buildPlayer, titleOf } from "./export";
 import { askUnsaved } from "../ui/dialogs";
 import { isDirty, useEditor, type DocSlice } from "../store/editor";
-import { activateDoc, dirtyDocs, docState, docWithPath, dropDoc, flushPending, onLeave, openDoc, patchDoc } from "../store/docs";
+import { activateDoc, dirtyDocs, docState, docWithPath, dropDoc, flushPending, openDoc, patchDoc } from "../store/docs";
 import { usePrefs } from "../store/prefs";
 import { useUi } from "../store/ui";
-import { layoutPathFor, parseLayout } from "../store/layout";
+import { positionsOf } from "../store/layout";
 import { detectStyle, stringify, syntaxErrorAt } from "../course/serialize";
 import { newCourse } from "../course/factory";
 import { t } from "../i18n";
@@ -110,23 +110,20 @@ async function readCourse(target: string) {
     await alertDialog(t("file.notCourse"), t("file.openFailed"));
     return;
   }
-  const layoutPath = layoutPathFor(target);
-  let layoutRaw: string | null = null;
-  if (isTauri() && (await native.fileExists(layoutPath))) layoutRaw = await native.readText(layoutPath).catch(() => null);
-  const layout = parseLayout(layoutRaw);
-  openDoc(course, { path: target, style: detectStyle(raw), saved: true, layout });
+  openDoc(course, { path: target, style: detectStyle(raw), saved: true });
   // A course opened from a file starts on the whole map, the side panel closed.
   useUi.setState({ inspector: false });
-  const positioned = Array.isArray(course.nodes) && course.nodes.every((n) => layout.positions[n?.id]);
-  if (!positioned) useEditor.getState().requestLayout();
+  if (!placed(course)) useEditor.getState().requestLayout();
   await usePrefs.getState().addRecent(target);
 }
+
+const placed = (course: Course) => Array.isArray(course.nodes) && course.nodes.every((n) => positionsOf(course)[n?.id]);
 
 /** Saves an open course, the one on screen unless told which. */
 export async function saveCourse(saveAs: boolean, id = useEditor.getState().docId): Promise<boolean> {
   const doc = id ? docState(id) : undefined;
   if (!doc?.course) return false;
-  const { course, style, layout } = doc;
+  const { course, style } = doc;
   let path = doc.path;
   if (!path || saveAs) {
     const suggested = path ?? `${slug(titleOf(course, "course"))}-course.json`;
@@ -134,52 +131,16 @@ export async function saveCourse(saveAs: boolean, id = useEditor.getState().docI
     if (!path) return false;
   }
   const text = stringify(course, style);
-  const layoutText = JSON.stringify(layout, null, 2) + "\n";
   try {
     await native.writeText(path, text);
-    if (isTauri()) await native.writeText(layoutPathFor(path), layoutText);
   } catch (e) {
     await alertDialog(errorText(e), t("file.saveFailed"));
     return false;
   }
   // What was written, not what the course may have become meanwhile.
-  patchDoc(id, { path, savedCourse: course, savedLayout: layoutText });
+  patchDoc(id, { path, savedCourse: course });
   await usePrefs.getState().addRecent(path);
   return true;
-}
-
-let layoutTimer: ReturnType<typeof setTimeout> | undefined;
-
-/** Writes the layout of the course on screen, when it differs from the file's. */
-async function writeLayout() {
-  clearTimeout(layoutTimer);
-  layoutTimer = undefined;
-  const { docId, path, layout, savedLayout } = useEditor.getState();
-  if (!path || !isTauri()) return;
-  const text = JSON.stringify(layout, null, 2) + "\n";
-  if (text === savedLayout) return;
-  try {
-    await native.writeText(layoutPathFor(path), text);
-    patchDoc(docId, { savedLayout: text });
-  } catch {
-    /* the next change tries again */
-  }
-}
-
-/** Saves the layout on its own, a moment after it last changed (plan 5.8), or at once when its course leaves the screen. */
-export function watchLayout() {
-  const stopLeave = onLeave(() => {
-    if (layoutTimer !== undefined) void writeLayout();
-  });
-  const stop = useEditor.subscribe((s, prev) => {
-    if (s.layout === prev.layout || s.docId !== prev.docId || !s.path || !isTauri()) return;
-    clearTimeout(layoutTimer);
-    layoutTimer = setTimeout(writeLayout, 1000);
-  });
-  return () => {
-    stop();
-    stopLeave();
-  };
 }
 
 const slug = (text: string) =>

@@ -24,6 +24,7 @@ import {
   type Viewport,
 } from "@xyflow/react";
 import { useEditor } from "../store/editor";
+import { positionsOf, type Position } from "../store/layout";
 import { useUi } from "../store/ui";
 import { usePreview, currentState } from "../preview/session";
 import { edgeTypes, type FlowEdge } from "./edges";
@@ -57,7 +58,7 @@ function frameAll(rf: ReactFlowInstance, el: HTMLElement | null, duration: numbe
 
 export function Canvas() {
   const course = useEditor((s) => s.course);
-  const positions = useEditor((s) => s.layout.positions);
+  const positions = useEditor((s) => positionsOf(s.course));
   const savedViewport = useEditor((s) => s.layout.viewport);
   const lang = useEditor((s) => s.canvasLang);
   const diagnostics = useEditor((s) => s.diagnostics);
@@ -229,8 +230,8 @@ export function Canvas() {
       sectionDrag.current = null;
       setNodes((nds) => {
         const store = useEditor.getState();
-        const moved = { ...store.layout.positions };
-        for (const n of nds) if (drag.starts.has(n.id)) moved[n.id] = { x: Math.round(n.position.x), y: Math.round(n.position.y) };
+        const moved: Record<string, Position> = {};
+        for (const n of nds) if (drag.starts.has(n.id)) moved[n.id] = n.position;
         queueMicrotask(() => store.setPositions(moved, true));
         return nds;
       });
@@ -247,8 +248,7 @@ export function Canvas() {
         const ended = own.some((c) => c.type === "position" && c.dragging === false);
         if (ended) {
           const store = useEditor.getState();
-          const moved = { ...store.layout.positions };
-          for (const n of next) moved[n.id] = { x: Math.round(n.position.x), y: Math.round(n.position.y) };
+          const moved = Object.fromEntries(next.map((n) => [n.id, n.position]));
           queueMicrotask(() => store.setPositions(moved, true));
         }
         if (own.some((c) => c.type === "select")) {
@@ -294,7 +294,7 @@ export function Canvas() {
       store.update((c) => {
         id = addNode(c, type, courseLangs(c));
       }, "add");
-      store.setPositions({ ...store.layout.positions, [id]: { x: Math.round(position.x), y: Math.round(position.y) } });
+      store.setPositions({ [id]: position });
       store.select({ nodes: [id], edge: null });
     },
     [rf],
@@ -331,7 +331,11 @@ export function Canvas() {
       // Another tab came on screen meanwhile (its course keeps the request
       // for when it comes back), or a newer layout was asked for.
       if (current.docId !== doc || current.layoutRequested !== layoutRequested) return;
-      current.setPositions({ ...current.layout.positions, ...pos }, Object.keys(current.layout.positions).length > 0);
+      // A course that came with no positions at all is only being shown: it
+      // has not changed until the author changes it, or moves a node.
+      const first = !Object.keys(positionsOf(current.course)).length;
+      current.setPositions(pos, !first);
+      if (first && current.savedCourse === current.course) useEditor.setState({ savedCourse: useEditor.getState().course });
       useEditor.setState({ layoutRequested: 0 });
       setTimeout(() => frameAll(rf, wrapper.current, 300), 80);
     });

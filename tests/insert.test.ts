@@ -9,6 +9,7 @@ import { dropDoc, onLeave, openDoc, useDocs } from "../src/store/docs";
 import { INSERT_GROUPS, insertNode } from "../src/app/insert";
 import { NODE_TYPES } from "../src/course/nodeTypes";
 import type { Course } from "../src/schema/types";
+import { positionsOf } from "../src/store/layout";
 import { clone, loadSample, SAMPLES } from "./helpers";
 
 const full = (): Course => clone(loadSample(SAMPLES[2].path));
@@ -31,7 +32,7 @@ describe("insert", () => {
 
     insertNode("score");
     expect(editor().course!.nodes.at(-1)).toMatchObject({ id: "s2", type: "score" });
-    expect(editor().layout.positions.s2).toEqual({ x: 380, y: 40 });
+    expect(positionsOf(editor().course).s2).toEqual({ x: 380, y: 40 });
     expect(editor().selection).toEqual({ nodes: ["s2"], edge: null });
     expect(editor().tab).toBe("canvas");
     expect(editor().focus?.node).toBe("s2");
@@ -39,7 +40,7 @@ describe("insert", () => {
     // With nothing selected: to the right of the whole graph.
     editor().select({ nodes: [], edge: null });
     insertNode("static-md");
-    expect(editor().layout.positions.sm6).toEqual({ x: 1180, y: 80 });
+    expect(positionsOf(editor().course).sm6).toEqual({ x: 1180, y: 80 });
 
     editor().undo();
     editor().undo();

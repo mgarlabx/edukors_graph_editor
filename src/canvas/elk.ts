@@ -1,5 +1,5 @@
 /**
- * Automatic layout with ELK, for a course opened without a .layout.json or when
+ * Automatic layout with ELK, for a course whose nodes have no positions or when
  * the author asks for it. Left to right, in the order the student goes, with
  * edges back into a cycle allowed to run against the flow.
  */

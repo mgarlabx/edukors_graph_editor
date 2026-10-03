@@ -76,7 +76,7 @@ const CHOICE_TYPES = new Set(["radio", "check", "select"]);
 const INFO_REQUIRED = ["course-id", "source-language", "other-languages", "title", "author", "version", "date", "start"];
 const INFO_OPTIONAL = ["description", "sections", "system-prompt"];
 const NODE_REQUIRED = ["id", "type", "title", "content"];
-const NODE_OPTIONAL = ["section"];
+const NODE_OPTIONAL = ["section", "position"];
 
 const CONTENT_FIELDS: Record<string, [string[], string[]]> = {
   "static-md": [["item"], []],
@@ -190,6 +190,7 @@ const MESSAGES = {
   "node-prefix": "id does not match type '{type}' (expected prefix '{prefix}')",
   "node-section": "'section' must be an integer >= 1, found {value}",
   "section-undeclared": "section {number} is not declared in info.sections",
+  "node-position": "'{axis}' must be a number, found {value}",
   "content-short": "content is very short ({count} words) for a teaching node",
   "from-id": "must be the id of a choice, score or noul node, found {value}",
   "from-judging":
@@ -779,6 +780,13 @@ function validateNode(
   if (!wholeNumber(section) || section < 1) rep.error(where, "node-section", { value: repr(section) });
   else if (sectionNumbers.size && !sectionNumbers.has(section))
     rep.warn(where, "section-undeclared", { number: section });
+
+  if (has(node, "position") && checkKeys(node.position, `${where}.position`, ["x", "y"], [], rep))
+    for (const axis of ["x", "y"]) {
+      const value = (node.position as Dict)[axis];
+      if (has(node.position as Dict, axis) && typeof value !== "number")
+        rep.error(`${where}.position`, "node-position", { axis, value: repr(value) });
+    }
 
   checkLocalized(node.title, `${where}.title`, rep, langs, langs, "title");
 

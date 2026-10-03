@@ -42,7 +42,7 @@ The editor was made for teachers and course authors. With it you can:
 
 **The AI agent.** A panel on the right provides an agent, built with Claude, that reads the open course and changes it on request. By default, each change waits for your approval, and everything can be undone.
 
-Each course is saved in two files: `course.json`, with the course, and `course.layout.json`, with the position of the boxes on the map. The first one is what goes to the player.
+Each course is saved in a single file, `course.json`, which is also what goes to the player. The position of each box on the map is saved in it too, in the node's `position` field, which players ignore.
 
 The [teacher's guide](docs/guia-do-professor.md) (in Portuguese) explains how to use the editor step by step.
 

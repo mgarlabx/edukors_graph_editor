@@ -149,6 +149,13 @@ const MUTATIONS: Mutation[] = [
     c.nodes[0].section = 9;
     return true;
   }],
+  ["positions", (c) => {
+    c.nodes[0].position = { x: 10, y: -2.5 };
+    c.nodes[1].position = { x: "10", y: true } as never;
+    c.nodes[2].position = { x: 1 } as never;
+    c.nodes[3].position = { x: 1, y: 2, z: 3 } as never;
+    return true;
+  }],
   ["missing translation and empty title", (c) => {
     if (!c.info["other-languages"].length) return false;
     c.nodes[0].title = c.nodes[0].title.slice(0, 1);

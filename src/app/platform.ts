@@ -34,7 +34,6 @@ const browser: Record<string, (args: Record<string, unknown>) => Promise<unknown
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   },
-  file_exists: async () => false,
   take_opened_files: async () => [],
   prefs_load: async () => JSON.parse(localStorage.getItem(PREFS) ?? "{}"),
   prefs_save: async ({ prefs }) => localStorage.setItem(PREFS, JSON.stringify(prefs)),
@@ -84,7 +83,6 @@ export async function call<T>(command: string, args: Record<string, unknown> = {
 export const native = {
   readText: (path: string) => call<string>("read_text", { path }),
   writeText: (path: string, contents: string) => call<void>("write_text", { path, contents }),
-  fileExists: (path: string) => call<boolean>("file_exists", { path }),
   takeOpenedFiles: () => call<string[]>("take_opened_files"),
   prefsLoad: () => call<Record<string, unknown>>("prefs_load"),
   prefsSave: (prefs: unknown) => call<void>("prefs_save", { prefs }),

@@ -16,6 +16,7 @@ import { fitLanguages } from "../src/i18n/languages";
 import { newCourse } from "../src/course/factory";
 import { diagnose } from "../src/validate";
 import type { Course, CourseNode } from "../src/schema/types";
+import { positionsOf } from "../src/store/layout";
 import { clone, loadSample, SAMPLES } from "./helpers";
 
 const full = (): Course => clone(loadSample(SAMPLES[2].path));
@@ -164,29 +165,29 @@ describe("copying nodes from one course to another", () => {
     // sections 3 is not in the target: dropped
     expect(["f2", "s2", "dm1"].map((id) => node(id).section)).toEqual([undefined, undefined, undefined]);
     // every pasted node has a place
-    for (const id of ["f2", "s2", "dm1"]) expect(editor().layout.positions[id]).toBeDefined();
+    for (const id of ["f2", "s2", "dm1"]) expect(positionsOf(editor().course)[id]).toBeDefined();
   });
 
   it("keeps the arrangement of the copied nodes and never lands exactly on them twice", () => {
     openDoc(full(), { path: null, saved: true });
-    editor().setPositions({ ...editor().layout.positions, f2: { x: 100, y: 100 }, s1: { x: 400, y: 160 } });
+    editor().setPositions({ f2: { x: 100, y: 100 }, s1: { x: 400, y: 160 } });
     const text = copy("f2", "s1");
     openDoc(newCourse("en", "Target"), { path: null, saved: true });
     pasteClip(text);
-    const first = editor().layout.positions;
+    const first = positionsOf(editor().course);
     expect(first.s1.x - first.f1.x).toBe(300);
     expect(first.s1.y - first.f1.y).toBe(60);
     pasteClip(text);
-    const second = editor().layout.positions;
+    const second = positionsOf(editor().course);
     expect(second.f2).not.toEqual(first.f1);
     expect(second.s2.x - second.f2.x).toBe(300);
   });
 
   it("in the course they came from, pastes beside the originals", () => {
     openDoc(full(), { path: null, saved: true });
-    editor().setPositions({ ...editor().layout.positions, q1: { x: 500, y: 200 } });
+    editor().setPositions({ q1: { x: 500, y: 200 } });
     pasteClip(copy("q1"));
-    expect(editor().layout.positions.q2).toEqual({ x: 560, y: 260 });
+    expect(positionsOf(editor().course).q2).toEqual({ x: 560, y: 260 });
   });
 
   it("speaks the languages of the course it lands in", () => {

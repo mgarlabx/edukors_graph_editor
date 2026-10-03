@@ -1,11 +1,12 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
 import { courseLangs, useEditor } from "./store/editor";
+import { positionsOf, type Position } from "./store/layout";
 import { activateNth, cycleDoc, dirtyDocs, flushPending } from "./store/docs";
 import { usePrefs } from "./store/prefs";
 import { useUi } from "./store/ui";
 import { isTauri, native } from "./app/platform";
-import { closeDoc, createCourse, exportPlayer, openCourse, saveCourse, settleAll, watchLayout, windowTitle } from "./app/files";
+import { closeDoc, createCourse, exportPlayer, openCourse, saveCourse, settleAll, windowTitle } from "./app/files";
 import { Toolbar } from "./app/Toolbar";
 import { DocTabs } from "./app/DocTabs";
 import { HelpModal } from "./app/HelpModal";
@@ -100,9 +101,10 @@ export function command(id: string) {
       if (!store.selection.nodes.length || editable(document.activeElement)) return;
       let map: Record<string, string> = {};
       store.update((c) => (map = duplicateNodes(c, store.selection.nodes)), "duplicate");
-      const positions = { ...useEditor.getState().layout.positions };
-      for (const [from, to] of Object.entries(map)) if (positions[from]) positions[to] = { x: positions[from].x + 40, y: positions[from].y + 40 };
-      useEditor.getState().setPositions(positions);
+      const positions = positionsOf(useEditor.getState().course);
+      const moves: Record<string, Position> = {};
+      for (const [from, to] of Object.entries(map)) if (positions[from]) moves[to] = { x: positions[from].x + 40, y: positions[from].y + 40 };
+      useEditor.getState().setPositions(moves);
       return store.select({ nodes: Object.values(map), edge: null });
     }
     case "delete":
@@ -120,8 +122,7 @@ export default function App() {
   // Boot: preferences, the file the system asked us to open, the menu.
   useEffect(() => {
     usePrefs.getState().load();
-    const stopLayout = watchLayout();
-    const cleanups: (() => void)[] = [stopLayout, watchMenu()];
+    const cleanups: (() => void)[] = [watchMenu()];
     if (isTauri()) {
       (async () => {
         const { listen } = await import("@tauri-apps/api/event");

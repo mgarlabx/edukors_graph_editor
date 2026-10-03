@@ -16,6 +16,7 @@ import type {
   FormContent,
   FormField,
   FormOption,
+  NodePosition,
   NodeType,
   NoulContent,
   NoulQuestion,
@@ -36,6 +37,7 @@ export type {
   FormContent,
   FormField,
   FormOption,
+  NodePosition,
   NodeType,
   NoulContent,
   NoulQuestion,
@@ -72,6 +74,7 @@ export interface CourseNode {
   id: string;
   type: NodeType;
   section?: number;
+  position?: NodePosition;
   title: Loc;
   // The shape depends on `type`; see contentOf() in course/nodeTypes.ts.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

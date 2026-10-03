@@ -17,7 +17,6 @@ import { useUi } from "./ui";
 import { forgetSession, switchSession } from "../preview/session";
 import type { Course } from "../schema/types";
 import type { JsonStyle } from "../course/serialize";
-import type { Layout } from "./layout";
 
 interface DocsState {
   /** every open course, in tab order; the one on screen is the editor's docId */
@@ -36,8 +35,8 @@ const leaving = new Set<() => void>();
 
 /**
  * Runs `fn` before the course on screen leaves it or closes, while it is still
- * on screen: what is on its way into it (typing in the JSON tab, a layout
- * about to be written) gets there first. Returns the way to stop.
+ * on screen: what is on its way into it (typing in the JSON tab) gets there
+ * first. Returns the way to stop.
  */
 export const onLeave = (fn: () => void) => {
   leaving.add(fn);
@@ -89,7 +88,7 @@ function bring(id: string) {
 }
 
 /** Opens a course in a new tab, after the others, and shows it. */
-export function openDoc(course: Course, opts: { path: string | null; style?: JsonStyle; saved?: boolean; layout?: Layout }): string {
+export function openDoc(course: Course, opts: { path: string | null; style?: JsonStyle; saved?: boolean }): string {
   park();
   const id = newId();
   useEditor.getState().load(course, { ...opts, docId: id });

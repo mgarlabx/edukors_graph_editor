@@ -50,11 +50,6 @@ fn write_text(path: String, contents: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn file_exists(path: String) -> bool {
-    PathBuf::from(path).is_file()
-}
-
-#[tauri::command]
 fn take_opened_files(state: State<OpenedFiles>) -> Vec<String> {
     std::mem::take(&mut *state.0.lock().unwrap())
 }
@@ -471,7 +466,6 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             read_text,
             write_text,
-            file_exists,
             take_opened_files,
             prefs_load,
             prefs_save,
@@ -533,7 +527,6 @@ mod tests {
         write_text(path.to_string_lossy().into(), text.into()).unwrap();
         assert_eq!(read_text(path.to_string_lossy().into()).unwrap(), text);
         assert!(!path.with_extension("json.tmp").exists());
-        assert!(file_exists(path.to_string_lossy().into()));
     }
 
     #[test]

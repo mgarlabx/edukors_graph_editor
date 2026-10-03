@@ -47,10 +47,11 @@ node tests/e2e/agent.mjs /tmp --live   # o mesmo painel com o agente de verdade 
 
 | Teste | O que garante |
 | --- | --- |
-| `tests/validate.parity.test.ts` | A validação do editor imprime **as mesmas linhas** que `validate_course.py`, nos três samples e em 35 tipos de curso quebrado de propósito (91 casos). |
+| `tests/validate.parity.test.ts` | A validação do editor imprime **as mesmas linhas** que `validate_course.py`, nos três samples e em 36 tipos de curso quebrado de propósito (94 casos). |
 | `tests/judge.parity.test.ts` | Montagem do pedido, leitura da resposta, recusas, piso de confiança, chaves gravadas, prompt de feedback e escolha da edge são idênticos a `ai.php`, `course.php` e à classe `Course` do próprio player. |
 | `tests/course.test.ts` | Abrir e salvar os samples devolve o arquivo **byte a byte**; edições do grafo preservam a ordem das edges e as referências; idiomas. |
 | `tests/insert.test.ts` | Inserir um tipo, pelo menu **Inserir** ou pelo ＋ da barra, cria o nó com o próximo id livre ao lado da seleção, selecionado e enquadrado no mapa, de qualquer vista; o que se digitava na aba JSON entra antes, sem apagar o nó novo. |
+| `tests/positions.test.ts` | As posições ficam no `position` de cada nó, arredondadas e antes do título; mover é uma alteração do curso, desfeita num passo; nada mudando, o curso é o mesmo objeto; o agente reescrevendo o curso não tira os nós do lugar. |
 | `tests/tabs.test.ts` | Cada aba guarda o seu curso, histórico, seleção e preview; nós colados de outro curso ganham ids novos, as referências dentro do grupo os acompanham e os textos ficam nos idiomas do curso de destino. |
 | `tests/errors.test.ts` | Os erros da validação, do julgamento da IA e do lado nativo aparecem no idioma da interface (pt, en, es), enquanto o inglês comparado nos testes de paridade continua o do script e o do servidor; JSON quebrado é apontado por linha e coluna. |
 | `tests/e2e/tabs.mjs` | No WebKit, um nó copiado num curso cola em outro aberto em outra aba; o que se digita na aba JSON fica no curso certo mesmo trocando de aba logo em seguida; fechar uma aba com alterações pergunta antes, pelo nome do curso. |
@@ -99,7 +100,7 @@ O script também vigia o código que o editor porta — `bridge.js`, `ai.php`, `
 | --- | --- |
 | Nome e licença | *Edukors Graph Editor*, MIT, como o repositório. |
 | Importar para um player remoto | Fica na exportação de arquivos (curso, mapa e player). |
-| `.edukors` ou dois arquivos | Dois arquivos soltos: `curso.json` e `curso.layout.json` ([formato](formato-layout.md)). |
+| `.edukors` ou dois arquivos | Um arquivo só, `curso.json`: a posição de cada nó no canvas vai no campo `position` do próprio nó, que o schema aceita e os players ignoram. |
 
 ## Limitações conhecidas
 
