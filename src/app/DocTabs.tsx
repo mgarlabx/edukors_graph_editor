@@ -9,12 +9,12 @@ import { closeDoc, createCourse, docLabel } from "./files";
 import { IconButton } from "../ui/controls";
 import { CloseIcon, PlusIcon } from "../ui/icons";
 import { t } from "../i18n";
+import { baseName, folderName, keyLabel } from "./os";
 
 /** Marks a drag as a tab being moved. */
 const DRAG = "application/edukors-tab";
 
-const fileOf = (path: string | null) => (path ? path.split("/").pop()! : null);
-const folderOf = (path: string) => path.split("/").slice(-2, -1)[0] ?? "";
+const fileOf = (path: string | null) => (path ? baseName(path) : null);
 
 export function DocTabs() {
   const order = useDocs((s) => s.order);
@@ -28,7 +28,7 @@ export function DocTabs() {
       {order.map((id, i) => (
         <DocTab key={id} id={id} active={id === active} twin={!!files[i] && files.filter((f) => f === files[i]).length > 1} />
       ))}
-      <IconButton className="doc-tabs-add" title={`${t("file.new")} (⌘N)`} onClick={createCourse}>
+      <IconButton className="doc-tabs-add" title={`${t("file.new")} (${keyLabel("⌘N")})`} onClick={createCourse}>
         <PlusIcon size={16} />
       </IconButton>
     </div>
@@ -77,11 +77,11 @@ function DocTab({ id, active, twin }: { id: string; active: boolean; twin: boole
       }}
     >
       <span className="doc-tab-name">{label}</span>
-      {twin && doc.path && <span className="doc-tab-folder">{folderOf(doc.path)}</span>}
+      {twin && doc.path && <span className="doc-tab-folder">{folderName(doc.path)}</span>}
       <button
         type="button"
         className="doc-tab-close"
-        title={`${t("tabs.close")} (⌘W)`}
+        title={`${t("tabs.close")} (${keyLabel("⌘W")})`}
         aria-label={`${t("tabs.close")}: ${label}`}
         onClick={(e) => {
           e.stopPropagation();

@@ -12,6 +12,7 @@ import { useEditor, isDirty, courseLangs } from "../store/editor";
 import { positionsOf } from "../store/layout";
 import { activateDoc, docState, openDoc, useDocs } from "../store/docs";
 import { docLabel } from "../app/files";
+import { baseName } from "../app/os";
 import { diagnose } from "../validate";
 import { newCourse } from "../course/factory";
 import { localize } from "../course/localize";
@@ -64,7 +65,7 @@ const describe = (id: string) => {
 
 const heading = (id: string) => {
   const doc = docState(id)!;
-  return `Course "${describe(id).title || docLabel(doc)}"${doc.path ? ` (${doc.path.split("/").pop()})` : ""}`;
+  return `Course "${describe(id).title || docLabel(doc)}"${doc.path ? ` (${baseName(doc.path)})` : ""}`;
 };
 
 /** What the editor shows: the courses open, the one on screen, the selection, the view. */

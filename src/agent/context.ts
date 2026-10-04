@@ -7,6 +7,7 @@
 import { useEditor } from "../store/editor";
 import { useDocs, docState } from "../store/docs";
 import { docLabel } from "../app/files";
+import { baseName } from "../app/os";
 import { localize } from "../course/localize";
 import { editorState } from "./editorTools";
 
@@ -48,7 +49,7 @@ export function messageContext(withSelection: boolean): MessageContext {
   } else {
     const d = editorState(s.docId).onScreen!;
     lines.push(
-      `Course on screen: "${d.title || docLabel(s)}"${d.file ? ` — file ${d.file.split("/").pop()}` : " — not saved to a file yet"}${d.unsavedChanges ? " (unsaved changes)" : ""} — languages ${d.languages.join(", ")} — ${d.nodes} nodes, ${d.edges} edges — ${d.errors} errors, ${d.warnings} warnings — view: ${VIEW[s.tab]}.`,
+      `Course on screen: "${d.title || docLabel(s)}"${d.file ? ` — file ${baseName(d.file)}` : " — not saved to a file yet"}${d.unsavedChanges ? " (unsaved changes)" : ""} — languages ${d.languages.join(", ")} — ${d.nodes} nodes, ${d.edges} edges — ${d.errors} errors, ${d.warnings} warnings — view: ${VIEW[s.tab]}.`,
     );
     const others = useDocs.getState().order.filter((id) => id !== s.docId);
     if (others.length) lines.push(`Also open in other tabs: ${others.map((id) => `"${docLabel(docState(id)!)}"`).join(", ")}.`);

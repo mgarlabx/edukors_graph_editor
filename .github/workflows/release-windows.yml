@@ -1,0 +1,36 @@
+# The Windows installer (NSIS .exe), built on a Windows machine of GitHub's.
+# Run it from Actions → "Windows installer" → Run workflow; the installer is
+# in the run's artifacts when it ends.
+name: Windows installer
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - run: npm ci
+
+      # Builds the interface, stages the agent with the Windows claude.exe
+      # (scripts/stage-agent.mjs) and makes the installer.
+      - run: npm run app:build:win
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: edukors-graph-editor-windows
+          path: src-tauri/target/release/bundle/nsis/*.exe
+          if-no-files-found: error

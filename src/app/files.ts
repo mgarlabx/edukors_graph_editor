@@ -11,6 +11,7 @@
  * is shown, not opened twice.
  */
 import { native, pickOpen, pickSave, alertDialog, COURSE_EXT } from "./platform";
+import { baseName as fileName } from "./os";
 import { buildPlayer, titleOf } from "./export";
 import { askUnsaved } from "../ui/dialogs";
 import { isDirty, useEditor, type DocSlice } from "../store/editor";
@@ -26,7 +27,7 @@ import type { Course } from "../schema/types";
 
 /** What a tab, the toolbar and the window call a course: its file's name, or its title until it has a file. */
 export const docLabel = (doc: Pick<DocSlice, "path" | "course">): string =>
-  doc.path ? doc.path.split("/").pop()! : (doc.course ? titleOf(doc.course, "").trim() : "") || t("file.untitled");
+  doc.path ? fileName(doc.path) : (doc.course ? titleOf(doc.course, "").trim() : "") || t("file.untitled");
 
 export const windowTitle = () => {
   const s = useEditor.getState();

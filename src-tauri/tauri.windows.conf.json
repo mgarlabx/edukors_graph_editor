@@ -1,0 +1,24 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "targets": ["nsis"],
+    "publisher": "Edukors",
+    "fileAssociations": [
+      {
+        "ext": ["egf"],
+        "name": "Edukors Graph Course",
+        "description": "Curso Edukors Graph",
+        "role": "Editor",
+        "mimeType": "application/vnd.edukors.graph+json"
+      }
+    ],
+    "windows": {
+      "webviewInstallMode": { "type": "downloadBootstrapper" },
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["PortugueseBR", "English", "Spanish"],
+        "displayLanguageSelector": false
+      }
+    }
+  }
+}

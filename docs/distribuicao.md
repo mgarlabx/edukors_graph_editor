@@ -62,3 +62,13 @@ O agente roda fora do `.app`: `src-tauri/src/agent.rs` inicia o Node com `agent/
 1. Incluir `agent/` e o `node_modules` que ele usa (`@anthropic-ai/claude-agent-sdk`, o pacote do binário `@anthropic-ai/claude-agent-sdk-darwin-arm64`, ≈ 230 MB, e `zod`) em `bundle.resources`, com o binário do Claude Code assinado junto com o app para a notarização; ou compilar o processo num executável único (o SDK documenta `bun build --compile` com `extractFromBunfs`).
 2. Exigir o Node no Mac do professor, ou levá-lo junto.
 3. **Trocar a autenticação.** Hoje o agente usa o login do Claude Code do próprio Mac (a conta do Claude). A documentação do Agent SDK diz: *"Unless previously approved, Anthropic does not allow third party developers to offer claude.ai login or rate limits for their products, including agents built on the Claude Agent SDK. Please use the API key authentication methods described in this document instead."* Para entregar o app a outras pessoas, o caminho é uma chave de API da Anthropic (guardada no Keychain, como a da OpenRouter, e passada ao processo do agente como `ANTHROPIC_API_KEY`), ou uma aprovação da Anthropic.
+
+## Windows
+
+O instalador do Windows (NSIS, `Edukors Graph Editor_<versão>_x64-setup.exe`) só pode ser gerado num Windows. Ele é feito no GitHub Actions: **Actions → Windows installer → Run workflow** (`.github/workflows/release-windows.yml`); quando a execução termina, o `.exe` fica nos *artifacts* dela. Numa máquina Windows com Rust (MSVC) e Node 22, o mesmo sai de `npm ci && npm run app:build:win`, em `src-tauri/target/release/bundle/nsis/`.
+
+- `src-tauri/tauri.windows.conf.json`, que o Tauri lê só no Windows, troca `app`/`dmg` pelo NSIS, instala para o usuário (sem pedir administrador) e associa só `.egf` ao editor: no Windows não há o “Alternate” do Mac, e associar `.json` tomaria todos os `.json` do usuário.
+- O agente vai junto, como no Mac, com o `claude.exe` do pacote `@anthropic-ai/claude-agent-sdk-win32-x64` (≈ 250 MB): o instalador fica grande. O Node continua sendo do usuário; `agent.rs` o procura no PATH e onde o instalador oficial, nvm-windows, fnm, Volta e Scoop o põem.
+- A chave da OpenRouter fica no Gerenciador de Credenciais do Windows.
+- Um `.egf` aberto no Explorer com o editor já aberto vai para a janela que está aberta (`tauri-plugin-single-instance`).
+- Só x64. O instalador não é assinado: o SmartScreen avisa “O Windows protegeu o computador”, e a pessoa segue em **Mais informações → Executar assim mesmo**. Para tirar o aviso é preciso um certificado de assinatura de código (OV/EV ou Azure Trusted Signing), configurado em `bundle.windows.signCommand`.

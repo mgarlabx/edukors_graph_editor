@@ -32,6 +32,7 @@ import {
   WarningIcon,
 } from "../ui/icons";
 import { t } from "../i18n";
+import { keyLabel } from "./os";
 
 const TABS: { id: Tab; Icon: typeof MapIcon; key: string }[] = [
   { id: "canvas", Icon: MapIcon, key: "⌘M" },
@@ -59,38 +60,38 @@ export function Toolbar() {
   return (
     <header className="toolbar" role="toolbar" aria-label="Edukors Graph Editor">
       <div className="tool-group">
-        <IconButton title={`${t("file.new")} (⌘N)`} onClick={createCourse}>
+        <IconButton title={`${t("file.new")} (${keyLabel("⌘N")})`} onClick={createCourse}>
           <NewFileIcon />
         </IconButton>
-        <IconButton title={`${t("file.open")} (⌘O)`} onClick={() => openCourse()}>
+        <IconButton title={`${t("file.open")} (${keyLabel("⌘O")})`} onClick={() => openCourse()}>
           <OpenIcon />
         </IconButton>
-        <IconButton title={`${t("file.save")} (⌘S)`} onClick={() => saveCourse(false)} disabled={!course}>
+        <IconButton title={`${t("file.save")} (${keyLabel("⌘S")})`} onClick={() => saveCourse(false)} disabled={!course}>
           <SaveIcon />
         </IconButton>
       </div>
       <span className="divider" />
       <div className="tool-group">
-        <IconButton title={`${t("edit.undo")} (⌘Z)`} disabled={!canUndo} onClick={() => useEditor.getState().undo()}>
+        <IconButton title={`${t("edit.undo")} (${keyLabel("⌘Z")})`} disabled={!canUndo} onClick={() => useEditor.getState().undo()}>
           <UndoIcon />
         </IconButton>
-        <IconButton title={`${t("edit.redo")} (⇧⌘Z)`} disabled={!canRedo} onClick={() => useEditor.getState().redo()}>
+        <IconButton title={`${t("edit.redo")} (${keyLabel("⇧⌘Z")})`} disabled={!canRedo} onClick={() => useEditor.getState().redo()}>
           <RedoIcon />
         </IconButton>
       </div>
       <span className="divider" />
       <div className="tool-group">
         <InsertMenu disabled={!course} />
-        <IconButton title={`${t("edit.cut")} (⌘X)`} disabled={!onCanvas || !hasSelection} onClick={cutNodes}>
+        <IconButton title={`${t("edit.cut")} (${keyLabel("⌘X")})`} disabled={!onCanvas || !hasSelection} onClick={cutNodes}>
           <CutIcon />
         </IconButton>
-        <IconButton title={`${t("edit.copy")} (⌘C)`} disabled={!onCanvas || !hasSelection} onClick={copyNodes}>
+        <IconButton title={`${t("edit.copy")} (${keyLabel("⌘C")})`} disabled={!onCanvas || !hasSelection} onClick={copyNodes}>
           <CopyIcon />
         </IconButton>
-        <IconButton title={`${t("edit.paste")} (⌘V)`} disabled={!onCanvas} onClick={pasteNodesFromClipboard}>
+        <IconButton title={`${t("edit.paste")} (${keyLabel("⌘V")})`} disabled={!onCanvas} onClick={pasteNodesFromClipboard}>
           <PasteIcon />
         </IconButton>
-        <IconButton title={`${t("edit.delete")} (⌫)`} disabled={!onCanvas || !canDelete} onClick={deleteSelection} className="danger">
+        <IconButton title={`${t("edit.delete")} (${keyLabel("⌫")})`} disabled={!onCanvas || !canDelete} onClick={deleteSelection} className="danger">
           <TrashIcon />
         </IconButton>
       </div>
@@ -103,7 +104,7 @@ export function Toolbar() {
                 key={id}
                 role="tab"
                 aria-selected={tab === id}
-                title={`${t(`tab.${id}`)} (${key})`}
+                title={`${t(`tab.${id}`)} (${keyLabel(key)})`}
                 className={tab === id ? "is-active" : ""}
                 onClick={() => setTab(id)}
               >
@@ -121,7 +122,7 @@ export function Toolbar() {
                 ))}
               </select>
             </label>
-            <IconButton title={`${t("canvas.layout")} (⇧⌘L)`} onClick={() => useEditor.getState().requestLayout()}>
+            <IconButton title={`${t("canvas.layout")} (${keyLabel("⇧⌘L")})`} onClick={() => useEditor.getState().requestLayout()}>
               <LayoutIcon />
             </IconButton>
             <ValidationBadge />
@@ -130,7 +131,7 @@ export function Toolbar() {
       )}
       <span className="divider" />
       <div className="tool-group">
-        <IconButton title={`${t("prefs.title")} (⌘,)`} onClick={() => open("prefs")}>
+        <IconButton title={`${t("prefs.title")} (${keyLabel("⌘,")})`} onClick={() => open("prefs")}>
           <SettingsIcon />
         </IconButton>
         <IconButton title={t("help.title")} onClick={() => open("help")}>
@@ -140,7 +141,7 @@ export function Toolbar() {
       {course && (
         <div className="tool-group tool-group-end">
           <IconButton
-            title={`${t("sidebar.toggle")} (⌥⌘0)`}
+            title={`${t("sidebar.toggle")} (${keyLabel("⌥⌘0")})`}
             className={sidebarOpen ? "is-active" : ""}
             aria-pressed={sidebarOpen}
             onClick={() => useUi.getState().toggleSidebar(tab === "preview")}
@@ -148,7 +149,7 @@ export function Toolbar() {
             <SidebarIcon />
           </IconButton>
           <IconButton
-            title={`${t("agent.title")} (⇧⌘A)`}
+            title={`${t("agent.title")} (${keyLabel("⇧⌘A")})`}
             className={`tool-agent ${agentOpen ? "is-active" : ""}`}
             aria-pressed={agentOpen}
             onClick={() => useUi.getState().toggleAgent()}
@@ -232,7 +233,7 @@ function ValidationBadge() {
   if (!d) return null;
   const state = d.errors ? "error" : d.warnings ? "warning" : "ok";
   return (
-    <button type="button" className={`icon-btn tool-badge tool-badge-${state}`} onClick={() => toggle("problems")} title={`${t("problems.title")} (⇧⌘M)`} aria-label={t("problems.title")}>
+    <button type="button" className={`icon-btn tool-badge tool-badge-${state}`} onClick={() => toggle("problems")} title={`${t("problems.title")} (${keyLabel("⇧⌘M")})`} aria-label={t("problems.title")}>
       {!d.errors && !d.warnings && <CheckCircleIcon />}
       {d.errors > 0 && (
         <span className="tool-count">

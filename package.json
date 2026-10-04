@@ -14,7 +14,8 @@
     "update-assets": "node scripts/update-assets.mjs",
     "stage:agent": "node scripts/stage-agent.mjs",
     "app:dev": "tauri dev",
-    "app:build": "tauri build --target universal-apple-darwin --config src-tauri/tauri.bundle.conf.json"
+    "app:build": "tauri build --target universal-apple-darwin --config src-tauri/tauri.bundle.conf.json",
+    "app:build:win": "tauri build --config src-tauri/tauri.bundle.conf.json"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.287",

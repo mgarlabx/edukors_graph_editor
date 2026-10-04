@@ -7,6 +7,7 @@
  * validates; only the Keychain and the native dialogs are missing there.
  */
 import { invoke } from "@tauri-apps/api/core";
+import { baseName } from "./os";
 
 export const isTauri = (): boolean => typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
@@ -30,7 +31,7 @@ const browser: Record<string, (args: Record<string, unknown>) => Promise<unknown
   write_text: async ({ path, contents }) => {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([String(contents)], { type: "application/json" }));
-    a.download = String(path).split("/").pop() ?? "course.egf";
+    a.download = baseName(String(path)) || "course.egf";
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   },

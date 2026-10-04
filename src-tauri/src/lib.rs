@@ -316,6 +316,8 @@ fn build_menu(app: &AppHandle, lang: &str, recent: &[String], map: &MapLangs) ->
         }
     };
 
+    // Windows has no app menu: its items go to File and Help, where Windows has them.
+    #[cfg(target_os = "macos")]
     let app_menu = SubmenuBuilder::new(app, "Edukors Graph Editor")
         .item(&PredefinedMenuItem::about(app, Some(s[0]), None)?)
         .separator()
@@ -347,8 +349,14 @@ fn build_menu(app: &AppHandle, lang: &str, recent: &[String], map: &MapLangs) ->
         .item(&item("save", l[3], Some("CmdOrCtrl+S"))?)
         .item(&item("save-as", l[4], Some("CmdOrCtrl+Shift+S"))?)
         .separator()
-        .item(&item("export-player", l[6], None)?)
-        .build()?;
+        .item(&item("export-player", l[6], None)?);
+    #[cfg(not(target_os = "macos"))]
+    let file = file
+        .separator()
+        .item(&item("prefs", l[15], Some("CmdOrCtrl+,"))?)
+        .separator()
+        .item(&PredefinedMenuItem::quit(app, Some(s[3]))?);
+    let file = file.build()?;
 
     // Undo and redo are ours: outside a text field they walk the course
     // history, inside one the webview decides (see command() in src/App.tsx).
@@ -387,7 +395,7 @@ fn build_menu(app: &AppHandle, lang: &str, recent: &[String], map: &MapLangs) ->
         .item(&item("sidebar", l[30], Some("CmdOrCtrl+Alt+0"))?)
         .separator()
         // Ours: macOS renames its own full screen item, in its language.
-        .item(&item("fullscreen", s[9], Some("Ctrl+Super+F"))?)
+        .item(&item("fullscreen", s[9], Some(if cfg!(target_os = "macos") { "Ctrl+Super+F" } else { "F11" }))?)
         .build()?;
 
     // A type's id is "insert:" and the type, which the webview inserts
@@ -412,11 +420,16 @@ fn build_menu(app: &AppHandle, lang: &str, recent: &[String], map: &MapLangs) ->
         .item(&item("prev-tab", l[22], Some("Ctrl+Shift+Tab"))?)
         .build()?;
 
-    let help = SubmenuBuilder::new(app, l[17]).item(&item("help", l[18], None)?).build()?;
+    let help = SubmenuBuilder::new(app, l[17]).item(&item("help", l[18], None)?);
+    #[cfg(not(target_os = "macos"))]
+    let help = help.separator().item(&PredefinedMenuItem::about(app, Some(s[0]), None)?);
+    let help = help.build()?;
 
-    MenuBuilder::new(app)
-        .items(&[&app_menu, &file, &edit, &view, &insert, &window, &help])
-        .build()
+    #[cfg(target_os = "macos")]
+    let menus: [&dyn tauri::menu::IsMenuItem<tauri::Wry>; 7] = [&app_menu, &file, &edit, &view, &insert, &window, &help];
+    #[cfg(not(target_os = "macos"))]
+    let menus: [&dyn tauri::menu::IsMenuItem<tauri::Wry>; 6] = [&file, &edit, &view, &insert, &window, &help];
+    MenuBuilder::new(app).items(&menus).build()
 }
 
 /// Rebuilt whenever the interface language, the recent files or the map's
@@ -440,7 +453,29 @@ fn is_course_file(path: &str) -> bool {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let app = tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    // A .egf opened from Explorer starts the app again with the file in its
+    // arguments; while one is running, that one takes the file instead.
+    #[cfg(windows)]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
+        let paths: Vec<String> = argv
+            .iter()
+            .skip(1)
+            .filter(|a| is_course_file(a))
+            .map(|a| PathBuf::from(&cwd).join(a))
+            .filter(|p| p.is_file())
+            .map(|p| p.to_string_lossy().into_owned())
+            .collect();
+        app.state::<OpenedFiles>().0.lock().unwrap().extend(paths.clone());
+        for path in paths {
+            let _ = app.emit("open-file", path);
+        }
+        if let Some(window) = app.get_webview_window("main") {
+            let _ = window.unminimize();
+            let _ = window.set_focus();
+        }
+    }));
+    let app = builder
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(OpenedFiles::default())

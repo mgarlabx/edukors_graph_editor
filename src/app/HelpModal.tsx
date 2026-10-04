@@ -1,6 +1,7 @@
 import { useUi } from "../store/ui";
 import { Modal } from "../ui/controls";
 import { t } from "../i18n";
+import { keyLabel } from "./os";
 
 const SHORTCUTS: [string, string][] = [
   ["⌘N", "file.new"],
@@ -42,7 +43,7 @@ export function HelpModal() {
           {SHORTCUTS.map(([key, label]) => (
             <tr key={key}>
               <td>
-                <kbd>{key}</kbd>
+                <kbd>{keyLabel(key)}</kbd>
               </td>
               <td>{t(label)}</td>
             </tr>

@@ -31,6 +31,12 @@ tokio = { version = "1", features = ["time"] }
 objc2 = "0.6"
 objc2-foundation = "0.3"
 
+# The Windows Credential Manager for the key, and one window for every
+# course opened from Explorer (see run() in src/lib.rs).
+[target.'cfg(windows)'.dependencies]
+keyring = { version = "3", features = ["windows-native"] }
+tauri-plugin-single-instance = "2"
+
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt"] }
 

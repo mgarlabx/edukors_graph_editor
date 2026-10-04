@@ -5,12 +5,13 @@ import type { Item, LiveBlock } from "./transcript";
 import { Markdown } from "./Markdown";
 import { mcpToolName } from "./mcpConfig";
 import { hasKey, t } from "../i18n";
+import { baseName } from "../app/os";
 import { ChevronRightIcon, TargetIcon } from "../ui/icons";
 
 const PREFIX = "mcp__edukors__";
 export const shortTool = (name: string) => (name.startsWith(PREFIX) ? name.slice(PREFIX.length) : name);
 
-const fileName = (path: unknown) => (typeof path === "string" ? path.split("/").pop() : undefined);
+const fileName = (path: unknown) => (typeof path === "string" ? baseName(path) : undefined);
 const host = (url: unknown) => {
   try {
     return new URL(String(url)).host;

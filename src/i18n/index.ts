@@ -10,6 +10,7 @@ import { useSyncExternalStore } from "react";
 import pt from "./locales/pt.json";
 import en from "./locales/en.json";
 import es from "./locales/es.json";
+import { keyLabel } from "../app/os";
 
 export type UiLang = "pt" | "en" | "es";
 export const UI_LANGS: UiLang[] = ["pt", "en", "es"];
@@ -38,7 +39,8 @@ export const fill = (template: string, params: Params = {}): string =>
 export const translate = (lang: UiLang, key: string, params: Params = {}): string =>
   fill(tables[lang][key] ?? tables.pt[key] ?? key, params);
 
-export const t = (key: string, params: Params = {}): string => translate(current, key, params);
+/** A string in the interface's language, its shortcuts written as this system writes them. */
+export const t = (key: string, params: Params = {}): string => keyLabel(translate(current, key, params));
 
 /** Re-renders a component when the interface language changes. */
 export const useUiLang = (): UiLang =>

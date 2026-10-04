@@ -2,7 +2,7 @@
 
 Edukors Graph Editor is a visual *builder* that runs on your computer, for creating and editing adaptive courses in the [Edukors Graph](https://github.com/mgarlabx/edukors_graph) format.
 
-> At the moment, only a Mac version is available. However, this code can be freely downloaded and modified to produce Windows and Linux versions.
+> There is a Mac version and a Windows version (x64). This code can be freely downloaded and modified to produce a Linux version too.
 
 ## Part of the Edukors Graph project
 
@@ -73,6 +73,8 @@ npm run app:dev
 The first time takes a few minutes, because the app is compiled. After that it is fast.
 
 If you prefer an app to keep in your Applications folder, build it with `npm run app:build`. It needs both Mac targets of Rust, added once with `rustup target add aarch64-apple-darwin x86_64-apple-darwin`. The app is universal (Apple Silicon and Intel) and carries the agent inside it, so it can be copied to any Mac with macOS 11 or later; that Mac only needs Node.js for the agent. The `.app` and `.dmg` are placed in `src-tauri/target/universal-apple-darwin/release/bundle/`. Since the app is not yet signed by Apple, open it the first time with right-click → **Open**.
+
+The Windows installer can only be built on Windows. It is built on GitHub: **Actions → Windows installer → Run workflow**, and the `.exe` is in the run's artifacts. On a Windows machine with Rust and Node 22, `npm ci && npm run app:build:win` does the same. See [docs/distribuicao.md](docs/distribuicao.md#windows).
 
 **4. Optional: AI in the preview.** Create a key at [OpenRouter](https://openrouter.ai) and paste it into **Preferences** (⌘,).
 

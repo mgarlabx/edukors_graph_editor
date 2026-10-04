@@ -6,7 +6,7 @@
 //! event, stamped with the generation of the process that wrote it, so that a
 //! line from a process already replaced is recognized as such.
 //!
-//! Claude Code, under the SDK, uses the Claude account logged in on this Mac.
+//! Claude Code, under the SDK, uses the Claude account logged in on this machine.
 //! API keys are taken out of the process's environment so that the account is
 //! what gets used.
 
@@ -77,7 +77,7 @@ pub fn agent_start(app: AppHandle, agent: State<Agent>) -> Result<Started, Strin
     std::fs::create_dir_all(&cwd).map_err(|e| format!("{}: {e}", cwd.display()))?;
 
     let generation = agent.generation.fetch_add(1, Ordering::SeqCst) + 1;
-    let mut child = Command::new(&node)
+    let mut child = quiet(&node)
         .arg(&script)
         .current_dir(script.parent().unwrap_or(Path::new("/")))
         .env("EDUKORS_AGENT_CWD", &cwd)
@@ -149,7 +149,7 @@ pub fn agent_stop(agent: State<Agent>) {
 /// The script: inside the app when it is bundled (scripts/stage-agent.mjs puts
 /// it there, with the SDK beside it), else, in a debug build only, the
 /// project's own copy, which is where `npm run app:dev` runs it from. A
-/// release build looks nowhere outside itself, so that it works on any Mac.
+/// release build looks nowhere outside itself, so that it works on any machine.
 fn find_script(app: &AppHandle) -> Option<PathBuf> {
     if let Some(p) = std::env::var_os("EDUKORS_AGENT_SCRIPT").map(PathBuf::from) {
         if p.is_file() {
@@ -157,7 +157,7 @@ fn find_script(app: &AppHandle) -> Option<PathBuf> {
         }
     }
     if let Ok(dir) = app.path().resource_dir() {
-        let bundled = dir.join("agent/sidecar.mjs");
+        let bundled = dir.join("agent").join("sidecar.mjs");
         if bundled.is_file() {
             return Some(bundled);
         }
@@ -169,52 +169,117 @@ fn find_script(app: &AppHandle) -> Option<PathBuf> {
     None
 }
 
+/// A command that, on Windows, opens no console window of its own.
+fn quiet(program: &Path) -> Command {
+    #[allow(unused_mut)]
+    let mut command = Command::new(program);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+    command
+}
+
 fn node_major(path: &Path) -> Option<u32> {
-    let out = Command::new(path).arg("--version").stdin(Stdio::null()).output().ok()?;
+    let out = quiet(path).arg("--version").stdin(Stdio::null()).output().ok()?;
     if !out.status.success() {
         return None;
     }
     String::from_utf8_lossy(&out.stdout).trim().trim_start_matches('v').split('.').next()?.parse().ok()
 }
 
+#[cfg(not(windows))]
+const NODE: &str = "node";
+#[cfg(windows)]
+const NODE: &str = "node.exe";
+
 /// A Node the SDK can run on. An app opened from the Finder does not get the
 /// shell's PATH, so the usual places are tried too, and the login shell last.
 pub fn find_node() -> Option<PathBuf> {
     let usable = |p: &Path| p.is_file() && node_major(p).is_some_and(|v| v >= MIN_NODE);
-    let home = std::env::var_os("HOME").map(PathBuf::from);
     let mut candidates: Vec<PathBuf> = Vec::new();
     if let Some(p) = std::env::var_os("EDUKORS_NODE") {
         candidates.push(PathBuf::from(p));
     }
     if let Some(path) = std::env::var_os("PATH") {
-        candidates.extend(std::env::split_paths(&path).map(|dir| dir.join("node")));
+        candidates.extend(std::env::split_paths(&path).map(|dir| dir.join(NODE)));
     }
-    if let Some(h) = &home {
-        for rel in [".local/bin/node", ".volta/bin/node", ".asdf/shims/node", ".local/share/fnm/aliases/default/bin/node", "Library/Application Support/fnm/aliases/default/bin/node"] {
-            candidates.push(h.join(rel));
-        }
-        candidates.extend(nvm_nodes(h));
-    }
-    candidates.extend(["/opt/homebrew/bin/node", "/usr/local/bin/node", "/usr/bin/node"].map(PathBuf::from));
+    candidates.extend(usual_places());
     if let Some(found) = candidates.into_iter().find(|p| usable(p)) {
         return Some(found);
     }
-    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".into());
-    let out = Command::new(shell).args(["-lc", "command -v node"]).stdin(Stdio::null()).output().ok()?;
-    let found = PathBuf::from(String::from_utf8_lossy(&out.stdout).trim());
-    usable(&found).then_some(found)
+    login_shell_node().filter(|p| usable(p))
 }
 
-/// The Node versions nvm installed, newest first.
-fn nvm_nodes(home: &Path) -> Vec<PathBuf> {
-    let Ok(dir) = std::fs::read_dir(home.join(".nvm/versions/node")) else {
+/// Where the installers and version managers put Node on a Mac.
+#[cfg(not(windows))]
+fn usual_places() -> Vec<PathBuf> {
+    let mut places = Vec::new();
+    if let Some(h) = std::env::var_os("HOME").map(PathBuf::from) {
+        for rel in [".local/bin/node", ".volta/bin/node", ".asdf/shims/node", ".local/share/fnm/aliases/default/bin/node", "Library/Application Support/fnm/aliases/default/bin/node"] {
+            places.push(h.join(rel));
+        }
+        places.extend(versions_newest_first(&h.join(".nvm/versions/node"), "bin/node"));
+    }
+    places.extend(["/opt/homebrew/bin/node", "/usr/local/bin/node", "/usr/bin/node"].map(PathBuf::from));
+    places
+}
+
+/// Where the installers and version managers put Node on Windows: the
+/// official installer, nvm-windows, fnm, Volta and Scoop.
+#[cfg(windows)]
+fn usual_places() -> Vec<PathBuf> {
+    let var = |name: &str| std::env::var_os(name).map(PathBuf::from);
+    let mut places = Vec::new();
+    for (base, rel) in [
+        ("ProgramFiles", "nodejs"),
+        ("ProgramFiles(x86)", "nodejs"),
+        ("LOCALAPPDATA", r"Programs\nodejs"),
+        ("NVM_SYMLINK", ""),
+        ("APPDATA", r"fnm\aliases\default"),
+        ("LOCALAPPDATA", r"fnm\aliases\default"),
+        ("LOCALAPPDATA", r"Volta\bin"),
+        ("ProgramFiles", "Volta"),
+        ("USERPROFILE", r"scoop\apps\nodejs\current"),
+        ("USERPROFILE", r"scoop\shims"),
+    ] {
+        if let Some(dir) = var(base) {
+            places.push(dir.join(rel).join(NODE));
+        }
+    }
+    if let Some(nvm) = var("NVM_HOME").or_else(|| var("APPDATA").map(|a| a.join("nvm"))) {
+        places.extend(versions_newest_first(&nvm, NODE));
+    }
+    places
+}
+
+/// What the login shell finds: it reads the profile, where PATH is set.
+#[cfg(not(windows))]
+fn login_shell_node() -> Option<PathBuf> {
+    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".into());
+    let out = Command::new(shell).args(["-lc", "command -v node"]).stdin(Stdio::null()).output().ok()?;
+    Some(PathBuf::from(String::from_utf8_lossy(&out.stdout).trim()))
+}
+
+/// An app opened from the Start menu already has the user's PATH.
+#[cfg(windows)]
+fn login_shell_node() -> Option<PathBuf> {
+    None
+}
+
+/// The Node versions a version manager keeps in `dir`, one folder each
+/// (`v20.11.0`), newest first; `rel` is the binary inside each.
+fn versions_newest_first(dir: &Path, rel: &str) -> Vec<PathBuf> {
+    let Ok(entries) = std::fs::read_dir(dir) else {
         return Vec::new();
     };
-    let mut found: Vec<(Vec<u32>, PathBuf)> = dir
+    let mut found: Vec<(Vec<u32>, PathBuf)> = entries
         .filter_map(Result::ok)
         .map(|entry| {
             let name = entry.file_name().to_string_lossy().trim_start_matches('v').to_string();
-            (name.split('.').map(|n| n.parse().unwrap_or(0)).collect(), entry.path().join("bin/node"))
+            (name.split('.').map(|n| n.parse().unwrap_or(0)).collect(), entry.path().join(rel))
         })
         .collect();
     found.sort_by(|a, b| b.0.cmp(&a.0));
@@ -227,6 +292,7 @@ fn search_path(node: &Path) -> String {
     if let Some(path) = std::env::var_os("PATH") {
         dirs.extend(std::env::split_paths(&path));
     }
+    #[cfg(not(windows))]
     for dir in ["/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"] {
         dirs.push(PathBuf::from(dir));
     }
@@ -244,7 +310,7 @@ mod tests {
         // The development machine has Node; the check is that it is found
         // even without the shell's PATH, as when the app opens from the Finder.
         let saved = std::env::var_os("PATH");
-        std::env::set_var("PATH", "/usr/bin:/bin");
+        std::env::set_var("PATH", if cfg!(windows) { r"C:\Windows\System32" } else { "/usr/bin:/bin" });
         let found = find_node();
         if let Some(p) = saved {
             std::env::set_var("PATH", p);

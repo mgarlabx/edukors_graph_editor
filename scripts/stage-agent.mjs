@@ -11,9 +11,10 @@
  * from the project's node_modules so that the versions are the package-lock's.
  *
  * The SDK runs a native `claude` binary from a package of its own per
- * platform, and resolves it by Node's architecture. The app is universal, so
- * both Mac packages go in: the one npm did not install here is fetched once
- * with `npm pack` and kept in node_modules/.cache/edukors-agent/.
+ * platform, and resolves it by Node's architecture. The Mac app is universal,
+ * so both Mac packages go in; on Windows (x64 only) it is `claude.exe`. A
+ * package npm did not install here is fetched once with `npm pack` and kept
+ * in node_modules/.cache/edukors-agent/.
  */
 import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { execFileSync } from "node:child_process";
@@ -29,7 +30,9 @@ const SDK = "@anthropic-ai/claude-agent-sdk";
 const FILES = ["sidecar.mjs", "tools.mjs", "extensions.mjs", "system-prompt.md"];
 /** What agent/*.mjs import from outside Node. */
 const ENTRIES = [SDK, "zod"];
-const PLATFORMS = ["darwin-arm64", "darwin-x64"];
+const WINDOWS = process.platform === "win32";
+const PLATFORMS = WINDOWS ? ["win32-x64"] : ["darwin-arm64", "darwin-x64"];
+const binary = (platform) => (platform.startsWith("win32") ? "claude.exe" : "claude");
 
 const manifest = (dir) => JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
 
@@ -74,12 +77,15 @@ function stagePlatform(platform, version) {
     if (!existsSync(tarball)) {
       mkdirSync(CACHE, { recursive: true });
       console.log(`fetching ${name}@${version}`);
-      execFileSync("npm", ["pack", `${name}@${version}`, "--pack-destination", CACHE, "--silent"], { stdio: ["ignore", "ignore", "inherit"] });
+      // npm is npm.cmd on Windows, which only a shell runs.
+      execFileSync("npm", ["pack", `${name}@${version}`, "--pack-destination", CACHE, "--silent"], { stdio: ["ignore", "ignore", "inherit"], shell: WINDOWS });
     }
     mkdirSync(dest, { recursive: true });
-    execFileSync("tar", ["-xzf", tarball, "-C", dest, "--strip-components=1"]);
+    // Windows' own tar: Git's, if first on the PATH, takes "C:" for a remote host.
+    const tar = WINDOWS ? join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe") : "tar";
+    execFileSync(tar, ["-xzf", tarball, "-C", dest, "--strip-components=1"]);
   }
-  chmodSync(join(dest, "claude"), 0o755);
+  if (!WINDOWS) chmodSync(join(dest, binary(platform)), 0o755);
 }
 
 rmSync(OUT, { recursive: true, force: true });
@@ -91,18 +97,18 @@ for (const dir of packages) {
   cpSync(dir, join(OUT, "node_modules", relative(MODULES, dir)), {
     recursive: true,
     // Another platform's binary, nested by npm, would only add weight.
-    filter: (src) => !relative(dir, src).includes(`${SDK}-`),
+    filter: (src) => !relative(dir, src).replaceAll("\\", "/").includes(`${SDK}-`),
   });
 }
 
 const version = manifest(join(MODULES, SDK)).version;
 for (const platform of PLATFORMS) stagePlatform(platform, version);
 
-// What the SDK will do on each Mac: find its binary from where it is.
+// What the SDK will do on each machine: find its binary from where it is.
 const require = createRequire(join(OUT, "node_modules", SDK, "package.json"));
 for (const platform of PLATFORMS) {
   try {
-    require.resolve(`${SDK}-${platform}/claude`);
+    require.resolve(`${SDK}-${platform}/${binary(platform)}`);
   } catch {
     throw new Error(`the ${platform} binary did not end up where the SDK looks for it`);
   }
