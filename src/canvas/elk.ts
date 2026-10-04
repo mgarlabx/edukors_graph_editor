@@ -1,6 +1,6 @@
 /**
  * Automatic layout with ELK, for a course whose nodes have no positions or when
- * the author asks for it. Left to right, in the order the student goes, with
+ * the author asks for it. Top to bottom, in the order the student goes, with
  * edges back into a cycle allowed to run against the flow.
  */
 import type ELKType from "elkjs/lib/elk.bundled.js";
@@ -16,9 +16,12 @@ export const DIAMOND = { width: 120, height: 120 };
 
 export const sizeOf = (type: string) => (isJudge(type) ? DIAMOND : CARD);
 
+/** A diamond's title sits to its right, clear of the edges above and below it. */
+export const DIAMOND_LABEL = 110;
+
 const OPTIONS = {
   "elk.algorithm": "layered",
-  "elk.direction": "RIGHT",
+  "elk.direction": "DOWN",
   "elk.layered.spacing.nodeNodeBetweenLayers": "90",
   "elk.spacing.nodeNode": "50",
   "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
@@ -27,13 +30,13 @@ const OPTIONS = {
   "elk.edgeRouting": "SPLINES",
 };
 
-/** Space between two sections side by side: their frames must not touch. */
+/** Space between two sections one above the other: their frames must not touch. */
 const SECTION_GAP = 110;
 
 /**
  * Positions for every node. A course with sections is laid out one section at
- * a time, each left to right, and the sections set side by side, left to
- * right in their order, so that every section's frame is a block of its own.
+ * a time, each top to bottom, and the sections stacked, top to bottom in
+ * their order, so that every section's frame is a block of its own.
  */
 export async function autoLayout(course: Course, measured: Record<string, { width: number; height: number }> = {}): Promise<Record<string, Position>> {
   const nodes = (course.nodes ?? []).filter((n) => n && typeof n.id === "string");
@@ -48,22 +51,29 @@ export async function autoLayout(course: Course, measured: Record<string, { widt
   }
 
   const positions: Record<string, Position> = {};
-  let left = 0;
+  let top = 0;
   for (const number of [...groups.keys()].sort((a, b) => a - b)) {
     const members = groups.get(number)!;
     const inside = new Set(members.map((n) => n.id));
     const result = await elk.layout({
       id: `section-${number}`,
       layoutOptions: OPTIONS,
-      children: members.map((n) => ({ id: n.id, ...(measured[n.id] ?? sizeOf(n.type)) })),
+      // A diamond takes room for its title on both sides, so that it stays
+      // centred on its edges.
+      children: members.map((n) => {
+        const size = measured[n.id] ?? sizeOf(n.type);
+        return { id: n.id, ...size, width: size.width + (isJudge(n.type) ? DIAMOND_LABEL * 2 : 0) };
+      }),
       edges: edges.filter((e) => inside.has(e.from) && inside.has(e.to)).map((e, i) => ({ id: `e${number}-${i}`, sources: [e.from], targets: [e.to] })),
     });
-    let right = 0;
+    const judges = new Set(members.filter((n) => isJudge(n.type)).map((n) => n.id));
+    let bottom = 0;
     for (const child of result.children ?? []) {
-      positions[child.id] = { x: Math.round(left + (child.x ?? 0)), y: Math.round(child.y ?? 0) };
-      right = Math.max(right, (child.x ?? 0) + (child.width ?? 0));
+      const pad = judges.has(child.id) ? DIAMOND_LABEL : 0;
+      positions[child.id] = { x: Math.round((child.x ?? 0) + pad), y: Math.round(top + (child.y ?? 0)) };
+      bottom = Math.max(bottom, (child.y ?? 0) + (child.height ?? 0));
     }
-    left += right + SECTION_GAP;
+    top += bottom + SECTION_GAP;
   }
   return positions;
 }

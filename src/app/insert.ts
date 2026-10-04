@@ -19,8 +19,11 @@ export const INSERT_GROUPS: { label: string; types: NodeType[] }[] = [
 /** Drag data for a type, dropped where the node goes (canvas/Canvas.tsx). */
 export const NODE_DRAG = "application/edukors-node";
 
+/** From a node to the next one down: a card and the space between two layers. */
+const STEP = 200;
+
 /**
- * A new node to the right of the selected one (or of the whole graph),
+ * A new node below the selected one (or the whole graph),
  * selected and framed on the map, whichever view is on screen.
  */
 export function insertNode(type: NodeType) {
@@ -30,9 +33,9 @@ export function insertNode(type: NodeType) {
   if (!store.course) return;
   const positions = positionsOf(store.course);
   const anchor = store.selection.nodes[0] ? positions[store.selection.nodes[0]] : undefined;
-  const fallback = { x: Math.max(0, ...Object.values(positions).map((p) => p.x)) + 280, y: 80 };
+  const fallback = { x: 80, y: Math.max(0, ...Object.values(positions).map((p) => p.y)) + STEP };
   let id = "";
   store.update((c) => (id = addNode(c, type, courseLangs(c))), "add");
-  store.setPositions({ [id]: anchor ? { x: anchor.x + 280, y: anchor.y } : fallback });
+  store.setPositions({ [id]: anchor ? { x: anchor.x, y: anchor.y + STEP } : fallback });
   store.reveal({ node: id });
 }

@@ -29,7 +29,7 @@ import { useUi } from "../store/ui";
 import { usePreview, currentState } from "../preview/session";
 import { edgeTypes, type FlowEdge } from "./edges";
 import { nodeTypes, type CourseNodeData, type SectionData } from "./nodes";
-import { autoLayout, sizeOf } from "./elk";
+import { autoLayout, DIAMOND_LABEL, sizeOf } from "./elk";
 import { canvasView } from "./view";
 import { isJudge, TYPE_STYLE } from "../course/nodeTypes";
 import { summarize } from "../course/condition";
@@ -44,7 +44,7 @@ const SECTION_PAD = 28;
 
 /**
  * The whole course in view. One too long for that at a readable zoom is
- * framed from its start, on the left: it reads left to right.
+ * framed from its start, at the top: it reads top to bottom.
  */
 function frameAll(rf: ReactFlowInstance, el: HTMLElement | null, duration: number) {
   const all = rf.getNodes();
@@ -52,7 +52,7 @@ function frameAll(rf: ReactFlowInstance, el: HTMLElement | null, duration: numbe
   const bounds = rf.getNodesBounds(all);
   const { width, height } = el.getBoundingClientRect();
   const view = getViewportForBounds(bounds, width, height, 0.35, 1, 0.12);
-  if (bounds.width * view.zoom > width) view.x = 40 - bounds.x * view.zoom;
+  if (bounds.height * view.zoom > height) view.y = 40 - bounds.y * view.zoom;
   rf.setViewport(view, { duration });
 }
 
@@ -122,7 +122,7 @@ export function Canvas() {
       const g = groups.get(num) ?? { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
       g.x0 = Math.min(g.x0, n.position.x);
       g.y0 = Math.min(g.y0, n.position.y);
-      g.x1 = Math.max(g.x1, n.position.x + size.width);
+      g.x1 = Math.max(g.x1, n.position.x + size.width + (n.type === "diamond" ? DIAMOND_LABEL : 0));
       g.y1 = Math.max(g.y1, n.position.y + size.height);
       groups.set(num, g);
     }

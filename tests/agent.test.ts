@@ -102,13 +102,13 @@ describe("agent edits", () => {
     expect(() => applyOperations(mini(), [{ op: "update_info", info: { title: null } }])).toThrow(/cannot be removed/);
   });
 
-  it("places new nodes beside the node they follow, clear of the others", () => {
+  it("places new nodes below the node they follow, clear of the others", () => {
     const c = mini();
     applyOperations(c, [{ op: "add_node", node: { type: "bool", title: loc("?"), content: { question: loc("Ready?") } }, near: "sm1" }]);
-    const positions = { sm1: { x: 0, y: 0 }, sh1: { x: 280, y: 0 } };
+    const positions = { sm1: { x: 0, y: 0 }, sh1: { x: 0, y: 200 } };
     const placed = placeAdded(c, positions, [{ id: "b1", near: "sm1" }]);
-    expect(placed.b1.x).toBe(280);
-    expect(placed.b1.y).toBeGreaterThan(0);
+    expect(placed.b1.y).toBe(200);
+    expect(placed.b1.x).toBeGreaterThan(0);
   });
 
   it("outlines a course without the content of its nodes", () => {
@@ -164,7 +164,7 @@ describe("agent tools in the editor", () => {
     course.nodes.find((n) => n.id === "sm5")!.position = { x: 1000, y: 40 };
     const a = openDoc(course, { path: null, saved: true });
     await runTool("edit_course", { operations: [{ op: "add_node", node: { type: "bool", title: loc("More?"), content: { question: loc("More?") } }, near: "sm5" }] }, a);
-    expect(positionsOf(editor().course).b1).toEqual({ x: 1280, y: 40 });
+    expect(positionsOf(editor().course).b1).toEqual({ x: 1000, y: 240 });
   });
 
   it("open a new course and work on it from then on", async () => {

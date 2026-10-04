@@ -228,27 +228,27 @@ export function problems(d: Diagnostics | null, limit = 40): string {
 
 // ------------------------------------------------------------- placing ----
 
-const STEP_X = 280;
-const STEP_Y = 130;
+const STEP_X = 260;
+const STEP_Y = 200;
 const crowds = (taken: Position[], p: Position) => taken.some((q) => Math.abs(q.x - p.x) < 240 && Math.abs(q.y - p.y) < 110);
 
 /**
- * Where nodes the agent added go on the canvas: beside the node they were
- * placed near, or the one an edge reaches them from, else to the right of
- * everything; moved down until they overlap nothing.
+ * Where nodes the agent added go on the canvas: below the node they were
+ * placed near, or the one an edge reaches them from, else below
+ * everything; moved right until they overlap nothing.
  */
 export function placeAdded(course: Course, positions: Record<string, Position>, added: Applied["added"]): Record<string, Position> {
   const placed: Record<string, Position> = {};
   const taken = () => [...Object.values(positions), ...Object.values(placed)];
   const all = Object.values(positions);
-  const right = all.length ? Math.max(...all.map((p) => p.x)) + STEP_X : 0;
-  const top = all.length ? Math.min(...all.map((p) => p.y)) : 0;
+  const bottom = all.length ? Math.max(...all.map((p) => p.y)) + STEP_Y : 0;
+  const left = all.length ? Math.min(...all.map((p) => p.x)) : 0;
   for (const { id, near } of added) {
     if (positions[id] || !course.nodes.some((n) => n.id === id)) continue;
     const from = near ?? course.edges.find((e) => e.to === id && (positions[e.from] || placed[e.from]))?.from;
     const anchor = from ? positions[from] ?? placed[from] : undefined;
-    const p = anchor ? { x: anchor.x + STEP_X, y: anchor.y } : { x: right, y: top };
-    while (crowds(taken(), p)) p.y += STEP_Y;
+    const p = anchor ? { x: anchor.x, y: anchor.y + STEP_Y } : { x: left, y: bottom };
+    while (crowds(taken(), p)) p.x += STEP_X;
     placed[id] = p;
   }
   return placed;

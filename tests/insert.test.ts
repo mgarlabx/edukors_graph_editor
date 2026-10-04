@@ -24,7 +24,7 @@ describe("insert", () => {
     expect(INSERT_GROUPS.flatMap((g) => g.types)).toEqual(NODE_TYPES);
   });
 
-  it("adds the type beside the selected node, selects it and shows it on the map", () => {
+  it("adds the type below the selected node, selects it and shows it on the map", () => {
     openDoc(full(), { path: null, saved: true });
     editor().setPositions({ q1: { x: 100, y: 40 }, f2: { x: 900, y: 300 } });
     editor().select({ nodes: ["q1"], edge: null });
@@ -32,15 +32,15 @@ describe("insert", () => {
 
     insertNode("score");
     expect(editor().course!.nodes.at(-1)).toMatchObject({ id: "s2", type: "score" });
-    expect(positionsOf(editor().course).s2).toEqual({ x: 380, y: 40 });
+    expect(positionsOf(editor().course).s2).toEqual({ x: 100, y: 240 });
     expect(editor().selection).toEqual({ nodes: ["s2"], edge: null });
     expect(editor().tab).toBe("canvas");
     expect(editor().focus?.node).toBe("s2");
 
-    // With nothing selected: to the right of the whole graph.
+    // With nothing selected: below the whole graph.
     editor().select({ nodes: [], edge: null });
     insertNode("static-md");
-    expect(positionsOf(editor().course).sm6).toEqual({ x: 1180, y: 80 });
+    expect(positionsOf(editor().course).sm6).toEqual({ x: 80, y: 500 });
 
     editor().undo();
     editor().undo();

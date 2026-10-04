@@ -23,7 +23,7 @@ export type FlowEdge = Edge<FlowEdgeData, "flow">;
 
 export const FlowEdgeView = memo((props: EdgeProps<FlowEdge>) => {
   const { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data, selected, markerEnd } = props;
-  const back = targetX < sourceX;
+  const back = targetY < sourceY;
   const [path, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,

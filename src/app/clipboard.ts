@@ -134,7 +134,7 @@ function placePasted(map: Record<string, string>, clip: Clip, positions: Record<
       x1 = Math.max(x1, p.x + size.width);
       y1 = Math.max(y1, p.y + size.height);
     }
-    const center = canvasView.center?.() ?? { x: Math.max(0, ...Object.values(positions).map((p) => p.x)) + 280 + (x1 - x0) / 2, y: 80 + (y1 - y0) / 2 };
+    const center = canvasView.center?.() ?? { x: 80 + (x1 - x0) / 2, y: Math.max(0, ...Object.values(positions).map((p) => p.y)) + 200 + (y1 - y0) / 2 };
     shift = { x: center.x - (x0 + x1) / 2, y: center.y - (y0 + y1) / 2 };
   }
   const taken = new Set(Object.values(positions).map((p) => `${Math.round(p.x)},${Math.round(p.y)}`));

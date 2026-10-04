@@ -309,7 +309,7 @@
   "help.selectAll": "Select all nodes",
   "help.shortcuts": "Shortcuts",
   "help.step1": "Insert nodes with the + button on the toolbar or the Insert menu; to choose where one goes, drag its type from the + list onto the graph.",
-  "help.step2": "Connect nodes by dragging from the circle on a node's right to another node.",
+  "help.step2": "Connect nodes by dragging from the circle at the bottom of a node to another node.",
   "help.step3": "Click a node to edit its content in the inspector; click an edge to edit its condition.",
   "help.step4": "The badge at the top shows errors and warnings; click it to see the list and jump to each one.",
   "help.step5": "In the Preview tab, take the course as the student would, with the real AI.",

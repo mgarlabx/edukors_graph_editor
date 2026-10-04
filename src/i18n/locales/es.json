@@ -309,7 +309,7 @@
   "help.selectAll": "Seleccionar todos los nodos",
   "help.shortcuts": "Atajos",
   "help.step1": "Inserte nodos con el botón + de la barra o el menú Insertar; para elegir dónde queda uno, arrastre su tipo desde la lista del + al grafo.",
-  "help.step2": "Conecte nodos arrastrando desde el círculo derecho de un nodo hasta otro.",
+  "help.step2": "Conecte nodos arrastrando desde el círculo inferior de un nodo hasta otro.",
   "help.step3": "Haga clic en un nodo para editar su contenido en el inspector; en una arista para editar su condición.",
   "help.step4": "La insignia arriba muestra errores y avisos; haga clic para ver la lista e ir a cada uno.",
   "help.step5": "En la pestaña Vista previa, haga el curso como el estudiante, con la IA real.",

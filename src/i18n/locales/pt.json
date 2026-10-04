@@ -309,7 +309,7 @@
   "help.selectAll": "Selecionar todos os nós",
   "help.shortcuts": "Atalhos",
   "help.step1": "Insira nós pelo botão + da barra ou pelo menu Inserir; para escolher onde um nó fica, arraste o tipo da lista do + até o grafo.",
-  "help.step2": "Ligue os nós puxando do círculo à direita de um nó até outro.",
+  "help.step2": "Ligue os nós puxando do círculo embaixo de um nó até outro.",
   "help.step3": "Clique num nó para editar o conteúdo no inspetor; clique numa edge para editar a condição.",
   "help.step4": "O selo no topo mostra erros e avisos; clique para ver a lista e ir até cada um.",
   "help.step5": "Na aba Preview, faça o curso como o estudante, com a IA de verdade.",

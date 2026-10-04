@@ -1180,10 +1180,11 @@ kbd {
 
 .diamond-title {
   position: absolute;
-  top: 116px;
-  left: -40px;
-  right: -40px;
-  text-align: center;
+  top: 50%;
+  left: 118px;
+  width: 102px;
+  transform: translateY(-50%);
+  text-align: left;
   font-size: 11.5px;
   font-weight: 600;
   line-height: 1.25;

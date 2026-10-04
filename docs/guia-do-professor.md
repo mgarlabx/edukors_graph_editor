@@ -56,8 +56,8 @@ Também dá para colar no grafo um passo copiado da aba **JSON** (o objeto intei
 ## 5. Criar um curso, passo a passo
 
 1. **Novo curso.** Clique em ＋ ao lado das abas de curso (ou tecle ⌘N). Com nada selecionado, preencha à direita o título, o autor e, se quiser, a descrição.
-2. **Adicione passos.** Clique no ＋ da barra de cima (ou abra o menu **Inserir**) e escolha *Texto*: o passo novo aparece à direita do que estiver selecionado e já vem selecionado. Para escolher o lugar, arraste o *Texto* da lista do ＋ até o grafo. Escreva o título e o conteúdo no inspetor. A aba **visualizar** mostra como o texto fica.
-3. **Ligue os passos.** Puxe do círculo à direita de um passo até outro. Isso cria uma seta.
+2. **Adicione passos.** Clique no ＋ da barra de cima (ou abra o menu **Inserir**) e escolha *Texto*: o passo novo aparece abaixo do que estiver selecionado e já vem selecionado. Para escolher o lugar, arraste o *Texto* da lista do ＋ até o grafo. Escreva o título e o conteúdo no inspetor. A aba **visualizar** mostra como o texto fica.
+3. **Ligue os passos.** Puxe do círculo embaixo de um passo até outro. Isso cria uma seta.
 4. **Marque o início.** O primeiro passo do curso tem o selo ▶. Para mudar, marque "Este é o nó de início do curso" no passo desejado.
 5. **Salve** com ⌘S. O editor grava um arquivo só, `meu-curso.egf`, com o curso e a arrumação do grafo. Mover um passo no grafo também é uma alteração: a aba do curso mostra um ponto até ele ser salvo.
 

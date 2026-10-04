@@ -49,7 +49,7 @@ export const CardNode = memo(({ data, selected }: NodeProps<FlowNode>) => {
   const title = localize(node.title, lang);
   return (
     <div className={`card-node ${status(data, selected)}`} style={{ "--type-color": style.color } as React.CSSProperties}>
-      <Handle type="target" position={Position.Left} className="handle" />
+      <Handle type="target" position={Position.Top} className="handle" />
       <div className="card-head">
         <span className="type-icon" aria-hidden>
           {style.icon}
@@ -64,7 +64,7 @@ export const CardNode = memo(({ data, selected }: NodeProps<FlowNode>) => {
       </div>
       <div className={`card-title ${title ? "" : "is-empty"}`}>{title || t("canvas.untitled")}</div>
       <Badge issues={issues} />
-      <Handle type="source" position={Position.Right} className="handle" />
+      <Handle type="source" position={Position.Bottom} className="handle" />
     </div>
   );
 });
@@ -75,7 +75,7 @@ export const DiamondNode = memo(({ data, selected }: NodeProps<FlowNode>) => {
   const title = localize(node.title, lang);
   return (
     <div className={`diamond-node ${status(data, selected)}`} style={{ "--type-color": style.color } as React.CSSProperties}>
-      <Handle type="target" position={Position.Left} className="handle" />
+      <Handle type="target" position={Position.Top} className="handle" />
       <div className="diamond-shape" />
       <div className="diamond-body">
         <span className="type-icon" aria-hidden>
@@ -88,7 +88,7 @@ export const DiamondNode = memo(({ data, selected }: NodeProps<FlowNode>) => {
         {title || t("canvas.untitled")}
       </div>
       <Badge issues={issues} />
-      <Handle type="source" position={Position.Right} className="handle" />
+      <Handle type="source" position={Position.Bottom} className="handle" />
     </div>
   );
 });
