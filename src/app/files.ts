@@ -3,8 +3,8 @@
  *
  * A course is one `.egf` file (Edukors Graph Format, JSON inside), written in
  * the style it was read in so that opening and saving changes nothing. A
- * `.json` course from before the format still opens; its first save asks
- * where to put the `.egf`. Where the nodes sit is in it too, in each node's
+ * `.json` path (a recent file from before the format) still opens; its first
+ * save asks where to put the `.egf`. Where the nodes sit is in it too, in each node's
  * `position`.
  *
  * Each course opens in a tab of its own (store/docs.ts); a file already open

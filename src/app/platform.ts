@@ -99,8 +99,7 @@ export const native = {
 /** Edukors Graph Format: the course file's own extension. */
 export const COURSE_EXT = "egf";
 
-/** Open takes `.egf` and the `.json` courses from before it. */
-export async function pickOpen(filters = [{ name: "Edukors Graph", extensions: [COURSE_EXT, "json"] }]): Promise<string | null> {
+export async function pickOpen(filters = [{ name: "Edukors Graph", extensions: [COURSE_EXT] }]): Promise<string | null> {
   if (isTauri()) {
     const { open } = await import("@tauri-apps/plugin-dialog");
     const picked = await open({ multiple: false, directory: false, filters });

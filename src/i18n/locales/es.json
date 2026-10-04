@@ -32,7 +32,7 @@
   "agent.err.failed": "No se pudo iniciar el agente.",
   "agent.err.node-missing": "No se encontró Node.js 18 o más reciente en este Mac. Instálelo (nodejs.org) y vuelva a intentarlo.",
   "agent.err.sdk-missing": "El Claude Agent SDK no está instalado. Ejecute npm install en la carpeta del proyecto y vuelva a intentarlo.",
-  "agent.err.sidecar-missing": "No se encontraron los archivos del agente (la carpeta agent/ del proyecto).",
+  "agent.err.sidecar-missing": "No se encontraron los archivos del agente dentro de la app. Reinstale Edukors Graph Editor y vuelva a intentarlo.",
   "agent.err.timeout": "El agente no respondió a tiempo.",
   "agent.err.unavailable": "El agente funciona dentro de la app (npm run app:dev). En un navegador no puede iniciarse.",
   "agent.feedbackPlaceholder": "¿Qué debería hacer el agente en su lugar?",

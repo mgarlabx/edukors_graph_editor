@@ -42,7 +42,7 @@ The editor was made for teachers and course authors. With it you can:
 
 **The AI agent.** A panel on the right provides an agent, built with Claude, that reads the open course and changes it on request. By default, each change waits for your approval, and everything can be undone.
 
-Each course is saved in a single file, `course.egf` (Edukors Graph Format: the course's JSON under its own extension, which the app is associated with), which is also what goes to the player. Older `.json` courses still open; their first save asks where to write the `.egf`. The position of each box on the map is saved in it too, in the node's `position` field, which players ignore.
+Each course is saved in a single file, `course.egf` (Edukors Graph Format: the course's JSON under its own extension, which the app is associated with), which is also what goes to the player. The Open dialog takes `.egf` only; an older `.json` course becomes one by renaming it. The position of each box on the map is saved in it too, in the node's `position` field, which players ignore.
 
 The [teacher's guide](docs/guia-do-professor.md) (in Portuguese) explains how to use the editor step by step.
 
@@ -72,7 +72,7 @@ npm run app:dev
 
 The first time takes a few minutes, because the app is compiled. After that it is fast.
 
-If you prefer an app to keep in your Applications folder, build it with `npm run app:build`. The `.app` and `.dmg` are placed in `src-tauri/target/release/bundle/`. Since the app is not yet signed by Apple, open it the first time with right-click → **Open**.
+If you prefer an app to keep in your Applications folder, build it with `npm run app:build`. It needs both Mac targets of Rust, added once with `rustup target add aarch64-apple-darwin x86_64-apple-darwin`. The app is universal (Apple Silicon and Intel) and carries the agent inside it, so it can be copied to any Mac with macOS 11 or later; that Mac only needs Node.js for the agent. The `.app` and `.dmg` are placed in `src-tauri/target/universal-apple-darwin/release/bundle/`. Since the app is not yet signed by Apple, open it the first time with right-click → **Open**.
 
 **4. Optional: AI in the preview.** Create a key at [OpenRouter](https://openrouter.ai) and paste it into **Preferences** (⌘,).
 

@@ -10,9 +10,9 @@ Um curso é um **grafo**. Cada **nó** é um passo que o estudante vê ou faz (u
 
 1. Abra o arquivo `Edukors Graph Editor.dmg` e arraste o app para a pasta **Aplicativos**.
 2. Na primeira vez, se o macOS avisar que o app não foi verificado, clique com o botão direito no app e escolha **Abrir**.
-3. Na tela inicial você pode criar um **Novo curso**, **Abrir** um arquivo `.egf` (ou um `.json` antigo) ou abrir um dos **Exemplos** (*World Cats*), que são uma ótima forma de ver como um curso é montado.
+3. Na tela inicial você pode criar um **Novo curso**, **Abrir** um arquivo `.egf` ou abrir um dos **Exemplos** (*World Cats*), que são uma ótima forma de ver como um curso é montado.
 
-Dica: depois de instalado, um curso `.egf` abre no editor com duplo clique. Um `.json` antigo abre pelo **Abrir com**; ao salvar, o editor pergunta onde gravar a versão `.egf`.
+Dica: depois de instalado, um curso `.egf` abre no editor com duplo clique. Um curso `.json` antigo vira `.egf` trocando a extensão do arquivo (o conteúdo é o mesmo).
 
 ## 3. A tela
 

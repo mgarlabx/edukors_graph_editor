@@ -146,8 +146,10 @@ pub fn agent_stop(agent: State<Agent>) {
 
 // ---------------------------------------------------------------- where ----
 
-/// The script: beside the app when it is bundled, else the project's own copy,
-/// which is where `npm run app:dev` (and a build made on this Mac) runs it from.
+/// The script: inside the app when it is bundled (scripts/stage-agent.mjs puts
+/// it there, with the SDK beside it), else, in a debug build only, the
+/// project's own copy, which is where `npm run app:dev` runs it from. A
+/// release build looks nowhere outside itself, so that it works on any Mac.
 fn find_script(app: &AppHandle) -> Option<PathBuf> {
     if let Some(p) = std::env::var_os("EDUKORS_AGENT_SCRIPT").map(PathBuf::from) {
         if p.is_file() {
@@ -160,7 +162,11 @@ fn find_script(app: &AppHandle) -> Option<PathBuf> {
             return Some(bundled);
         }
     }
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../agent/sidecar.mjs").canonicalize().ok().filter(|p| p.is_file())
+    #[cfg(debug_assertions)]
+    if let Some(dev) = Path::new(env!("CARGO_MANIFEST_DIR")).join("../agent/sidecar.mjs").canonicalize().ok().filter(|p| p.is_file()) {
+        return Some(dev);
+    }
+    None
 }
 
 fn node_major(path: &Path) -> Option<u32> {
