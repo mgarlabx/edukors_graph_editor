@@ -10,9 +10,9 @@ Um curso é um **grafo**. Cada **nó** é um passo que o estudante vê ou faz (u
 
 1. Abra o arquivo `Edukors Graph Editor.dmg` e arraste o app para a pasta **Aplicativos**.
 2. Na primeira vez, se o macOS avisar que o app não foi verificado, clique com o botão direito no app e escolha **Abrir**.
-3. Na tela inicial você pode criar um **Novo curso**, **Abrir** um arquivo `.json` ou abrir um dos **Exemplos** (*World Cats*), que são uma ótima forma de ver como um curso é montado.
+3. Na tela inicial você pode criar um **Novo curso**, **Abrir** um arquivo `.egf` (ou um `.json` antigo) ou abrir um dos **Exemplos** (*World Cats*), que são uma ótima forma de ver como um curso é montado.
 
-Dica: depois de instalado, dê duplo clique num curso `.json` e escolha o editor em **Abrir com**.
+Dica: depois de instalado, um curso `.egf` abre no editor com duplo clique. Um `.json` antigo abre pelo **Abrir com**; ao salvar, o editor pergunta onde gravar a versão `.egf`.
 
 ## 3. A tela
 
@@ -59,7 +59,7 @@ Também dá para colar no grafo um passo copiado da aba **JSON** (o objeto intei
 2. **Adicione passos.** Clique no ＋ da barra de cima (ou abra o menu **Inserir**) e escolha *Texto*: o passo novo aparece à direita do que estiver selecionado e já vem selecionado. Para escolher o lugar, arraste o *Texto* da lista do ＋ até o grafo. Escreva o título e o conteúdo no inspetor. A aba **visualizar** mostra como o texto fica.
 3. **Ligue os passos.** Puxe do círculo à direita de um passo até outro. Isso cria uma seta.
 4. **Marque o início.** O primeiro passo do curso tem o selo ▶. Para mudar, marque "Este é o nó de início do curso" no passo desejado.
-5. **Salve** com ⌘S. O editor grava um arquivo só, `meu-curso.json`, com o curso e a arrumação do grafo. Mover um passo no grafo também é uma alteração: a aba do curso mostra um ponto até ele ser salvo.
+5. **Salve** com ⌘S. O editor grava um arquivo só, `meu-curso.egf`, com o curso e a arrumação do grafo. Mover um passo no grafo também é uma alteração: a aba do curso mostra um ponto até ele ser salvo.
 
 ## 6. Caminhos diferentes para estudantes diferentes
 
@@ -124,7 +124,7 @@ Para testar só uma avaliação, use **Testar julgamento** no inspetor da Nota/E
 ## 11. Publicar
 
 - **Arquivo → Exportar curso…** gera um HTML que roda o curso sozinho, sem servidor (as avaliações da IA viram o painel manual).
-- Para publicar no Edukors, envie o arquivo `meu-curso.json` pelo admin do player.
+- Para publicar no Edukors, envie o arquivo `meu-curso.egf` pelo admin do player.
 
 ## 12. O agente de IA
 

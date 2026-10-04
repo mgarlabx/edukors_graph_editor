@@ -10,7 +10,8 @@ Sem assinatura, o macOS abre o app só depois de o usuário autorizá-lo em **Aj
 ## O que já está configurado
 
 - `src-tauri/tauri.conf.json` → `bundle.macOS.hardenedRuntime: true` (exigido pela notarização) e `minimumSystemVersion: "11.0"`.
-- Associação de arquivo `.json` (`bundle.fileAssociations`), com papel *Editor* e prioridade *Alternate*, para o app aparecer em **Abrir com** sem tomar o lugar do editor padrão de JSON.
+- Associação de arquivo `.egf` (Edukors Graph Format, `bundle.fileAssociations`), com papel *Editor* e prioridade *Owner*, e o tipo exportado `org.edukors.grapheditor.egf` (conforme a `public.json`): o duplo clique num `.egf` abre o editor.
+- Associação de `.json` com prioridade *Alternate*, para os cursos antigos aparecerem em **Abrir com** sem tomar o lugar do editor padrão de JSON.
 - Identificador `org.edukors.grapheditor`.
 
 ## O que falta (precisa da conta Apple Developer)

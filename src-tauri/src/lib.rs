@@ -432,6 +432,12 @@ fn set_menu(app: AppHandle, lang: String, recent: Vec<String>, map: Option<MapLa
 
 // ------------------------------------------------------------------- run ----
 
+/// A course file: `.egf` (Edukors Graph Format), or `.json` from before it.
+fn is_course_file(path: &str) -> bool {
+    let lower = path.to_lowercase();
+    lower.ends_with(".egf") || lower.ends_with(".json")
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app = tauri::Builder::default()
@@ -447,7 +453,7 @@ pub fn run() {
             // Files passed on the command line (useful in development).
             let args: Vec<String> = std::env::args()
                 .skip(1)
-                .filter(|a| a.ends_with(".json") && PathBuf::from(a).is_file())
+                .filter(|a| is_course_file(a) && PathBuf::from(a).is_file())
                 .collect();
             app.state::<OpenedFiles>().0.lock().unwrap().extend(args);
             Ok(())
@@ -492,7 +498,7 @@ pub fn run() {
         if let RunEvent::Ready = &event {
             macos::strip_edit_menu();
         }
-        // A .json opened from Finder: kept for the webview to take on boot, and
+        // A .egf (or an older .json) opened from Finder: kept for the webview to take on boot, and
         // announced in case it is already running.
         #[cfg(any(target_os = "macos", target_os = "ios"))]
         if let RunEvent::Opened { urls } = &event {
@@ -597,6 +603,14 @@ mod tests {
             }
         }
         assert_eq!(insert_labels("pt").0, "Inserir");
+    }
+
+    #[test]
+    fn course_files_are_egf_or_older_json() {
+        assert!(is_course_file("/a/curso.egf"));
+        assert!(is_course_file("/a/CURSO.EGF"));
+        assert!(is_course_file("/a/curso.json"));
+        assert!(!is_course_file("/a/curso.txt"));
     }
 
     #[test]

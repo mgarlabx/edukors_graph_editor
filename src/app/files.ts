@@ -1,14 +1,16 @@
 /**
  * New, open, save, save as, close, export (plan 5.8).
  *
- * A course is one file, written in the style it was read in so that opening
- * and saving changes nothing. Where the nodes sit is in it too, in each node's
+ * A course is one `.egf` file (Edukors Graph Format, JSON inside), written in
+ * the style it was read in so that opening and saving changes nothing. A
+ * `.json` course from before the format still opens; its first save asks
+ * where to put the `.egf`. Where the nodes sit is in it too, in each node's
  * `position`.
  *
  * Each course opens in a tab of its own (store/docs.ts); a file already open
  * is shown, not opened twice.
  */
-import { native, pickOpen, pickSave, alertDialog } from "./platform";
+import { native, pickOpen, pickSave, alertDialog, COURSE_EXT } from "./platform";
 import { buildPlayer, titleOf } from "./export";
 import { askUnsaved } from "../ui/dialogs";
 import { isDirty, useEditor, type DocSlice } from "../store/editor";
@@ -125,10 +127,10 @@ export async function saveCourse(saveAs: boolean, id = useEditor.getState().docI
   if (!doc?.course) return false;
   const { course, style } = doc;
   let path = doc.path;
-  if (!path || saveAs) {
-    const suggested = path ?? `${slug(titleOf(course, "course"))}-course.json`;
-    path = await pickSave(suggested);
-    if (!path) return false;
+  if (!path || saveAs || !isEgf(path)) {
+    const picked = await pickSave(path ? withEgf(path) : `${slug(titleOf(course, "course"))}.${COURSE_EXT}`);
+    if (!picked) return false;
+    path = withEgf(picked);
   }
   const text = stringify(course, style);
   try {
@@ -143,6 +145,11 @@ export async function saveCourse(saveAs: boolean, id = useEditor.getState().docI
   return true;
 }
 
+const isEgf = (path: string) => path.toLowerCase().endsWith(`.${COURSE_EXT}`);
+
+/** The path with the course extension, in place of a `.json` one. */
+export const withEgf = (path: string) => (isEgf(path) ? path : `${path.replace(/\.json$/i, "")}.${COURSE_EXT}`);
+
 const slug = (text: string) =>
   text
     .normalize("NFD")
@@ -153,7 +160,7 @@ const slug = (text: string) =>
 
 const baseName = () => {
   const s = useEditor.getState();
-  if (s.path) return s.path.replace(/(-course)?\.json$/i, "");
+  if (s.path) return s.path.replace(/(-course)?\.(egf|json)$/i, "");
   return slug(titleOf(s.course!, "course"));
 };
 

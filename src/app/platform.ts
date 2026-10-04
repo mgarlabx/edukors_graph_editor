@@ -30,7 +30,7 @@ const browser: Record<string, (args: Record<string, unknown>) => Promise<unknown
   write_text: async ({ path, contents }) => {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([String(contents)], { type: "application/json" }));
-    a.download = String(path).split("/").pop() ?? "course.json";
+    a.download = String(path).split("/").pop() ?? "course.egf";
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   },
@@ -96,7 +96,11 @@ export const native = {
 
 // ---------------------------------------------------------------- dialogs --
 
-export async function pickOpen(filters = [{ name: "Edukors course", extensions: ["json"] }]): Promise<string | null> {
+/** Edukors Graph Format: the course file's own extension. */
+export const COURSE_EXT = "egf";
+
+/** Open takes `.egf` and the `.json` courses from before it. */
+export async function pickOpen(filters = [{ name: "Edukors Graph", extensions: [COURSE_EXT, "json"] }]): Promise<string | null> {
   if (isTauri()) {
     const { open } = await import("@tauri-apps/plugin-dialog");
     const picked = await open({ multiple: false, directory: false, filters });
@@ -105,7 +109,7 @@ export async function pickOpen(filters = [{ name: "Edukors course", extensions: 
   return null;
 }
 
-export async function pickSave(defaultPath: string, filters = [{ name: "JSON", extensions: ["json"] }]): Promise<string | null> {
+export async function pickSave(defaultPath: string, filters = [{ name: "Edukors Graph", extensions: [COURSE_EXT] }]): Promise<string | null> {
   if (isTauri()) {
     const { save } = await import("@tauri-apps/plugin-dialog");
     return (await save({ defaultPath, filters })) ?? null;

@@ -41,6 +41,18 @@
     ],
     "fileAssociations": [
       {
+        "ext": ["egf"],
+        "name": "Edukors Graph Course",
+        "description": "Curso Edukors Graph",
+        "role": "Editor",
+        "rank": "Owner",
+        "mimeType": "application/vnd.edukors.graph+json",
+        "exportedType": {
+          "identifier": "org.edukors.grapheditor.egf",
+          "conformsTo": ["public.json"]
+        }
+      },
+      {
         "ext": ["json"],
         "name": "Edukors Graph Course",
         "description": "Curso Edukors Graph",

@@ -42,7 +42,7 @@ The editor was made for teachers and course authors. With it you can:
 
 **The AI agent.** A panel on the right provides an agent, built with Claude, that reads the open course and changes it on request. By default, each change waits for your approval, and everything can be undone.
 
-Each course is saved in a single file, `course.json`, which is also what goes to the player. The position of each box on the map is saved in it too, in the node's `position` field, which players ignore.
+Each course is saved in a single file, `course.egf` (Edukors Graph Format: the course's JSON under its own extension, which the app is associated with), which is also what goes to the player. Older `.json` courses still open; their first save asks where to write the `.egf`. The position of each box on the map is saved in it too, in the node's `position` field, which players ignore.
 
 The [teacher's guide](docs/guia-do-professor.md) (in Portuguese) explains how to use the editor step by step.
 

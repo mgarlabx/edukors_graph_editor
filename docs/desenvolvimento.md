@@ -63,7 +63,7 @@ node tests/e2e/agent.mjs /tmp --live   # o mesmo painel com o agente de verdade 
 ## Estrutura
 
 ```
-src-tauri/      Rust: arquivos, preferências, Keychain, HTTP para a OpenRouter (a chave nunca chega ao JS), menu nativo, abrir .json pelo Finder, o processo do agente
+src-tauri/      Rust: arquivos, preferências, Keychain, HTTP para a OpenRouter (a chave nunca chega ao JS), menu nativo, abrir .egf (e .json antigo) pelo Finder, o processo do agente
 agent/          o agente: Claude Agent SDK num processo Node (sidecar.mjs), as ferramentas sobre o curso (tools.mjs), o system prompt
 src/
   store/        estado (zustand), undo/redo, layout, preferências, cursos abertos em abas

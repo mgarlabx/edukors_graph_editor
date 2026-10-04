@@ -10,7 +10,7 @@ import { isDirty, useEditor } from "../src/store/editor";
 import { activateDoc, activateNth, cycleDoc, dirtyDocs, docState, dropDoc, onLeave, openDoc, patchDoc, useDocs } from "../src/store/docs";
 import { usePreview } from "../src/preview/session";
 import { pasteClip, readClip, selectionClip } from "../src/app/clipboard";
-import { docLabel } from "../src/app/files";
+import { docLabel, withEgf } from "../src/app/files";
 import { duplicateNodes, pasteNodes } from "../src/course/ops";
 import { fitLanguages } from "../src/i18n/languages";
 import { newCourse } from "../src/course/factory";
@@ -131,10 +131,17 @@ describe("tabs", () => {
   });
 
   it("a tab is named after its file, or its course's title until it has one", () => {
-    expect(docLabel({ path: "/x/y/curso.json", course: full() })).toBe("curso.json");
+    expect(docLabel({ path: "/x/y/curso.egf", course: full() })).toBe("curso.egf");
     expect(docLabel({ path: null, course: full() })).toBe("Cats of the World 3 (full)");
     const untitled = newCourse("pt", "");
     expect(docLabel({ path: null, course: untitled })).toBe("Sem título");
+  });
+
+  it("a course is saved as .egf, an older .json one next to it", () => {
+    expect(withEgf("/x/curso.egf")).toBe("/x/curso.egf");
+    expect(withEgf("/x/curso.EGF")).toBe("/x/curso.EGF");
+    expect(withEgf("/x/curso.json")).toBe("/x/curso.egf");
+    expect(withEgf("/x/curso")).toBe("/x/curso.egf");
   });
 });
 
