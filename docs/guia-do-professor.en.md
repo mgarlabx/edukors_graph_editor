@@ -106,7 +106,7 @@ The badge on the top bar shows ✖ errors and ⚠ warnings. Click it to see the 
 - **Errors** keep the course from working (an arrow to a step that doesn't exist, a quiz without a correct answer).
 - **Warnings** are advice (a very short text, a missing translation). The course works, but they are worth reading.
 
-The editor applies exactly the same rules as the builder's validator (`validate_course.py`).
+The editor applies the same rules the player uses to check a course before importing it.
 
 ## 9. Testing as the student (Preview)
 

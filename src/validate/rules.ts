@@ -1,11 +1,14 @@
 /**
- * Layer 2: a line-by-line port of validate_course.py.
+ * Layer 2: a line-by-line port of validate_course.py, the validator of the
+ * skills that were the project's builder before this editor; the edukors_graph
+ * repository no longer carries it.
  *
- * The messages are the script's own, word for word, so that the editor and the
- * builder say the same thing about the same course; tests/validate.parity.test.ts
- * runs both over the samples and over courses broken on purpose and compares
- * the output. Anything changed in the script must be changed here, and in the
- * rule.* rows of scripts/strings_table.py (tests/errors.test.ts checks them).
+ * The messages are the script's own, word for word. tests/validate.parity.test.ts
+ * holds the errors to the player's src/validate.php -- the editor refuses what
+ * the player would refuse to import -- over the samples and over courses broken
+ * on purpose, and keeps the lines in a snapshot. A rule changed in validate.php
+ * must be changed here, and in the rule.* rows of scripts/strings_table.py
+ * (tests/errors.test.ts checks them).
  *
  * Besides the lines, every issue carries where it points -- a node, an edge --
  * so the canvas can mark it and the problems panel can jump to it, and the key
@@ -74,9 +77,9 @@ const FIELD_TYPES = new Set(["text-line", "text-area", "radio", "check", "select
 const CHOICE_TYPES = new Set(["radio", "check", "select"]);
 
 const INFO_REQUIRED = ["course-id", "source-language", "other-languages", "title", "author", "version", "date", "start"];
-const INFO_OPTIONAL = ["description", "sections", "system-prompt"];
+const INFO_OPTIONAL = ["description", "sections", "system-prompt", "extras"];
 const NODE_REQUIRED = ["id", "type", "title", "content"];
-const NODE_OPTIONAL = ["section", "position"];
+const NODE_OPTIONAL = ["section", "position", "extras"];
 
 const CONTENT_FIELDS: Record<string, [string[], string[]]> = {
   "static-md": [["item"], []],
@@ -102,6 +105,8 @@ const MESSAGES = {
   "not-object": "expected an object, found {type}",
   "missing-field": "missing required field '{key}'",
   "unknown-field": "unknown field '{key}' (the format allows no extra fields)",
+  "extras-object": "must be an object, found {type}",
+  "extras-empty": "is empty; leave it out",
   "localized-list": "{label} must be a non-empty list of {lang, text} objects",
   "localized-entry": "each entry must be an object with 'lang' and 'text'",
   "unknown-fields": "unknown field(s) {fields}",
@@ -309,6 +314,14 @@ function checkKeys(obj: unknown, where: string, required: string[], optional: st
   return true;
 }
 
+/** 'extras' is free inside, but it is an object, and not an empty one. */
+function checkExtras(obj: Dict, where: string, rep: Report, edge?: number) {
+  if (!has(obj, "extras")) return;
+  const extras = obj.extras;
+  if (!isDict(extras)) rep.error(`${where}.extras`, "extras-object", { type: typeName(extras) }, edge);
+  else if (Object.keys(extras).length === 0) rep.error(`${where}.extras`, "extras-empty", {}, edge);
+}
+
 function checkLocalized(
   value: unknown,
   where: string,
@@ -358,6 +371,7 @@ function localizedTexts(value: unknown): string[] {
 
 function validateInfo(info: unknown, rep: Report): [string[], string | null, string | null, Set<number>] {
   if (!checkKeys(info, "info", INFO_REQUIRED, INFO_OPTIONAL, rep)) return [[], null, null, new Set()];
+  checkExtras(info, "info", rep);
 
   let source: string | null = info["source-language"] as string;
   if (typeof source !== "string" || !LANG_RE.test(source || "")) {
@@ -761,6 +775,7 @@ function validateNode(
   where = typeof nid === "string" ? `node ${nid}` : where;
 
   if (!checkKeys(node, where, NODE_REQUIRED, NODE_OPTIONAL, rep)) return none;
+  checkExtras(node, where, rep);
 
   if (!NODE_TYPES.has(ntype)) {
     rep.error(where, "node-type", { value: repr(ntype), allowed: repr(sorted(NODE_TYPES)) });
@@ -969,7 +984,8 @@ export function validateRules(course: unknown): RulesResult {
   const reads: [string, string, string, unknown, number][] = [];
   edges.forEach((edge, i) => {
     let where = `edges[${i}]`;
-    if (!checkKeys(edge, where, ["from", "to"], ["when"], rep)) return;
+    if (!checkKeys(edge, where, ["from", "to"], ["when", "extras"], rep)) return;
+    checkExtras(edge, where, rep, i);
     const src = edge.from as string;
     const dst = edge.to as string;
     where = `edge ${str(src)} -> ${str(dst)}`;

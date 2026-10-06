@@ -94,6 +94,31 @@ describe("validation issues", () => {
   });
 });
 
+describe("extras", () => {
+  it("change nothing either layer says about a course", () => {
+    const plain: C = clone(loadSample(SAMPLES[0].path));
+    const c: C = clone(plain);
+    c.info.extras = { "acme-lms": { course: "MAT-07" } };
+    c.nodes[0].extras = { "acme-lms": { competency: "fractions-1" } };
+    c.edges[0].extras = { analytics: { tag: "start" } };
+    expect(diagnose(c).issues).toEqual(diagnose(plain).issues);
+  });
+
+  it("point at the node or the edge when they are not a filled object", () => {
+    const c: C = clone(loadSample(SAMPLES[0].path));
+    c.nodes[0].extras = "acme";
+    c.edges[0].extras = {};
+    const issues = diagnose(c).issues;
+    const bad = issues.find((i) => i.code === "rule.extras-object")!;
+    expect(bad.message).toBe("must be an object, found str");
+    expect(bad.node).toBe(c.nodes[0].id);
+    expect(issueText(bad)).toBe("precisa ser um objeto; encontrado str");
+    const empty = issues.find((i) => i.code === "rule.extras-empty")!;
+    expect(empty.where).toBe("edges[0].extras");
+    expect(empty.edge).toBe(0);
+  });
+});
+
 describe("judgement and native errors", () => {
   it("a refusal keeps ai.php's words and says them in the interface's language", () => {
     let refusal: unknown;

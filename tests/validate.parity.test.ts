@@ -1,10 +1,16 @@
 /**
- * The port against the script: the same lines, in the same order, for the
- * samples and for courses broken on purpose (plan, phase 3 criterion).
+ * The editor's validator against the player's, for the samples and for courses
+ * broken on purpose (plan, phase 3 criterion): the editor reports an error
+ * exactly when the player's src/validate.php would refuse to import the course.
+ *
+ * The editor's lines were ported from validate_course.py, which the
+ * edukors_graph repository no longer carries. They are kept in a snapshot,
+ * taken while they still matched that script line for line, so that a change
+ * in their wording is a decision rather than an accident.
  */
 import { describe, expect, it } from "vitest";
 import { asScriptLines, validateRules } from "../src/validate/rules";
-import { clone, hasReference, loadSample, pythonLines, SAMPLES } from "./helpers";
+import { clone, hasPhp, hasReference, loadSample, playerValidation, SAMPLES } from "./helpers";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type C = any;
@@ -25,6 +31,15 @@ const MUTATIONS: Mutation[] = [
   ["wrong prefix", (c) => ((c.nodes[1].type = "quiz"), true)],
   ["duplicate id", (c) => ((c.nodes[2].id = c.nodes[1].id), true)],
   ["unknown field", (c) => ((c.nodes[0].colour = "red"), (c.nodes[0].content.extra = 1), true)],
+  ["extras", (c) => {
+    c.info.extras = { "acme-lms": { course: "MAT-07", empty: {} } };
+    c.nodes[0].extras = { "acme-lms": { competency: "fractions-1" } };
+    c.edges[0].extras = { analytics: { tag: "start" } };
+    return true;
+  }],
+  ["extras not an object", (c) => ((c.nodes[0].extras = "acme"), (c.info.extras = ["a"]), true)],
+  ["extras empty", (c) => ((c.edges[0].extras = {}), true)],
+  ["extras in content", (c) => ((c.nodes[0].content.extras = { a: 1 }), true)],
   ["invalid type", (c) => ((c.nodes[0].type = "video"), true)],
   ["edge to nowhere", (c) => (c.edges.push({ from: c.nodes[0].id, to: "sm77" }), true)],
   ["fallback first", (c) => {
@@ -199,20 +214,25 @@ const MUTATIONS: Mutation[] = [
   }],
 ];
 
-describe.skipIf(!hasReference)("validator parity with validate_course.py", () => {
+/** The editor refuses the course when the player does, and says what it always said. */
+const check = (course: C) => {
+  const lines = asScriptLines(validateRules(course).issues);
+  const errors = lines.filter((l) => l.startsWith("ERROR"));
+  const player = playerValidation(course).errors;
+  expect(errors.length > 0, `editor:\n${errors.join("\n")}\nplayer:\n${player.join("\n")}`).toBe(player.length > 0);
+  expect(lines).toMatchSnapshot();
+};
+
+describe.skipIf(!hasReference || !hasPhp)("validator parity with the player's validate.php", () => {
   for (const { slug, path } of SAMPLES) {
     const sample = loadSample(path);
 
-    it(`${slug} as shipped`, () => {
-      expect(asScriptLines(validateRules(sample).issues)).toEqual(pythonLines(sample, `${slug}.json`));
-    });
+    it(`${slug} as shipped`, () => check(sample));
 
     for (const [name, mutate] of MUTATIONS) {
       const broken = clone(sample);
       if (!mutate(broken)) continue;
-      it(`${slug}: ${name}`, () => {
-        expect(asScriptLines(validateRules(broken).issues)).toEqual(pythonLines(broken, `${slug}-${name}.json`));
-      });
+      it(`${slug}: ${name}`, () => check(broken));
     }
   }
 });

@@ -241,7 +241,7 @@ S = {
 "problems.clean": ("O curso é válido: nenhum erro, nenhum aviso.", "The course is valid: no errors, no warnings.", "El curso es válido: sin errores ni avisos."),
 "problems.noneHere": ("Nada neste filtro.", "Nothing in this filter.", "Nada en este filtro."),
 "problems.copy": ("Copiar relatório", "Copy report", "Copiar informe"),
-"problems.copyHint": ("Copia as linhas como o validate_course.py imprime", "Copies the lines as validate_course.py prints them", "Copia las líneas como las imprime validate_course.py"),
+"problems.copyHint": ("Copia as linhas como o validador as imprime", "Copies the lines as the validator prints them", "Copia las líneas como las imprime el validador"),
 "json.invalid": ("JSON inválido (não aplicado)", "Invalid JSON (not applied)", "JSON inválido (no aplicado)"),
 "json.notObject": ("o curso precisa ser um objeto", "the course must be an object", "el curso debe ser un objeto"),
 # ajv
@@ -270,6 +270,8 @@ S = {
 "rule.not-object": ("deveria ser um objeto, mas é {type}", "expected an object, found {type}", "debería ser un objeto, pero es {type}"),
 "rule.missing-field": ("falta o campo obrigatório '{key}'", "missing required field '{key}'", "falta el campo obligatorio '{key}'"),
 "rule.unknown-field": ("campo desconhecido '{key}' (o formato não aceita campos extras)", "unknown field '{key}' (the format allows no extra fields)", "campo desconocido '{key}' (el formato no admite campos extra)"),
+"rule.extras-object": ("precisa ser um objeto; encontrado {type}", "must be an object, found {type}", "debe ser un objeto; se encontró {type}"),
+"rule.extras-empty": ("está vazio; remova o campo", "is empty; leave it out", "está vacío; quite el campo"),
 "rule.localized-list": ("{label}: precisa ser uma lista não vazia de objetos {lang, text}", "{label} must be a non-empty list of {lang, text} objects", "{label}: debe ser una lista no vacía de objetos {lang, text}"),
 "rule.localized-entry": ("cada entrada precisa ser um objeto com 'lang' e 'text'", "each entry must be an object with 'lang' and 'text'", "cada entrada debe ser un objeto con 'lang' y 'text'"),
 "rule.unknown-fields": ("campo(s) desconhecido(s) {fields}", "unknown field(s) {fields}", "campo(s) desconocido(s) {fields}"),

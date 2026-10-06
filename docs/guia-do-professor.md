@@ -106,7 +106,7 @@ O selo na barra de cima mostra ✖ erros e ⚠ avisos. Clique nele para ver a li
 - **Erros** impedem o curso de funcionar (uma seta para um passo que não existe, um quiz sem resposta correta).
 - **Avisos** são conselhos (um texto muito curto, uma tradução que falta). O curso funciona, mas vale a pena ler.
 
-O editor aplica exatamente as mesmas regras do validador do builder (`validate_course.py`).
+O editor aplica as mesmas regras que o player usa para conferir um curso antes de importá-lo.
 
 ## 9. Testar como o estudante (Preview)
 

@@ -106,7 +106,7 @@ La insignia de la barra superior muestra ✖ errores y ⚠ avisos. Haga clic en 
 - Los **errores** impiden que el curso funcione (una flecha a un paso que no existe, un cuestionario sin respuesta correcta).
 - Los **avisos** son consejos (un texto muy corto, una traducción que falta). El curso funciona, pero vale la pena leerlos.
 
-El editor aplica exactamente las mismas reglas que el validador del builder (`validate_course.py`).
+El editor aplica las mismas reglas que usa el player para revisar un curso antes de importarlo.
 
 ## 9. Probar como el estudiante (Vista previa)
 

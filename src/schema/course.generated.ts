@@ -47,6 +47,7 @@ export type Node = {
    * Content of the node. Its shape depends on 'type'.
    */
   content: {};
+  extras?: Extras;
 };
 /**
  * Type of the node. It determines which fields exist in 'content'.
@@ -275,6 +276,7 @@ export interface CourseInfo {
    * Course-wide instructions for the AI, sent as the system prompt of every call that generates content: the 'prompt' of dynamic-md and dynamic-html nodes, which is sent as the user message. Use it for tone, audience and rules that apply everywhere, so each node only carries what is specific to it. It is sent as written: {{STORAGE: key}} is not resolved here, only in the prompts of the nodes. It does not reach the choice, score and noul nodes, which take no system prompt: what they are given is their own 'state' and questions, and nothing else. It is recommended to write prompts in English and to instruct the AI to answer in the student's language. Optional.
    */
   "system-prompt"?: string;
+  extras?: Extras;
 }
 /**
  * A piece of text in one language.
@@ -299,6 +301,13 @@ export interface Section {
   number: number;
   title: LocalizedTextList2;
 }
+/**
+ * Data that a particular tool or use case keeps with the course and that the format itself does not define: the one place where a field the format does not know is not an error. Nothing inside it is checked beyond its being an object with at least one entry. Give each tool or use case a key of its own, such as 'acme-lms', so that several can share it without overwriting each other. Whatever reads a course ignores the keys it does not know, and the course must work without any of its extras: the same nodes, in the same order, judged the same way. They are never sent to the AI, and nothing in them is content for the student: text a student reads belongs in the fields of the format, which carry a version per language. A tool that rewrites a course keeps the extras it does not understand, as they were. They travel with the file wherever it is copied or downloaded, so they must never hold a secret. When something kept here turns out to be needed by every player, it belongs in the format as a field of its own. Allowed on 'info', on a node and on an edge, and nowhere else: data about a part of a node goes in the extras of the node. Optional.
+ *
+ * This interface was referenced by `Course`'s JSON-Schema
+ * via the `definition` "extras".
+ */
+export interface Extras {}
 /**
  * Where the node sits on the canvas of a builder that lets the author arrange the nodes by hand, so that the layout the author chose survives saving and reopening the course. It is only a visual hint for the builder: it has no effect on the order of the course, which is defined by 'edges', nor on what the student sees, and players ignore it. The units and the origin are those of the builder's own canvas. Without it, the builder lays the node out by itself. Optional.
  *
@@ -334,6 +343,7 @@ export interface Edge {
    * Condition that makes this edge the one to follow: a single comparison, or several joined with 'and' or 'or', which can be nested. Omit it for an unconditional edge, which should be listed last among the edges leaving the same node, as a fallback.
    */
   when?: Comparison | AndCondition | OrCondition;
+  extras?: Extras;
 }
 /**
  * A single comparison between a stored value and 'value'. It does not hold when the key has not been produced yet, which is the case while the student has not gone through the node that produces it.
@@ -428,6 +438,7 @@ export interface CourseInfo1 {
    * Course-wide instructions for the AI, sent as the system prompt of every call that generates content: the 'prompt' of dynamic-md and dynamic-html nodes, which is sent as the user message. Use it for tone, audience and rules that apply everywhere, so each node only carries what is specific to it. It is sent as written: {{STORAGE: key}} is not resolved here, only in the prompts of the nodes. It does not reach the choice, score and noul nodes, which take no system prompt: what they are given is their own 'state' and questions, and nothing else. It is recommended to write prompts in English and to instruct the AI to answer in the student's language. Optional.
    */
   "system-prompt"?: string;
+  extras?: Extras;
 }
 /**
  * Markdown content written in advance, translated into every language of the course.

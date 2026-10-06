@@ -6,20 +6,20 @@
  *   node scripts/update-assets.mjs            copy, record, warn
  *   node scripts/update-assets.mjs --check    only report what differs
  *
- * Copied verbatim (plan §6): the schema, the player, the viewer and the
- * samples. Not copied but watched, because the editor
+ * Copied verbatim (plan §6): the schema, the player and the viewer. The
+ * samples are the editor's own. Not copied but watched, because the editor
  * carries a port of each and they must move together (plan §5.5, §8):
  *
  *   player/public/assets/bridge.js   → src/preview/shim.ts
  *   player/src/ai.php                → src/judge/pipeline.ts
  *   player/src/course.php            → src/course/condition.ts, src/judge/pipeline.ts
  *   Ai / JudgeView / Course in the player → src/judge/pipeline.ts, src/course/condition.ts
- *   builder/.../validate_course.py   → src/validate/rules.ts
+ *   player/src/validate.php          → src/validate/rules.ts
  *
  * What was seen last time is kept in assets/VERSIONS.json.
  */
 import { createHash } from "node:crypto";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -37,14 +37,10 @@ if (!existsSync(GRAPH)) {
 const sha = (text) => createHash("sha256").update(text).digest("hex").slice(0, 16);
 const read = (path) => readFileSync(path, "utf8");
 
-const builder = join(GRAPH, "builder/skills/edukors-graph-builder");
 const copies = [
   [join(GRAPH, "schema/schema.json"), join(ROOT, "src/schema/schema.json")],
   [join(GRAPH, "player/assets/course_player.html"), join(ROOT, "assets/course_player.html")],
   [join(GRAPH, "player/assets/course_viewer.html"), join(ROOT, "assets/course_viewer.html")],
-  ...readdirSync(join(GRAPH, "samples"))
-    .filter((f) => f.endsWith("-course.json"))
-    .map((f) => [join(GRAPH, "samples", f), join(ROOT, "samples", f)]),
 ];
 
 /** A class of the player's one-line script, by name, up to the next top-level class. */
@@ -64,7 +60,7 @@ const watched = {
   "player Ai": { text: playerSection(player, "Ai"), review: "src/judge/pipeline.ts (judgementBlock, buildGeneration) and the shim's fetch interception" },
   "player JudgeView": { text: playerSection(player, "JudgeView"), review: "src/preview/shim.ts" },
   "player Course": { text: playerSection(player, "Course"), review: "src/course/condition.ts (holds)" },
-  "validate_course.py": { text: read(join(builder, "scripts/validate_course.py")), review: "src/validate/rules.ts (then: npm test)" },
+  "validate.php": { text: read(join(GRAPH, "player/src/validate.php")), review: "src/validate/rules.ts (then: npm test)" },
 };
 
 const before = existsSync(RECORD) ? JSON.parse(read(RECORD)) : { files: {}, watched: {} };

@@ -8,13 +8,13 @@ Edukors Graph Editor is a visual *builder* that runs on your computer, for creat
 
 [Edukors Graph](https://github.com/mgarlabx/edukors_graph) is an open standard for adaptive courses, linked to the [Edukors.org](https://edukors.org) project. The idea is an old one in education: give each student what they need, taking into account what they already know. To do this, the course is described as a graph. The **nodes** are what the student sees: a text, a video, a quiz, a writing task assessed by AI. The **edges** say where they go next, based on what they have done so far. Students who pass the quiz move on; those who don't receive a different explanation before trying again.
 
-The entire course fits in a single JSON file, and the project is made up of a few pieces built around that file:
+The entire course fits in a single JSON file, and the project is made up of three pieces built around that file:
 
 - the **schema**, which defines the course format;
-- the **builder**, which generates courses from a short description, with the help of an AI assistant;
-- the **player**, a server that delivers courses to students, including inside a learning management system (via LTI 1.3);
+- the **builder**, this editor, in which courses are created and edited;
+- the **player**, a server that delivers courses to students, including inside a learning management system (via LTI 1.3).
 
-This editor is another *builder*, designed to run locally. In the repository's builder, you talk to an AI and receive the finished course. Here, you see the course as a map and build or adjust it with your own hands, with an AI alongside if you wish. The result is the same JSON file, which the player opens without any conversion.
+The schema and the player live in the [edukors_graph](https://github.com/mgarlabx/edukors_graph) repository. In this editor you see the course as a map and build or adjust it with your own hands, with an AI agent alongside if you wish. The result is the course file itself, which the player opens without any conversion.
 
 ## What it is for
 
@@ -88,7 +88,7 @@ The editor is experimental, like the Edukors Graph standard itself, and the cour
 
 ## For developers
 
-The agent architecture, tests, code structure and known limitations are described in [docs/desenvolvimento.md](docs/desenvolvimento.md) (in Portuguese). Tests run with `npm test`, and `npm run update-assets` updates the schema, the player and the samples from the [edukors_graph](https://github.com/mgarlabx/edukors_graph) repository.
+The agent architecture, tests, code structure and known limitations are described in [docs/desenvolvimento.md](docs/desenvolvimento.md) (in Portuguese). Tests run with `npm test`, and `npm run update-assets` updates the schema, the player and the map viewer from the [edukors_graph](https://github.com/mgarlabx/edukors_graph) repository.
 
 ## License
 

@@ -1,0 +1,889 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`validator parity with the player's validate.php > world-cats-1-mini as shipped 1`] = `[]`;
+
+exports[`validator parity with the player's validate.php > world-cats-1-mini: bad lang code 1`] = `
+[
+  "ERROR   info.other-languages: invalid language code 'Portuguese'",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-1-mini: bad uuid and version 1`] = `
+[
+  "ERROR   info.course-id: must be a UUID, found 'nope'",
+  "ERROR   info.version: must be MAJOR.MINOR.PATCH, found '1.0'",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-1-mini: choice and noul criteria 1`] = `
+[
+  "ERROR   node c1.content.items[0].criteria: the option 'Good' must be a name the edges can compare to: lowercase letters, digits and -",
+  "ERROR   node c1.content.items[0].criteria.x: must be a text saying what the option covers, or null",
+  "ERROR   node n1.content.items[0].instructions: the question the AI answers must be a non-empty string",
+  "ERROR   node n1.content.items[0].criteria: 'maybe' is not a field here: only 'true' and 'false' are",
+  "ERROR   node n1.content.items[0].criteria.true: must be a non-empty text",
+  "ERROR   node sm1: the unconditional edge is not last: the following 1 edge(s) are unreachable",
+  "ERROR   node c1: every outgoing edge is conditional; a judgement the AI could not make leaves the student with nowhere to go — add an unconditional fallback edge last",
+  "WARNING node c1: the state reads no {{STORAGE: key}}, so the AI judges the same thing for every student and the node always takes the same edge",
+  "WARNING node n1: the state field 'a' reads 'c1.track', a mark already given: the AI would anchor on it instead of judging for itself -- give the judgement the work and the task, not an earlier verdict",
+  "WARNING graph: several nodes end the course: sm5, n1 — branches should reunite unless every one of these is a real ending",
+  "WARNING edge sm1 -> c1: 'c1.track' is produced by c1, which is not on any path to sm1; this condition can never hold",
+  "WARNING node n1: stores data no edge and no prompt ever reads — branch on it or use it in a prompt",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-1-mini: duplicate id 1`] = `
+[
+  "ERROR   node sh1: two nodes use this id",
+  "ERROR   node sh1: id does not match type 'static-md' (expected prefix 'sm')",
+  "ERROR   edge sh1 -> sm2: 'to' points to 'sm2', which is not a node",
+  "ERROR   edge sm2 -> sm3: 'from' points to 'sm2', which is not a node",
+  "ERROR   graph: no path from the start node reaches: sm3, sm5 (usually a missing edge into them)",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-1-mini: edge to nowhere 1`] = `
+[
+  "ERROR   edge sm1 -> sm77: 'to' points to 'sm77', which is not a node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-1-mini: extras 1`] = `[]`;
+
+exports[`validator parity with the player's validate.php > world-cats-1-mini: extras empty 1`] = `
+[
+  "ERROR   edges[0].extras: is empty; leave it out",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-1-mini: extras in content 1`] = `
+[
+  "ERROR   node sm1.content: unknown field 'extras' (the format allows no extra fields)",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-1-mini: extras not an object 1`] = `
+[
+  "ERROR   info.extras: must be an object, found list",
+  "ERROR   node sm1.extras: must be an object, found str",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-1-mini: impossible date 1`] = `
+[
+  "ERROR   info.date: must be a real date, found '2026-02-30'",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-1-mini: invalid type 1`] = `
+[
+  "ERROR   node sm1: invalid type 'video' (one of ['bool', 'choice', 'dynamic-html', 'dynamic-md', 'form', 'noul', 'quiz', 'score', 'static-html', 'static-md'])",
+  "ERROR   edge sm1 -> sh1: 'from' points to 'sm1', which is not a node",
+  "ERROR   info.start: start node 'sm1' does not exist",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-1-mini: missing start 1`] = `
+[
+  "ERROR   info.start: start node 'sm99' does not exist",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-1-mini: no author 1`] = `
+[
+  "ERROR   info: missing required field 'author'",
+  "ERROR   info.author: must be a non-empty string",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-1-mini: not a course 1`] = `
+[
+  "ERROR   course: missing required field 'info'",
+  "ERROR   info: missing required field 'course-id'",
+  "ERROR   info: missing required field 'source-language'",
+  "ERROR   info: missing required field 'other-languages'",
+  "ERROR   info: missing required field 'title'",
+  "ERROR   info: missing required field 'author'",
+  "ERROR   info: missing required field 'version'",
+  "ERROR   info: missing required field 'date'",
+  "ERROR   info: missing required field 'start'",
+  "ERROR   info.source-language: invalid language code None",
+  "ERROR   info.other-languages: must be a list (use [] when there are no translations)",
+  "ERROR   info.course-id: must be a UUID, found None",
+  "ERROR   info.author: must be a non-empty string",
+  "ERROR   info.version: must be MAJOR.MINOR.PATCH, found None",
+  "ERROR   info.date: must be YYYY-MM-DD, found None",
+  "ERROR   info.start: invalid node id None",
+  "ERROR   nodes: must be a non-empty list",
+  "ERROR   edges: must be a list",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-1-mini: positions 1`] = `
+[
+  "ERROR   node sh1.position: 'x' must be a number, found '10'",
+  "ERROR   node sh1.position: 'y' must be a number, found True",
+  "ERROR   node sm2.position: missing required field 'y'",
+  "ERROR   node sm3.position: unknown field 'z' (the format allows no extra fields)",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-1-mini: source repeated 1`] = `
+[
+  "ERROR   info.other-languages: 'en' is the source language and must not be repeated here",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-1-mini: system prompt without language 1`] = `
+[
+  "WARNING info.system-prompt: does not mention the student's language; add 'Answer in the student's language.'",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-1-mini: two fallbacks 1`] = `
+[
+  "ERROR   node sm1: the unconditional edge is not last: the following 1 edge(s) are unreachable",
+  "WARNING node sm1: 2 unconditional edges; only the first can ever be taken",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-1-mini: undeclared section 1`] = `
+[
+  "WARNING node sm1: section 9 is not declared in info.sections",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-1-mini: unknown field 1`] = `
+[
+  "ERROR   node sm1: unknown field 'colour' (the format allows no extra fields)",
+  "ERROR   node sm1.content: unknown field 'extra' (the format allows no extra fields)",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-1-mini: unreachable 1`] = `
+[
+  "ERROR   graph: no path from the start node reaches: sm5 (usually a missing edge into them)",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-1-mini: wrong prefix 1`] = `
+[
+  "ERROR   node sh1: id does not match type 'quiz' (expected prefix 'q')",
+  "ERROR   node sh1.content: missing required field 'items'",
+  "ERROR   node sh1.content: unknown field 'item' (the format allows no extra fields)",
+  "ERROR   node sh1.content.items: a quiz needs at least one question",
+  "WARNING node sh1: stores data no edge and no prompt ever reads — branch on it or use it in a prompt",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short as shipped 1`] = `[]`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: all correct at A 1`] = `
+[
+  "WARNING node q1.content: the correct answer is option A in every question of this quiz — shuffle the options",
+  "WARNING quizzes: the correct answer is option A in every question of the whole course — shuffle the options",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: and with one 1`] = `
+[
+  "ERROR   edge q1 -> f1.when: an 'and' condition must contain only 'and', found ['extra']",
+  "ERROR   edge q1 -> f1.when.and: must be a list of at least two conditions",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: bad lang code 1`] = `
+[
+  "ERROR   info.other-languages: invalid language code 'Portuguese'",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: bad uuid and version 1`] = `
+[
+  "ERROR   info.course-id: must be a UUID, found 'nope'",
+  "ERROR   info.version: must be MAJOR.MINOR.PATCH, found '1.0'",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: choice and noul criteria 1`] = `
+[
+  "ERROR   node c1.content.items[0].criteria: the option 'Good' must be a name the edges can compare to: lowercase letters, digits and -",
+  "ERROR   node c1.content.items[0].criteria.x: must be a text saying what the option covers, or null",
+  "ERROR   node n1.content.items[0].instructions: the question the AI answers must be a non-empty string",
+  "ERROR   node n1.content.items[0].criteria: 'maybe' is not a field here: only 'true' and 'false' are",
+  "ERROR   node n1.content.items[0].criteria.true: must be a non-empty text",
+  "ERROR   node sm1: the unconditional edge is not last: the following 1 edge(s) are unreachable",
+  "ERROR   node c1: every outgoing edge is conditional; a judgement the AI could not make leaves the student with nowhere to go — add an unconditional fallback edge last",
+  "WARNING node c1: the state reads no {{STORAGE: key}}, so the AI judges the same thing for every student and the node always takes the same edge",
+  "WARNING node n1: the state field 'a' reads 'c1.track', a mark already given: the AI would anchor on it instead of judging for itself -- give the judgement the work and the task, not an earlier verdict",
+  "WARNING graph: several nodes end the course: sm5, n1 — branches should reunite unless every one of these is a real ending",
+  "WARNING edge sm1 -> c1: 'c1.track' is produced by c1, which is not on any path to sm1; this condition can never hold",
+  "WARNING node n1: stores data no edge and no prompt ever reads — branch on it or use it in a prompt",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: duplicate id 1`] = `
+[
+  "ERROR   node sh1: two nodes use this id",
+  "ERROR   node sh1: id does not match type 'static-md' (expected prefix 'sm')",
+  "ERROR   edge sh1 -> sm3: 'to' points to 'sm3', which is not a node",
+  "ERROR   edge sm3 -> q1: 'from' points to 'sm3', which is not a node",
+  "ERROR   graph: no path from the start node reaches: q1, f1, dm1, s1, dm2, sm5 (usually a missing edge into them)",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: edge to nowhere 1`] = `
+[
+  "ERROR   edge sm1 -> sm77: 'to' points to 'sm77', which is not a node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: extras 1`] = `[]`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: extras empty 1`] = `
+[
+  "ERROR   edges[0].extras: is empty; leave it out",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: extras in content 1`] = `
+[
+  "ERROR   node sm1.content: unknown field 'extras' (the format allows no extra fields)",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: extras not an object 1`] = `
+[
+  "ERROR   info.extras: must be an object, found list",
+  "ERROR   node sm1.extras: must be an object, found str",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: fallback first 1`] = `
+[
+  "ERROR   node q1: the unconditional edge is not last: the following 1 edge(s) are unreachable",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: feedback that judges 1`] = `
+[
+  "WARNING node dm2: writes from the judgement of s1 but its prompt says 'Grade': the level is already settled, and a feedback that judges again can contradict the number that routed the student -- tell it how to write, not what to decide",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: form options on text and words on radio 1`] = `
+[
+  "ERROR   node f1.content.items[0].options: a 'text-area' field must not have options",
+  "ERROR   node f1.content.items[1]: a 'radio' field counts no words, so it takes no 'min-words'",
+  "ERROR   node f1.content.items[1].options: a 'radio' field needs at least two options",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: from a non-judge 1`] = `
+[
+  "ERROR   node dm1.content.from: must be the id of a choice, score or noul node, found 'q1'",
+  "ERROR   node dm1: writes from 'q1', which is a quiz node and makes no judgement",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: impossible date 1`] = `
+[
+  "ERROR   info.date: must be a real date, found '2026-02-30'",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: invalid type 1`] = `
+[
+  "ERROR   node sm1: invalid type 'video' (one of ['bool', 'choice', 'dynamic-html', 'dynamic-md', 'form', 'noul', 'quiz', 'score', 'static-html', 'static-md'])",
+  "ERROR   edge sm1 -> sh1: 'from' points to 'sm1', which is not a node",
+  "ERROR   info.start: start node 'sm1' does not exist",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: judge fallback to its feedback 1`] = `
+[
+  "ERROR   node s1: its unconditional edge leads to dm2, which writes from this very judgement -- that edge is the path taken when no judgement was made, so dm2 would have nothing to write from; send the fallback elsewhere",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: judge without fallback 1`] = `
+[
+  "ERROR   node s1: every outgoing edge is conditional; a judgement the AI could not make leaves the student with nowhere to go — add an unconditional fallback edge last",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: level compared to percent 1`] = `
+[
+  "WARNING edge s1 -> dm2: 's1.habitat' runs from 0 to 2, over the levels of its own question, so comparing it against 60 never holds. For a grade out of 100 give the question 'points' and test s1.percent",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: max below min 1`] = `
+[
+  "ERROR   node f1.content.items[0]: 'max-words' (10) is below 'min-words' (50): no answer can satisfy both",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: missing start 1`] = `
+[
+  "ERROR   info.start: start node 'sm99' does not exist",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: no author 1`] = `
+[
+  "ERROR   info: missing required field 'author'",
+  "ERROR   info.author: must be a non-empty string",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: no correct and bad value 1`] = `
+[
+  "ERROR   node q1.content.items[0]: 'key' cannot be 'percent' — the quiz already produces it",
+  "ERROR   node q1.content.items[1].options[0]: invalid 'value' 'Bad Value' (lowercase letters, digits and hyphens)",
+  "ERROR   node q1.content.items[1].options: exactly one option must be correct, found 0",
+  "ERROR   node dm1 prompt: {{STORAGE: q1.habitat}} reads a key no node produces",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: not a course 1`] = `
+[
+  "ERROR   course: missing required field 'info'",
+  "ERROR   info: missing required field 'course-id'",
+  "ERROR   info: missing required field 'source-language'",
+  "ERROR   info: missing required field 'other-languages'",
+  "ERROR   info: missing required field 'title'",
+  "ERROR   info: missing required field 'author'",
+  "ERROR   info: missing required field 'version'",
+  "ERROR   info: missing required field 'date'",
+  "ERROR   info: missing required field 'start'",
+  "ERROR   info.source-language: invalid language code None",
+  "ERROR   info.other-languages: must be a list (use [] when there are no translations)",
+  "ERROR   info.course-id: must be a UUID, found None",
+  "ERROR   info.author: must be a non-empty string",
+  "ERROR   info.version: must be MAJOR.MINOR.PATCH, found None",
+  "ERROR   info.date: must be YYYY-MM-DD, found None",
+  "ERROR   info.start: invalid node id None",
+  "ERROR   nodes: must be a non-empty list",
+  "ERROR   edges: must be a list",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: points fall 1`] = `
+[
+  "WARNING node s1.content.items[0].points: the points do not rise with the levels (100, 99, 98): a higher level worth less than a lower one is almost always a typo",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: points mismatch and reserved key 1`] = `
+[
+  "ERROR   node s1.content.items[0].points: 2 point value(s) for 3 level(s): there must be exactly one per level, in the same order",
+  "ERROR   node s1.content.items[1].key: 'total' is what a score node produces for the whole node; name the question after what it judges",
+  "ERROR   node s1.content.items[2].key: cannot end in '-confidence': the node produces that key on its own",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: positions 1`] = `
+[
+  "ERROR   node sh1.position: 'x' must be a number, found '10'",
+  "ERROR   node sh1.position: 'y' must be a number, found True",
+  "ERROR   node sm3.position: missing required field 'y'",
+  "ERROR   node q1.position: unknown field 'z' (the format allows no extra fields)",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: source repeated 1`] = `
+[
+  "ERROR   info.other-languages: 'en' is the source language and must not be repeated here",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: start judge 1`] = `
+[
+  "ERROR   graph: no path from the start node reaches: sm1, sh1, sm3, q1, f1, dm1 (usually a missing edge into them)",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: state anchored on a grade 1`] = `
+[
+  "WARNING node s1: the state field 'earlier' reads 'q1.percent', a mark already given: the AI would anchor on it instead of judging for itself -- give the judgement the work and the task, not an earlier verdict",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: system prompt without language 1`] = `
+[
+  "WARNING info.system-prompt: does not mention the student's language; add 'Answer in the student's language.'",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: two correct 1`] = `
+[
+  "ERROR   node q1.content.items[0].options: exactly one option must be correct, found 4",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: two fallbacks 1`] = `
+[
+  "ERROR   node sm1: the unconditional edge is not last: the following 1 edge(s) are unreachable",
+  "WARNING node sm1: 2 unconditional edges; only the first can ever be taken",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: undeclared section 1`] = `
+[
+  "WARNING node sm1: section 9 is not declared in info.sections",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: unknown condition key and bad operator 1`] = `
+[
+  "ERROR   edge q1 -> f1.when.and[1]: invalid operator 'about' (one of ['contains', 'eq', 'gt', 'gte', 'lt', 'lte', 'ne', 'not-contains'])",
+  "ERROR   edge q1 -> f1.when.and[1]: 'value' must be a string, number or boolean",
+  "ERROR   edge q1 -> f1: condition reads 'q9.percent', which no node produces",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: unknown field 1`] = `
+[
+  "ERROR   node sm1: unknown field 'colour' (the format allows no extra fields)",
+  "ERROR   node sm1.content: unknown field 'extra' (the format allows no extra fields)",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: unknown storage key 1`] = `
+[
+  "ERROR   node dm1 prompt: {{STORAGE: f9.nothing}} reads a key no node produces",
+  "ERROR   node dm1 prompt: {{STORAGE: bad key}} is not a valid key ('<node-id>.<name>')",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: unreachable 1`] = `
+[
+  "ERROR   node s1: every outgoing edge is conditional; a judgement the AI could not make leaves the student with nowhere to go — add an unconditional fallback edge last",
+  "ERROR   graph: no path from the start node reaches: sm5 (usually a missing edge into them)",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-2-short: wrong prefix 1`] = `
+[
+  "ERROR   node sh1: id does not match type 'quiz' (expected prefix 'q')",
+  "ERROR   node sh1.content: missing required field 'items'",
+  "ERROR   node sh1.content: unknown field 'item' (the format allows no extra fields)",
+  "ERROR   node sh1.content.items: a quiz needs at least one question",
+  "WARNING node sh1: stores data no edge and no prompt ever reads — branch on it or use it in a prompt",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full as shipped 1`] = `
+[
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: all correct at A 1`] = `
+[
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node q1.content: the correct answer is option A in every question of this quiz — shuffle the options",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+  "WARNING quizzes: the correct answer is option A in every question of the whole course — shuffle the options",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: and with one 1`] = `
+[
+  "ERROR   edge f1 -> sh1.when: an 'and' condition must contain only 'and', found ['extra']",
+  "ERROR   edge f1 -> sh1.when.and: must be a list of at least two conditions",
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: bad lang code 1`] = `
+[
+  "ERROR   info.other-languages: invalid language code 'Portuguese'",
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: bad uuid and version 1`] = `
+[
+  "ERROR   info.course-id: must be a UUID, found 'nope'",
+  "ERROR   info.version: must be MAJOR.MINOR.PATCH, found '1.0'",
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: choice and noul criteria 1`] = `
+[
+  "ERROR   node c1.content.items[0].criteria: the option 'Good' must be a name the edges can compare to: lowercase letters, digits and -",
+  "ERROR   node c1.content.items[0].criteria.x: must be a text saying what the option covers, or null",
+  "ERROR   node n1.content.items[0].instructions: the question the AI answers must be a non-empty string",
+  "ERROR   node n1.content.items[0].criteria: 'maybe' is not a field here: only 'true' and 'false' are",
+  "ERROR   node n1.content.items[0].criteria.true: must be a non-empty text",
+  "ERROR   node sm1: the unconditional edge is not last: the following 1 edge(s) are unreachable",
+  "ERROR   node c1: every outgoing edge is conditional; a judgement the AI could not make leaves the student with nowhere to go — add an unconditional fallback edge last",
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+  "WARNING node c1: the state reads no {{STORAGE: key}}, so the AI judges the same thing for every student and the node always takes the same edge",
+  "WARNING node n1: the state field 'a' reads 'c1.track', a mark already given: the AI would anchor on it instead of judging for itself -- give the judgement the work and the task, not an earlier verdict",
+  "WARNING graph: several nodes end the course: sm5, n1 — branches should reunite unless every one of these is a real ending",
+  "WARNING edge sm1 -> c1: 'c1.track' is produced by c1, which is not on any path to sm1; this condition can never hold",
+  "WARNING node n1: stores data no edge and no prompt ever reads — branch on it or use it in a prompt",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: duplicate id 1`] = `
+[
+  "ERROR   node f1: two nodes use this id",
+  "ERROR   node f1: id does not match type 'static-html' (expected prefix 'sh')",
+  "ERROR   edge f1 -> sh1: 'to' points to 'sh1', which is not a node",
+  "ERROR   edge sh1 -> q1: 'from' points to 'sh1', which is not a node",
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: edge to nowhere 1`] = `
+[
+  "ERROR   edge sm1 -> sm77: 'to' points to 'sm77', which is not a node",
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: extras 1`] = `
+[
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: extras empty 1`] = `
+[
+  "ERROR   edges[0].extras: is empty; leave it out",
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: extras in content 1`] = `
+[
+  "ERROR   node sm1.content: unknown field 'extras' (the format allows no extra fields)",
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: extras not an object 1`] = `
+[
+  "ERROR   info.extras: must be an object, found list",
+  "ERROR   node sm1.extras: must be an object, found str",
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: fallback first 1`] = `
+[
+  "ERROR   node f1: the unconditional edge is not last: the following 2 edge(s) are unreachable",
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: feedback that judges 1`] = `
+[
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node dm3: writes from the judgement of s1 but its prompt says 'Grade': the level is already settled, and a feedback that judges again can contradict the number that routed the student -- tell it how to write, not what to decide",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: form options on text and words on radio 1`] = `
+[
+  "ERROR   node f1.content.items[0].options: a 'radio' field needs at least two options",
+  "ERROR   node f1.content.items[2]: a 'radio' field counts no words, so it takes no 'min-words'",
+  "ERROR   node f1.content.items[2].options: a 'radio' field needs at least two options",
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+  "WARNING translations: 1 text(s) have no 'pt' version (node f1.content.items[2].label)",
+  "WARNING translations: 1 text(s) have no 'zh' version (node f1.content.items[2].label)",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: from a non-judge 1`] = `
+[
+  "ERROR   node dm1.content.from: must be the id of a choice, score or noul node, found 'q1'",
+  "ERROR   node dm1: writes from 'q1', which is a quiz node and makes no judgement",
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: impossible date 1`] = `
+[
+  "ERROR   info.date: must be a real date, found '2026-02-30'",
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: invalid type 1`] = `
+[
+  "ERROR   node sm1: invalid type 'video' (one of ['bool', 'choice', 'dynamic-html', 'dynamic-md', 'form', 'noul', 'quiz', 'score', 'static-html', 'static-md'])",
+  "ERROR   edge sm1 -> f1: 'from' points to 'sm1', which is not a node",
+  "ERROR   info.start: start node 'sm1' does not exist",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: judge fallback to its feedback 1`] = `
+[
+  "ERROR   node s1: its unconditional edge leads to dm3, which writes from this very judgement -- that edge is the path taken when no judgement was made, so dm3 would have nothing to write from; send the fallback elsewhere",
+  "ERROR   graph: no path from the start node reaches: sm4 (usually a missing edge into them)",
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: judge without fallback 1`] = `
+[
+  "ERROR   node s1: every outgoing edge is conditional; a judgement the AI could not make leaves the student with nowhere to go — add an unconditional fallback edge last",
+  "ERROR   graph: no path from the start node reaches: sm4 (usually a missing edge into them)",
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: level compared to percent 1`] = `
+[
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+  "WARNING edge s1 -> dm3: 's1.habitat' runs from 0 to 2, over the levels of its own question, so comparing it against 60 never holds. For a grade out of 100 give the question 'points' and test s1.percent",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: max below min 1`] = `
+[
+  "ERROR   node f1.content.items[0]: 'max-words' (10) is below 'min-words' (50): no answer can satisfy both",
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: missing start 1`] = `
+[
+  "ERROR   info.start: start node 'sm99' does not exist",
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: missing translation and empty title 1`] = `
+[
+  "ERROR   node sh1.title: missing the source language 'en'",
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node f1.title[0]: empty title",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+  "WARNING translations: 1 text(s) have no 'pt' version (node sm1.title)",
+  "WARNING translations: 1 text(s) have no 'zh' version (node sm1.title)",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: no author 1`] = `
+[
+  "ERROR   info: missing required field 'author'",
+  "ERROR   info.author: must be a non-empty string",
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: no correct and bad value 1`] = `
+[
+  "ERROR   node q1.content.items[0]: 'key' cannot be 'percent' — the quiz already produces it",
+  "ERROR   node q1.content.items[1].options[0]: invalid 'value' 'Bad Value' (lowercase letters, digits and hyphens)",
+  "ERROR   node q1.content.items[1].options: exactly one option must be correct, found 0",
+  "ERROR   node dm1 prompt: {{STORAGE: q1.habitat}} reads a key no node produces",
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: not a course 1`] = `
+[
+  "ERROR   course: missing required field 'info'",
+  "ERROR   info: missing required field 'course-id'",
+  "ERROR   info: missing required field 'source-language'",
+  "ERROR   info: missing required field 'other-languages'",
+  "ERROR   info: missing required field 'title'",
+  "ERROR   info: missing required field 'author'",
+  "ERROR   info: missing required field 'version'",
+  "ERROR   info: missing required field 'date'",
+  "ERROR   info: missing required field 'start'",
+  "ERROR   info.source-language: invalid language code None",
+  "ERROR   info.other-languages: must be a list (use [] when there are no translations)",
+  "ERROR   info.course-id: must be a UUID, found None",
+  "ERROR   info.author: must be a non-empty string",
+  "ERROR   info.version: must be MAJOR.MINOR.PATCH, found None",
+  "ERROR   info.date: must be YYYY-MM-DD, found None",
+  "ERROR   info.start: invalid node id None",
+  "ERROR   nodes: must be a non-empty list",
+  "ERROR   edges: must be a list",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: points fall 1`] = `
+[
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node s1.content.items[0].points: the points do not rise with the levels (100, 99, 98): a higher level worth less than a lower one is almost always a typo",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: points mismatch and reserved key 1`] = `
+[
+  "ERROR   node s1.content.items[0].points: 2 point value(s) for 3 level(s): there must be exactly one per level, in the same order",
+  "ERROR   node s1.content.items[1].key: 'total' is what a score node produces for the whole node; name the question after what it judges",
+  "ERROR   node s1.content.items[2].key: cannot end in '-confidence': the node produces that key on its own",
+  "ERROR   node dm2 prompt: {{STORAGE: s1.diet}} reads a key no node produces",
+  "ERROR   node dm2 prompt: {{STORAGE: s1.trait}} reads a key no node produces",
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: positions 1`] = `
+[
+  "ERROR   node f1.position: 'x' must be a number, found '10'",
+  "ERROR   node f1.position: 'y' must be a number, found True",
+  "ERROR   node sh1.position: missing required field 'y'",
+  "ERROR   node sm2.position: unknown field 'z' (the format allows no extra fields)",
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: source repeated 1`] = `
+[
+  "ERROR   info.other-languages: 'en' is the source language and must not be repeated here",
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: start judge 1`] = `
+[
+  "ERROR   graph: no path from the start node reaches: sm1 (usually a missing edge into them)",
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: state anchored on a grade 1`] = `
+[
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+  "WARNING node s1: the state field 'earlier' reads 'q1.percent', a mark already given: the AI would anchor on it instead of judging for itself -- give the judgement the work and the task, not an earlier verdict",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: system prompt without language 1`] = `
+[
+  "WARNING info.system-prompt: does not mention the student's language; add 'Answer in the student's language.'",
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: two correct 1`] = `
+[
+  "ERROR   node q1.content.items[0].options: exactly one option must be correct, found 4",
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: two fallbacks 1`] = `
+[
+  "ERROR   node sm1: the unconditional edge is not last: the following 1 edge(s) are unreachable",
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+  "WARNING node sm1: 2 unconditional edges; only the first can ever be taken",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: undeclared section 1`] = `
+[
+  "WARNING node sm1: section 9 is not declared in info.sections",
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: unknown condition key and bad operator 1`] = `
+[
+  "ERROR   edge f1 -> sh1.when.and[1]: invalid operator 'about' (one of ['contains', 'eq', 'gt', 'gte', 'lt', 'lte', 'ne', 'not-contains'])",
+  "ERROR   edge f1 -> sh1.when.and[1]: 'value' must be a string, number or boolean",
+  "ERROR   edge f1 -> sh1: condition reads 'q9.percent', which no node produces",
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: unknown field 1`] = `
+[
+  "ERROR   node sm1: unknown field 'colour' (the format allows no extra fields)",
+  "ERROR   node sm1.content: unknown field 'extra' (the format allows no extra fields)",
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: unknown storage key 1`] = `
+[
+  "ERROR   node dm1 prompt: {{STORAGE: f9.nothing}} reads a key no node produces",
+  "ERROR   node dm1 prompt: {{STORAGE: bad key}} is not a valid key ('<node-id>.<name>')",
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: unreachable 1`] = `
+[
+  "ERROR   graph: no path from the start node reaches: sm5 (usually a missing edge into them)",
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+  "WARNING node b2: every outgoing edge is conditional; a student matching none of them gets stuck — add an unconditional fallback edge last",
+]
+`;
+
+exports[`validator parity with the player's validate.php > world-cats-3-full: wrong prefix 1`] = `
+[
+  "ERROR   node f1: id does not match type 'quiz' (expected prefix 'q')",
+  "ERROR   node f1.content.items[0]: missing required field 'question'",
+  "ERROR   node f1.content.items[0]: unknown field 'type' (the format allows no extra fields)",
+  "ERROR   node f1.content.items[0]: unknown field 'required' (the format allows no extra fields)",
+  "ERROR   node f1.content.items[0]: unknown field 'label' (the format allows no extra fields)",
+  "ERROR   node f1.content.items[0].question: question must be a non-empty list of {lang, text} objects",
+  "ERROR   node f1.content.items[0].options[0]: missing required field 'correct'",
+  "ERROR   node f1.content.items[0].options[0]: 'correct' must be true or false",
+  "ERROR   node f1.content.items[0].options[1]: missing required field 'correct'",
+  "ERROR   node f1.content.items[0].options[1]: 'correct' must be true or false",
+  "ERROR   node f1.content.items[0].options[2]: missing required field 'correct'",
+  "ERROR   node f1.content.items[0].options[2]: 'correct' must be true or false",
+  "ERROR   node f1.content.items[0].options: exactly one option must be correct, found 0",
+  "ERROR   node f1.content.items[1]: missing required field 'question'",
+  "ERROR   node f1.content.items[1]: missing required field 'options'",
+  "ERROR   node f1.content.items[1]: unknown field 'type' (the format allows no extra fields)",
+  "ERROR   node f1.content.items[1]: unknown field 'required' (the format allows no extra fields)",
+  "ERROR   node f1.content.items[1]: unknown field 'label' (the format allows no extra fields)",
+  "ERROR   node f1.content.items[1].question: question must be a non-empty list of {lang, text} objects",
+  "ERROR   node f1.content.items[1].options: a question needs at least two options",
+  "WARNING node sm1: content is very short (32 words) for a teaching node",
+  "WARNING node sm5: content is very short (29 words) for a teaching node",
+]
+`;

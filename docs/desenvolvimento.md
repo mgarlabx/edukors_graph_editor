@@ -4,7 +4,7 @@ Notas técnicas do Edukors Graph Editor: como o agente de IA é montado, os test
 
 ## Requisitos e comandos
 
-Xcode Command Line Tools, Rust (`rustup`), Node 22+. Para os testes de paridade: `python3` e `php` 8.4+, e o repositório `edukors_graph` (por padrão em `~/Library/CloudStorage/Dropbox/EDUKORS/edukors_graph`, ou em `EDUKORS_GRAPH`). Para o agente de IA: o Claude Code logado numa conta do Claude neste Mac (`claude`, depois `/login`).
+Xcode Command Line Tools, Rust (`rustup`), Node 22+. Para os testes de paridade: `php` 8.4+ e o repositório `edukors_graph` (por padrão em `~/Library/CloudStorage/Dropbox/EDUKORS/edukors_graph`, ou em `EDUKORS_GRAPH`). Para o agente de IA: o Claude Code logado numa conta do Claude neste Mac (`claude`, depois `/login`).
 
 ```sh
 npm install
@@ -48,7 +48,7 @@ node tests/e2e/agent.mjs /tmp --live   # o mesmo painel com o agente de verdade 
 
 | Teste | O que garante |
 | --- | --- |
-| `tests/validate.parity.test.ts` | A validação do editor imprime **as mesmas linhas** que `validate_course.py`, nos três samples e em 36 tipos de curso quebrado de propósito (94 casos). |
+| `tests/validate.parity.test.ts` | A validação do editor acusa erro **exatamente quando** o `validate.php` do player recusaria importar o curso, nos três samples e em 36 tipos de curso quebrado de propósito (94 casos). As linhas que o editor imprime ficam num snapshot, tirado quando ainda batiam linha a linha com o `validate_course.py`, que o `edukors_graph` não tem mais. |
 | `tests/judge.parity.test.ts` | Montagem do pedido, leitura da resposta, recusas, piso de confiança, chaves gravadas, prompt de feedback e escolha da edge são idênticos a `ai.php`, `course.php` e à classe `Course` do próprio player. |
 | `tests/course.test.ts` | Abrir e salvar os samples devolve o arquivo **byte a byte**; edições do grafo preservam a ordem das edges e as referências; idiomas. |
 | `tests/insert.test.ts` | Inserir um tipo, pelo menu **Inserir** ou pelo ＋ da barra, cria o nó com o próximo id livre ao lado da seleção, selecionado e enquadrado no mapa, de qualquer vista; o que se digitava na aba JSON entra antes, sem apagar o nó novo. |
@@ -71,7 +71,7 @@ agent/          o agente: Claude Agent SDK num processo Node (sidecar.mjs), as f
 src/
   store/        estado (zustand), undo/redo, layout, preferências, cursos abertos em abas
   schema/       schema.json embutido, Ajv (camada 1), tipos gerados, textos de ajuda lidos do schema
-  validate/     porte linha a linha do validate_course.py (camada 2) e painel de problemas
+  validate/     porte linha a linha do antigo validate_course.py (camada 2) e painel de problemas
   course/       operações no grafo, chaves produzidas e escalas, condições, serialização fiel
   canvas/       React Flow: nós, edges, seções, layout ELK
   inspector/    formulários por tipo de nó, campos localizados, editor de conteúdo em tela cheia, tarefa de escrita lado a lado
@@ -91,11 +91,11 @@ scripts/        update-assets.mjs, gen-types.mjs, build-locales.py
 ## Manter em dia com o repositório
 
 ```sh
-npm run update-assets          # copia schema, player, viewer e samples
+npm run update-assets          # copia schema, player e viewer
 node scripts/update-assets.mjs --check
 ```
 
-O script também vigia o código que o editor porta — `bridge.js`, `ai.php`, `course.php`, as classes `Ai`, `JudgeView` e `Course` do player e o `validate_course.py` — e avisa qual arquivo do editor revisar quando um deles muda. Depois, `npm test` diz se a paridade se manteve.
+O script também vigia o código que o editor porta — `bridge.js`, `ai.php`, `course.php`, as classes `Ai`, `JudgeView` e `Course` do player e o `validate.php` — e avisa qual arquivo do editor revisar quando um deles muda. Depois, `npm test` diz se a paridade se manteve.
 
 ## Decisões tomadas onde o plano deixou em aberto
 

@@ -115,7 +115,7 @@ export function editorServer(callEditor) {
       ),
       def(
         "validate_course",
-        "Validates the course with the editor's checks — the same rules as the official validate_course.py, plus the JSON schema — and lists every error and warning with where it is. Errors stop the course from working; warnings are advice.",
+        "Validates the course with the editor's checks — the rules the player applies before importing a course, plus the JSON schema — and lists every error and warning with where it is. Errors stop the course from working; warnings are advice.",
         {},
         { readOnlyHint: true, openWorldHint: false },
       ),
