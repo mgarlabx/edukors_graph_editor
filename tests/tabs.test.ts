@@ -112,22 +112,27 @@ describe("tabs", () => {
     expect(dirtyDocs()).toEqual([b]);
   });
 
-  it("the preview's student and forced judgements belong to their course", () => {
+  it("the preview's student, calls and console belong to their course", () => {
     const a = openDoc(full(), { path: null, saved: true });
-    usePreview.getState().setForced("s1", { quality: { value: 2, confidence: 1 } });
     usePreview.getState().record({ lang: "en", currentId: "f2", history: ["sm1", "f1"], vars: {}, answers: {} }, null);
+    usePreview.getState().logConsole({ level: "error", text: "boom", frame: "step", title: "Quiz", at: 0 });
     const doc = usePreview.getState().doc;
     openDoc(full(), { path: null, saved: true });
-    expect(usePreview.getState().forced).toEqual({});
     expect(usePreview.getState().states).toEqual([]);
-    // an answer from the AI that arrives after the tab was left goes to that tab's log
+    expect(usePreview.getState().console).toEqual([]);
+    // an answer from the AI, or a console line, that arrives after the tab was left goes to that tab
     usePreview.getState().log({ node: "s1", kind: "judge", endpoint: "decisions", model: "m", answered: "m", tokensIn: 1, tokensOut: 1, cost: 0.01, ms: 5, ok: true, note: "", request: null, response: "" }, doc);
+    usePreview.getState().logConsole({ level: "log", text: "late", frame: "player", title: null, at: 0 }, doc);
     expect(usePreview.getState().calls).toEqual([]);
+    expect(usePreview.getState().console).toEqual([]);
     activateDoc(a);
-    expect(Object.keys(usePreview.getState().forced)).toEqual(["s1"]);
     expect(usePreview.getState().calls.map((c) => c.node)).toEqual(["s1"]);
+    expect(usePreview.getState().console.map((c) => c.text)).toEqual(["boom", "late"]);
     // the player picks up where the student was
     expect(usePreview.getState().seed?.currentId).toBe("f2");
+    // a new student starts a new console
+    usePreview.getState().restart();
+    expect(usePreview.getState().console).toEqual([]);
   });
 
   it("a tab is named after its file, or its course's title until it has one", () => {

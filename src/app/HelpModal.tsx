@@ -1,7 +1,21 @@
-import { useUi } from "../store/ui";
-import { Modal } from "../ui/controls";
-import { t } from "../i18n";
+/**
+ * Help: the quick guide (a few steps and the shortcuts), the full teacher's
+ * guide, docs/guia-do-professor*.md, and the terms of use, in the interface's
+ * language.
+ */
+import { useState } from "react";
+import { useUi, type HelpTab } from "../store/ui";
+import { Modal, Tabs } from "../ui/controls";
+import { Markdown } from "../agent/Markdown";
+import { t, useUiLang, type UiLang } from "../i18n";
 import { keyLabel } from "./os";
+import { TermsText } from "./TermsModal";
+import { APP_NAME, APP_VERSION } from "./version";
+import guidePt from "../../docs/guia-do-professor.md?raw";
+import guideEn from "../../docs/guia-do-professor.en.md?raw";
+import guideEs from "../../docs/guia-do-professor.es.md?raw";
+
+const GUIDES: Record<UiLang, string> = { pt: guidePt, en: guideEn, es: guideEs };
 
 const SHORTCUTS: [string, string][] = [
   ["⌘N", "file.new"],
@@ -18,6 +32,7 @@ const SHORTCUTS: [string, string][] = [
   ["⌘A", "help.selectAll"],
   ["⌘0", "canvas.fit"],
   ["⇧⌘L", "canvas.layout"],
+  ["⇧⌘M", "problems.title"],
   ["⌘M", "tab.canvas"],
   ["⌘J", "tab.json"],
   ["⌘P", "tab.preview"],
@@ -29,8 +44,34 @@ const SHORTCUTS: [string, string][] = [
 
 export function HelpModal() {
   const close = useUi((s) => s.close);
+  const lang = useUiLang();
+  const [tab, setTab] = useState<HelpTab>(() => useUi.getState().helpTab);
   return (
-    <Modal title={t("help.title")} onClose={close} wide>
+    <Modal title={t("help.title")} onClose={close} wide="full">
+      <div className="help-tabs">
+        <Tabs<HelpTab>
+          value={tab}
+          onChange={setTab}
+          tabs={[
+            { id: "quick", label: t("help.quick") },
+            { id: "full", label: t("help.full") },
+            { id: "terms", label: t("terms.title") },
+          ]}
+        />
+        <span className="help-version">
+          {APP_NAME} · {t("app.version", { version: APP_VERSION })}
+        </span>
+      </div>
+      {tab === "quick" && <QuickGuide />}
+      {tab === "full" && <Markdown text={keyLabel(GUIDES[lang] ?? guidePt)} className="help-guide" />}
+      {tab === "terms" && <TermsText />}
+    </Modal>
+  );
+}
+
+function QuickGuide() {
+  return (
+    <div className="help-quick">
       <p>{t("help.lead")}</p>
       <ol className="help-steps">
         {[1, 2, 3, 4, 5, 6, 7].map((n) => (
@@ -50,7 +91,6 @@ export function HelpModal() {
           ))}
         </tbody>
       </table>
-      <p className="small muted">{t("help.docs")}</p>
-    </Modal>
+    </div>
   );
 }

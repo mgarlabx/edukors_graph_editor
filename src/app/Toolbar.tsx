@@ -55,7 +55,7 @@ export function Toolbar() {
   const agentOpen = useUi((s) => s.agent);
   const inspectorOpen = useUi((s) => s.inspector);
   const previewSideOpen = useUi((s) => s.previewSide);
-  const sidebarOpen = agentOpen || (tab === "preview" ? previewSideOpen : inspectorOpen);
+  const sidebarOpen = tab === "preview" ? previewSideOpen : inspectorOpen;
 
   return (
     <header className="toolbar" role="toolbar" aria-label="Edukors Graph Editor">
@@ -134,7 +134,7 @@ export function Toolbar() {
         <IconButton title={`${t("prefs.title")} (${keyLabel("⌘,")})`} onClick={() => open("prefs")}>
           <SettingsIcon />
         </IconButton>
-        <IconButton title={t("help.title")} onClick={() => open("help")}>
+        <IconButton title={t("help.title")} onClick={() => useUi.getState().openHelp()}>
           <HelpIcon />
         </IconButton>
       </div>

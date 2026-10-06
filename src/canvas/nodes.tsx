@@ -17,7 +17,6 @@ export interface CourseNodeData extends Record<string, unknown> {
   isStart: boolean;
   issues: Issue[];
   trail?: "visited" | "current";
-  forced?: boolean;
 }
 
 export type FlowNode = Node<CourseNodeData, "card" | "diamond">;
@@ -82,7 +81,6 @@ export const DiamondNode = memo(({ data, selected }: NodeProps<FlowNode>) => {
           {style.icon}
         </span>
         <span className="node-id">{node.id}</span>
-        {data.forced && <span className="forced-flag">{t("preview.forced")}</span>}
       </div>
       <div className={`diamond-title ${title ? "" : "is-empty"}`} title={t(`type.${node.type}`)}>
         {title || t("canvas.untitled")}

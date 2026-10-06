@@ -41,6 +41,13 @@ describe("on Windows", () => {
     expect(keyLabel("Esc")).toBe("Esc");
   });
 
+  it("leaves a symbol that names the key alone, and converts a guide's table rows", async () => {
+    const { keyLabel } = await on("Win32");
+    expect(keyLabel("No Windows, ⌘ e ⌃ correspondem a Ctrl, ⌥ a Alt e ⇧ a Shift.")).toBe("No Windows, ⌘ e ⌃ correspondem a Ctrl, ⌥ a Alt e ⇧ a Shift.");
+    expect(keyLabel("| ⌘N / ⌘O / ⌘S / ⇧⌘S | Novo |")).toBe("| Ctrl+N / Ctrl+O / Ctrl+S / Ctrl+Shift+S | Novo |");
+    expect(keyLabel("(⌥⌘0) abre")).toBe("(Ctrl+Alt+0) abre");
+  });
+
   it("names a file by what follows the last slash or backslash", async () => {
     const { baseName, folderName } = await on("Win32");
     expect(baseName("C:\\Users\\ana\\cursos\\curso.egf")).toBe("curso.egf");

@@ -1,6 +1,8 @@
 // UI smoke test in WebKit (the engine Tauri uses on macOS), against `npm run dev`.
 //   node tests/e2e/smoke.mjs [outDir]
 import { webkit } from "playwright";
+import { readFileSync } from "node:fs";
+const sample = JSON.parse(readFileSync(new URL("../../samples/world-cats-3-full-course.json", import.meta.url), "utf8"));
 
 const out = process.argv[2] ?? "/tmp";
 const url = process.env.EDITOR_URL ?? "http://localhost:1420/";
@@ -23,12 +25,20 @@ const step = async (name, fn) => {
 };
 
 await page.goto(url);
+// The terms of use come first, on a fresh profile.
+await page.getByRole("button", { name: "Aceito os termos" }).click();
+// then the opening, with the version
+// "1.12", or "1.12.1" for a patch release
+await page.locator(".about-version", { hasText: /Versão \d+\.\d+/ }).waitFor();
+await page.screenshot({ path: `${out}/00-opening.png` });
+await page.getByRole("button", { name: "Começar" }).click();
 await step("welcome", async () => {
   await page.getByText("Edukors Graph Editor").first().waitFor();
   await shot("01-welcome");
 });
 await step("open sample 3", async () => {
-  await page.getByRole("button", { name: "world-cats-3-full" }).click();
+  // The welcome screen no longer lists the samples: the course is opened as a file would be.
+  await page.evaluate(async (c) => (await import("/src/store/docs.ts")).openDoc(c, { path: null, saved: true }), sample);
   await page.locator(".card-node").first().waitFor();
   await page.waitForTimeout(1500);
   await shot("02-canvas");

@@ -35,12 +35,13 @@ painel (src/agent/)  ⇄  Rust (src-tauri/src/agent.rs)  ⇄  Node: agent/sideca
 ## Testes
 
 ```sh
-npm test                               # vitest: 203 testes
+npm test                               # vitest: 229 testes
 (cd src-tauri && cargo test)           # comandos nativos
 npm run dev &                          # depois:
 node tests/e2e/smoke.mjs /tmp          # a interface em WebKit, com capturas de tela
 node tests/e2e/preview.mjs /tmp        # o preview do início ao fim, com a OpenRouter simulada
 node tests/e2e/tabs.mjs /tmp           # dois cursos em abas, um nó copiado de um para o outro
+node tests/e2e/content.mjs /tmp        # o editor de conteúdo em tela cheia e os atalhos da ajuda no Windows
 node tests/e2e/agent.mjs /tmp          # o painel do agente, com o processo simulado (não gasta uso)
 node tests/e2e/agent.mjs /tmp --live   # o mesmo painel com o agente de verdade (Haiku; gasta um pouco do uso da conta)
 ```
@@ -55,9 +56,11 @@ node tests/e2e/agent.mjs /tmp --live   # o mesmo painel com o agente de verdade 
 | `tests/tabs.test.ts` | Cada aba guarda o seu curso, histórico, seleção e preview; nós colados de outro curso ganham ids novos, as referências dentro do grupo os acompanham e os textos ficam nos idiomas do curso de destino. |
 | `tests/errors.test.ts` | Os erros da validação, do julgamento da IA e do lado nativo aparecem no idioma da interface (pt, en, es), enquanto o inglês comparado nos testes de paridade continua o do script e o do servidor; JSON quebrado é apontado por linha e coluna. |
 | `tests/e2e/tabs.mjs` | No WebKit, um nó copiado num curso cola em outro aberto em outra aba; o que se digita na aba JSON fica no curso certo mesmo trocando de aba logo em seguida; fechar uma aba com alterações pergunta antes, pelo nome do curso. |
+| `tests/markup.test.ts` | A barra do editor de conteúdo: o que cada comando escreve e seleciona, em Markdown e em HTML, e como desfaz a marcação que já está lá; o `{{STORAGE: …}}` que um prompt completa. |
+| `tests/e2e/content.mjs` | No WebKit, o inspetor mostra o conteúdo e o prompt dos nós com IA só para leitura e o ✎ abre o editor de tela cheia; a barra e ⌘B/⌘I agem sobre a seleção e ⌘Z desfaz; Raw/View, quebra de linhas e idioma; no prompt, `{{` completa a chave no cursor e Esc fecha a lista antes do editor; ⌫ na View não apaga o nó; no Windows, os guias e as dicas mostram Ctrl, Alt e Shift. |
 | `tests/agentMcp.test.ts` | O JSON dos servidores MCP das Preferências: as duas formas aceitas, os campos que passam, cada erro e o nome reservado `edukors`; o frontmatter das skills e a filtragem dos servidores no processo do agente. |
 | `tests/agent.test.ts` | As edições do agente se aplicam todas ou nenhuma, num passo de desfazer, mantendo referências e a ordem das edges; ele lê o curso da conversa sem mexer na tela; o contexto de cada mensagem e a conversa (em streaming, interrompida ou lida do disco) chegam ao painel como devem. |
-| `tests/e2e/agent.mjs` | No WebKit, o ícone abre o agente no lugar do inspetor; uma edição aprovada passa pelas ferramentas do editor; perguntas, plano, modo, modelo, ⇧⌘A e sessões funcionam. Com `--live`, o Claude edita um curso de verdade, pelo `agent/sidecar.mjs`. |
+| `tests/e2e/agent.mjs` | No WebKit, o ícone abre o agente ao lado do inspetor, sem fechá-lo; uma edição aprovada passa pelas ferramentas do editor; perguntas, plano, modo, modelo, ⇧⌘A e sessões funcionam. Com `--live`, o Claude edita um curso de verdade, pelo `agent/sidecar.mjs`. |
 | `tests/e2e/preview.mjs` | No WebKit, o preview percorre o `world-cats-2-short` com geração e julgamento; o corpo enviado ao `/decisions`, as chaves e a edge tomada batem com `ai.php`/`course.php`, e o bloco do julgamento no prompt do feedback é idêntico ao do servidor, caractere a caractere. |
 
 ## Estrutura
@@ -71,7 +74,7 @@ src/
   validate/     porte linha a linha do validate_course.py (camada 2) e painel de problemas
   course/       operações no grafo, chaves produzidas e escalas, condições, serialização fiel
   canvas/       React Flow: nós, edges, seções, layout ELK
-  inspector/    formulários por tipo de nó, campos localizados, tarefa de escrita lado a lado
+  inspector/    formulários por tipo de nó, campos localizados, editor de conteúdo em tela cheia, tarefa de escrita lado a lado
   conditions/   editor de when em árvore
   json/         aba Monaco, sincronizada nos dois sentidos
   preview/      player verbatim + shim (o bridge.js do editor) + painel do preview

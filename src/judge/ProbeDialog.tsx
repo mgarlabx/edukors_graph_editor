@@ -73,12 +73,11 @@ export function ProbeDialog() {
     try {
       const json = JSON.parse(pasted) as { answers?: unknown; model?: string };
       const answered = String(json.model ?? "");
-      const s = judgeSettings();
-      if (s.strictModel && answered && !sameModel(answered, model))
+      if (answered && !sameModel(answered, model))
         throw new NotJudged("other-model", { answered, model });
       const answers = json.answers ?? json;
       if (!answers || typeof answers !== "object" || !Object.keys(answers).length) throw new NotJudged("no-answers");
-      const produced = judgeVars(node.id, node.type, node.content, readAnswers(answers, node.type, node.content?.items ?? []), s.minConfidence);
+      const produced = judgeVars(node.id, node.type, node.content, readAnswers(answers, node.type, node.content?.items ?? []), judgeSettings().minConfidence);
       setPastedResult({ judged: true, vars: produced, reason: null });
     } catch (e) {
       setPastedResult({ judged: false, vars: {}, reason: errorText(e) });
@@ -121,7 +120,7 @@ export function ProbeDialog() {
             </button>
             {!hasKey && <span className="muted small">{t("probe.needKey")}</span>}
             <span className="muted small">
-              {t("probe.settings", { model: judgeSettings().model, floor: judgeSettings().minConfidence, strict: String(judgeSettings().strictModel) })}
+              {t("probe.settings", { model: judgeSettings().model, floor: judgeSettings().minConfidence })}
             </span>
           </div>
           {verdict?.http && (

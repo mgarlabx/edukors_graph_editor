@@ -11,6 +11,18 @@ import { baseName } from "./os";
 
 export const isTauri = (): boolean => typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
+/** The links the editor hands to the computer's browser; anything else stays where it is. */
+export const EXTERNAL_LINK = /^(https?:|mailto:)/i;
+
+/** Opens a link in the computer's browser: the webview itself never leaves the editor. */
+export async function openLink(href: string) {
+  if (!EXTERNAL_LINK.test(href)) return;
+  if (isTauri()) {
+    const { openUrl } = await import("@tauri-apps/plugin-opener");
+    await openUrl(href);
+  } else window.open(href, "_blank", "noopener");
+}
+
 export interface HttpAnswer {
   status: number;
   json: unknown;

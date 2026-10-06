@@ -8,11 +8,27 @@ export const Help = ({ text }: { text?: string }) =>
     </span>
   ) : null;
 
-export const Field = ({ label, help, children, hint, error }: { label: ReactNode; help?: string; children: ReactNode; hint?: ReactNode; error?: ReactNode }) => (
+export const Field = ({
+  label,
+  help,
+  children,
+  hint,
+  error,
+  actions,
+}: {
+  label: ReactNode;
+  help?: string;
+  children: ReactNode;
+  hint?: ReactNode;
+  error?: ReactNode;
+  /** buttons at the right end of the label's line */
+  actions?: ReactNode;
+}) => (
   <div className="field">
     <div className="field-label">
       <span>{label}</span>
       <Help text={help} />
+      {actions && <span className="field-actions">{actions}</span>}
     </div>
     {children}
     {hint && <div className="field-hint">{hint}</div>}
@@ -147,26 +163,32 @@ export function Modal({
   children,
   wide,
   actions,
+  dismissable = true,
 }: {
   title: ReactNode;
   onClose: () => void;
   children: ReactNode;
   wide?: boolean | "full";
   actions?: ReactNode;
+  /** false: no ×, and neither Esc nor a click outside closes it; only its actions do */
+  dismissable?: boolean;
 }) {
   useEffect(() => {
+    if (!dismissable) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, dismissable]);
   return (
-    <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="modal-backdrop" onMouseDown={(e) => dismissable && e.target === e.currentTarget && onClose()}>
       <div className={`modal ${wide === "full" ? "modal-full" : wide ? "modal-wide" : ""}`} role="dialog" aria-modal="true">
         <div className="modal-head">
           <h2>{title}</h2>
-          <IconButton title="×" onClick={onClose} className="modal-close">
-            ×
-          </IconButton>
+          {dismissable && (
+            <IconButton title="×" onClick={onClose} className="modal-close">
+              ×
+            </IconButton>
+          )}
         </div>
         <div className="modal-body">{children}</div>
         {actions && <div className="modal-actions">{actions}</div>}

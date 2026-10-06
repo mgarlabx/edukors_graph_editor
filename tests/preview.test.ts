@@ -39,4 +39,29 @@ describe("preview page", () => {
       expect(withoutShim).toBe(playerTemplate.replace(OPEN + placeholder(), () => OPEN + block));
     });
   }
+
+  it("hooks the console and the links in the player and in each HTML step's frame", () => {
+    const html = previewHtml(short, { seed: null, lang: null, manualJudges: true, theme: "system" });
+    const shim = /<script>\n\(function \(\) \{\n  'use strict';[\s\S]*?<\/script>/.exec(html)![0];
+    // once for the player, once inside the string written into each step's frame
+    expect(shim.match(/console\[level\] = function/g)).toHaveLength(2);
+    expect(shim).toContain("parent.postMessage(m, '*')");
+    expect(shim).toContain("edukors: 'open'");
+    // the step frame's script is closed in a way that does not end the shim's own
+    expect(shim).toContain("<\\/script>");
+    // the "step completed" toast is hidden and taken away
+    expect(shim).toContain(".edukors-player-toast { display: none !important; }");
+    expect(shim).toContain("dropToasts");
+  });
+
+  it("writes a shim, and a step frame's script, that parse as JavaScript", () => {
+    const html = previewHtml(short, { seed: null, lang: null, manualJudges: true, theme: "dark" });
+    const code = /<script>(\n\(function \(\) \{[\s\S]*?)<\/script>/.exec(html)![1];
+    expect(() => new Function(code)).not.toThrow();
+    // the script written into each HTML step's frame, as the shim holds it
+    const step = /var STEP_HOOKS = ("(?:[^"\\]|\\.)*");/.exec(code)![1];
+    const inner = /^<script>([\s\S]*)<\/script>$/.exec(JSON.parse(step))![1];
+    expect(() => new Function(inner)).not.toThrow();
+  });
 });
+

@@ -301,3 +301,72 @@ export const MapIcon = (p: P) => (
     <path d="M9 4v13.5M15 6.5V20" />
   </Svg>
 );
+
+/** Edit a text in the full-screen editor. */
+export const EditIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4z" />
+    <path d="m14.5 5.5 3 3" />
+  </Svg>
+);
+
+// The content editor's toolbar.
+
+export const HeadingIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M6 4v16M18 4v16M6 12h12" />
+  </Svg>
+);
+
+export const ParagraphIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M13 4v16M17 4v16M19 4h-9.5a4.5 4.5 0 0 0 0 9H13" />
+  </Svg>
+);
+
+export const BoldIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M7 4h7a4 4 0 0 1 0 8H7zM7 12h8a4 4 0 0 1 0 8H7z" />
+  </Svg>
+);
+
+export const ItalicIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M10 4h9M5 20h9M15 4 9 20" />
+  </Svg>
+);
+
+export const ListIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01" />
+  </Svg>
+);
+
+export const ListOrderedIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M10 6h10M10 12h10M10 18h10M4 4.5h1.2V9M4 9h2.4M4 15.2c.3-.7.9-1.2 1.6-1.2.8 0 1.4.5 1.4 1.3 0 1.3-3 2-3 3.7h3" />
+  </Svg>
+);
+
+export const LinkIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M10 13.5a4.5 4.5 0 0 0 6.4.4l2.8-2.8a4.5 4.5 0 0 0-6.4-6.4l-1.4 1.4" />
+    <path d="M14 10.5a4.5 4.5 0 0 0-6.4-.4l-2.8 2.8a4.5 4.5 0 0 0 6.4 6.4l1.4-1.4" />
+  </Svg>
+);
+
+export const ImageIcon = (p: P) => (
+  <Svg {...p}>
+    <rect x="3" y="4" width="18" height="16" rx="2" />
+    <circle cx="9" cy="10" r="1.8" />
+    <path d="m21 16-4.6-4.6a1.5 1.5 0 0 0-2.1 0L6 20" />
+  </Svg>
+);
+
+/** Long lines broken at the window's edge, or kept whole. */
+export const WrapIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M4 6h16M4 12h13.5a3 3 0 0 1 0 6H13M4 18h5" />
+    <path d="m15 16-2 2 2 2" />
+  </Svg>
+);

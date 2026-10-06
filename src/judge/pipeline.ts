@@ -375,55 +375,6 @@ export const judgeVars = (
   return vars;
 };
 
-/** JudgeView.spread(): the weight a manual level puts on the two levels around it. */
-export const manualSpread = (level: number, count: number): Record<string, number> => {
-  const out: Record<string, number> = {};
-  if (count < 1) return out;
-  const r = Math.max(0, Math.min(count - 1, Number(level) || 0));
-  const i = Math.floor(r);
-  const a = Math.min(count - 1, i + 1);
-  const n = r - i;
-  for (let e = 0; e < count; e++) out[String(e)] = 0;
-  if (i === a) out[String(i)] = 1;
-  else {
-    out[String(i)] = Math.round(100 * (1 - n)) / 100;
-    out[String(a)] = Math.round(100 * n) / 100;
-  }
-  return out;
-};
-
-/**
- * A judgement the author typed instead of asking the model ("forçar
- * julgamento"), turned into the same keys a real one would produce: the picks
- * go through readAnswers and judgeVars like an answer from the wire would, so
- * a forced judgement routes exactly as a real one with those numbers.
- */
-export const forcedVars = (
-  node: CourseNode,
-  picks: Record<string, { value: string | number; confidence?: number }>,
-): Vars => {
-  const items: Record<string, unknown>[] = Array.isArray(node.content?.items) ? node.content.items : [];
-  const answers: Record<string, unknown> = {};
-  for (const item of items) {
-    const key = String(item.key ?? "");
-    const pick = picks[key];
-    if (!pick) continue;
-    if (node.type === "noul") answers[key] = { noul: Number(pick.value) };
-    else if (node.type === "choice") {
-      const options = Object.keys((item.criteria as object) ?? {});
-      answers[key] = {
-        choice: String(pick.value),
-        confidence: pick.confidence ?? 1,
-        probabilities: Object.fromEntries(options.map((o) => [o, o === pick.value ? 1 : 0])),
-      };
-    } else {
-      const levels = Array.isArray(item.criteria) ? item.criteria.length : 0;
-      answers[key] = { score: Number(pick.value), confidence: pick.confidence ?? 1, probabilities: manualSpread(Number(pick.value), levels) };
-    }
-  }
-  return judgeVars(node.id, node.type, node.content, readAnswers(answers, node.type, items), 0);
-};
-
 export interface HttpAnswer {
   status: number;
   json: unknown;

@@ -62,7 +62,7 @@ const watched = {
   "ai.php": { text: read(join(GRAPH, "player/src/ai.php")), review: "src/judge/pipeline.ts" },
   "course.php": { text: read(join(GRAPH, "player/src/course.php")), review: "src/course/condition.ts, src/judge/pipeline.ts (resolveStorage)" },
   "player Ai": { text: playerSection(player, "Ai"), review: "src/judge/pipeline.ts (judgementBlock, buildGeneration) and the shim's fetch interception" },
-  "player JudgeView": { text: playerSection(player, "JudgeView"), review: "src/judge/pipeline.ts (manualSpread, forcedVars) and src/preview/shim.ts" },
+  "player JudgeView": { text: playerSection(player, "JudgeView"), review: "src/preview/shim.ts" },
   "player Course": { text: playerSection(player, "Course"), review: "src/course/condition.ts (holds)" },
   "validate_course.py": { text: read(join(builder, "scripts/validate_course.py")), review: "src/validate/rules.ts (then: npm test)" },
 };

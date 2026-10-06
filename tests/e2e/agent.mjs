@@ -13,7 +13,7 @@
 import http from "node:http";
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
-import { mkdtempSync, realpathSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -24,6 +24,7 @@ const live = args.includes("--live");
 const out = args.find((a) => !a.startsWith("--")) ?? "/tmp";
 const url = process.env.EDITOR_URL ?? "http://localhost:1420/";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const course = JSON.parse(readFileSync(join(root, "samples/world-cats-1-mini-course.json"), "utf8"));
 
 const browser = await webkit.launch();
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
@@ -251,22 +252,35 @@ if (bridge) await page.addInitScript(bridgeTransport, bridge.base);
 else await page.addInitScript(scriptedTransport);
 
 await page.goto(url);
+// The terms of use come first, on a fresh profile.
+await page.getByRole("button", { name: "Aceito os termos" }).click();
+// then the opening, with the version
+await page.getByRole("button", { name: "Começar" }).click();
 
 await step("open a sample course", async () => {
-  await page.getByRole("button", { name: "world-cats-1-mini" }).click();
+  // The welcome screen no longer lists the samples: the course is opened as a file would be.
+  await page.evaluate(async (c) => (await import("/src/store/docs.ts")).openDoc(c, { path: null, saved: true }), course);
   await page.locator(".card-node").first().waitFor();
   await page.waitForTimeout(800);
 });
 
-await step("the AI button sits at the right end of the toolbar and opens the agent in the inspector's place", async () => {
+await step("the AI button sits at the right end of the toolbar and opens the agent beside the inspector", async () => {
   const button = page.locator(".toolbar .tool-agent");
   const box = await button.boundingBox();
   const bar = await page.locator(".toolbar").boundingBox();
   expect(box && bar && bar.x + bar.width - (box.x + box.width) < 24, "the AI button is not at the right end");
-  expect(await page.locator(".inspector").count() === 1, "the inspector should show before");
+  // the inspector starts closed on a file just opened; the sidebar button brings it out
+  if (!(await page.locator(".inspector").count())) await page.locator(".toolbar .tool-group-end .icon-btn").first().click();
+  await page.locator(".inspector").waitFor();
   await button.click();
   await page.locator(".agent-panel").waitFor();
-  expect(await page.locator(".inspector").count() === 0, "the inspector should give its place to the agent");
+  expect(await page.locator(".inspector").count() === 1, "the inspector should stay beside the agent");
+  // the sidebar button closes the inspector only, and brings it back
+  await page.locator(".toolbar .tool-group-end .icon-btn").first().click();
+  expect(await page.locator(".inspector").count() === 0, "the sidebar button did not close the inspector");
+  expect(await page.locator(".agent-panel").count() === 1, "the sidebar button closed the agent");
+  await page.locator(".toolbar .tool-group-end .icon-btn").first().click();
+  await page.locator(".inspector").waitFor();
   await page.locator(".agent-hello, .agent-account").first().waitFor({ timeout: 60_000 });
   expect((await agent()).connection === "ready", "not connected");
   // The start of a conversation shows the usage windows under the account.
@@ -369,13 +383,14 @@ if (!live) {
     expect(!(await page.locator(".agent-plan-bar").count()), "the bar should go once the mode is not plan");
   });
 
-  await step("⇧⌘A closes and opens the panel, and the inspector comes back meanwhile", async () => {
+  await step("⇧⌘A closes and opens the panel, and the inspector stays", async () => {
     await page.locator(".react-flow__pane").click({ position: { x: 40, y: 40 } });
     await page.keyboard.press("Meta+Shift+A");
     await page.locator(".agent-panel").waitFor({ state: "detached" });
-    expect((await page.locator(".inspector").count()) === 1, "the inspector did not come back");
+    expect((await page.locator(".inspector").count()) === 1, "the inspector went with the agent");
     await page.keyboard.press("Meta+Shift+A");
     await page.locator(".agent-panel").waitFor();
+    expect((await page.locator(".inspector").count()) === 1, "the inspector went when the agent came back");
     expect((await page.locator(".agent-user").count()) > 0, "the conversation did not survive closing the panel");
   });
 
@@ -399,6 +414,10 @@ if (!live) {
   await step("in a plain browser the panel says the agent needs the app", async () => {
     const plain = await browser.newPage({ viewport: { width: 1200, height: 800 } });
     await plain.goto(url);
+    await plain.getByRole("button", { name: "Aceito os termos" }).click();
+    // then the opening, with the version
+    await plain.getByRole("button", { name: "Começar" }).click();
+    await plain.evaluate(async (c) => (await import("/src/store/docs.ts")).openDoc(c, { path: null, saved: true }), course);
     await plain.locator(".toolbar .tool-agent").click();
     await plain.getByText("O agente funciona dentro do app").waitFor();
     expect((await plain.getByRole("button", { name: "Tentar de novo" }).count()) === 0, "no retry without the app");
@@ -424,6 +443,10 @@ if (!live) {
       };
     });
     await broken.goto(url);
+    await broken.getByRole("button", { name: "Aceito os termos" }).click();
+    // then the opening, with the version
+    await broken.getByRole("button", { name: "Começar" }).click();
+    await broken.evaluate(async (c) => (await import("/src/store/docs.ts")).openDoc(c, { path: null, saved: true }), course);
     await broken.locator(".toolbar .tool-agent").click();
     await broken.getByText("O Claude Agent SDK não está instalado").waitFor();
     await broken.waitForTimeout(600);

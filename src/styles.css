@@ -1190,13 +1190,6 @@ kbd {
   line-height: 1.25;
 }
 
-.forced-flag {
-  font-size: 9px;
-  color: var(--warning);
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
 .section-node {
   border: 2px dashed var(--section-color);
   background: color-mix(in srgb, var(--section-color) 6%, transparent);
@@ -1325,6 +1318,8 @@ kbd {
   position: relative;
   flex: none;
   width: 420px;
+  /* with the agent open too, the two never take more than 90% of the window */
+  max-width: min(760px, 45vw);
   background: var(--panel);
   border-left: 1px solid var(--border);
   overflow: auto;
@@ -1498,16 +1493,60 @@ kbd {
   gap: 8px;
 }
 
-.compare {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+/* A node's content in the inspector: as written, cut after a few lines; ✎ or a click opens the editor. */
+.field-actions {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: auto;
 }
 
-.loc-tools {
-  display: flex;
-  gap: 12px;
-  align-items: center;
+.field-actions .icon-btn {
+  min-width: 24px;
+  width: 24px;
+  height: 24px;
+  color: var(--muted);
+}
+
+.field-actions .icon-btn:hover:not(:disabled) {
+  color: var(--accent);
+}
+
+.content-peek {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  background: var(--panel-2);
+  font-size: 12.5px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.content-peek:hover {
+  border-color: var(--accent);
+}
+
+.content-peek-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 12;
+  overflow: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.content-peek.mono {
+  font-size: 12px;
+}
+
+.content-peek.is-empty {
+  background: var(--warning-soft);
+  color: var(--muted);
+  font-style: italic;
+}
+
+.content-peek.is-blank {
+  color: var(--muted);
+  font-style: italic;
 }
 
 .lang-editor .notice {
@@ -1804,6 +1843,7 @@ kbd {
   position: relative;
   flex: none;
   width: 440px;
+  max-width: min(760px, 45vw);
   border-left: 1px solid var(--border);
   background: var(--panel);
   display: flex;
@@ -1835,16 +1875,200 @@ kbd {
   margin: 4px 0;
 }
 
-.force-box {
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 6px 8px;
-  margin: 6px 0;
+.console-list {
+  font: 11.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+  margin-top: 6px;
 }
 
-.force-box.is-on {
-  border-color: var(--warning);
-  background: var(--warning-soft);
+.console-line {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 8px;
+  align-items: baseline;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.console-line pre {
+  margin: 0;
+  font: inherit;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.console-from {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.console-line.level-error {
+  color: var(--error);
+}
+
+.console-line.level-warn {
+  color: var(--warning);
+}
+
+.console-line.level-debug {
+  color: var(--muted);
+}
+
+.console-errors {
+  color: var(--error);
+  font-weight: 700;
+}
+
+/* ------------------------------------------------------ content editor -- */
+
+/* A node's content, full screen: title, Raw/View and the toolbar, the text. */
+.content-editor {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+}
+
+.ce-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ce-head h2 {
+  margin: 0;
+  font-size: 16px;
+  white-space: nowrap;
+}
+
+.ce-node {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.ce-node code {
+  font-size: 12px;
+}
+
+.ce-kind {
+  padding: 1px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ce-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  padding: 6px 16px 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-2);
+}
+
+.ce-bar > .tabs {
+  margin-bottom: -1px;
+  border-bottom: 0;
+}
+
+.ce-bar .tab.is-active {
+  background: var(--panel);
+}
+
+.ce-tools {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-bottom: 4px;
+}
+
+.ce-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.ce-sep {
+  width: 1px;
+  height: 18px;
+  margin: 0 6px;
+  background: var(--border-strong);
+}
+
+.ce-tools .ce-wrap {
+  margin-left: auto;
+}
+
+.ce-tools .icon-btn.is-on {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.ce-body {
+  position: relative;
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+/* a prompt's {{STORAGE: key}}: the list opens under the "{{" being typed */
+.autocomplete.ce-complete {
+  right: auto;
+}
+
+.ce-tools select {
+  max-width: 260px;
+}
+
+.ce-text {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  resize: none;
+  padding: 16px 20px;
+  background: var(--panel);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.6;
+  tab-size: 2;
+}
+
+.ce-text.is-nowrap {
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow-x: auto;
+}
+
+.md-preview.ce-view {
+  flex: 1;
+  max-height: none;
+  border: 0;
+  border-radius: 0;
+  /* the text in a column a person can read, however wide the window */
+  padding: 16px max(20px, calc((100% - 860px) / 2));
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.html-preview.ce-view {
+  flex: 1;
+  height: auto;
+  border: 0;
+  border-radius: 0;
 }
 
 /* -------------------------------------------------------------- modals -- */
@@ -1940,6 +2164,117 @@ kbd {
   margin: 4px 0;
 }
 
+.help-tabs {
+  position: sticky;
+  top: -12px;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  margin: -12px -16px 12px;
+  padding: 8px 16px 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.help-tabs > .tabs {
+  flex: 1;
+  margin-bottom: -1px;
+  border-bottom: 0;
+}
+
+.help-version {
+  padding-bottom: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------- opening -- */
+
+.about {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 8px 0;
+  text-align: center;
+}
+
+.about-icon {
+  margin-bottom: 6px;
+}
+
+.about-name {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.about-version {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.about-lead {
+  max-width: 400px;
+  margin: 12px 0 4px;
+  line-height: 1.5;
+}
+
+.help-quick,
+.help-guide {
+  max-width: 880px;
+  margin: 0 auto;
+}
+
+.agent-md.help-guide {
+  font-size: 14px;
+  line-height: 1.6;
+  /* the agent's replies break anywhere; a table here keeps its words whole */
+  overflow-wrap: break-word;
+}
+
+.agent-md.help-guide h1 {
+  margin: 4px 0 12px;
+  font-size: 22px;
+}
+
+.agent-md.help-guide h2 {
+  margin: 28px 0 8px;
+  font-size: 17px;
+}
+
+.agent-md.help-guide h3 {
+  margin: 20px 0 6px;
+  font-size: 15px;
+}
+
+.agent-md.help-guide p,
+.agent-md.help-guide ul,
+.agent-md.help-guide ol,
+.agent-md.help-guide table {
+  margin-bottom: 12px;
+}
+
+.agent-md.help-guide table {
+  width: 100%;
+}
+
+.agent-md.help-guide th,
+.agent-md.help-guide td {
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.agent-md.help-guide th {
+  background: var(--panel-2);
+}
+
+.agent-md.help-guide code {
+  font-size: 12.5px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation: none !important;
@@ -1979,7 +2314,7 @@ kbd {
   display: flex;
   flex-direction: column;
   min-width: 320px;
-  max-width: 760px;
+  max-width: min(760px, 45vw);
   background: var(--panel);
   border-left: 1px solid var(--border);
 }

@@ -30,7 +30,8 @@ const sent = { chat: [], decisions: [] };
 const browser = await webkit.launch();
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 const problems = [];
-page.on("pageerror", (e) => !/ResizeObserver loop/.test(e.message) && !String(e.stack).includes("web-inspector://") && problems.push(e.message));
+// undefinedCall is the error this script throws on purpose, in an HTML step, for the Console tab.
+page.on("pageerror", (e) => !/ResizeObserver loop|undefinedCall/.test(e.message) && !String(e.stack).includes("web-inspector://") && problems.push(e.message));
 await page.route("https://openrouter.ai/**", async (route) => {
   const req = route.request();
   const body = JSON.parse(req.postData() ?? "{}");
@@ -46,15 +47,28 @@ await page.route("https://openrouter.ai/**", async (route) => {
 
 await page.addInitScript(() => localStorage.setItem("edukors-editor.dev-openrouter-key", "sk-or-test"));
 await page.goto(url);
-await page.getByRole("button", { name: "world-cats-2-short" }).click();
+// The terms of use come first, on a fresh profile.
+await page.getByRole("button", { name: "Aceito os termos" }).click();
+// then the opening, with the version
+await page.getByRole("button", { name: "Começar" }).click();
+await page.locator(".toolbar").waitFor();
+// The welcome screen no longer lists the samples: the course is opened as a file would be.
+await page.evaluate(async (c) => (await import("/src/store/docs.ts")).openDoc(c, { path: null, saved: true }), course);
 await page.locator(".card-node").first().waitFor();
 await page.getByRole("tab", { name: "Preview" }).click();
 const player = page.frameLocator(".preview-frame");
+// Toasts the player put on the page, seen however briefly.
+const watchToasts = () =>
+  player.locator("body").evaluate(() => {
+    window.__toasts = 0;
+    new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((n) => n.classList?.contains("edukors-player-toast") && window.__toasts++))).observe(document.body, { childList: true });
+  });
 const next = async () => {
   await player.locator('[data-action="complete"]:not([disabled])').click();
   await page.waitForTimeout(350);
 };
 await player.locator('[data-action="start"]').click();
+await watchToasts();
 await next(); // sm1
 await next(); // sh1
 await next(); // sm3
@@ -78,6 +92,41 @@ await page.screenshot({ path: `${out}/21-preview-path.png` });
 const steps = await page.locator(".path-list li").allInnerTexts();
 await page.getByRole("tab", { name: "Chamadas" }).click();
 const rows = await page.locator(".table tbody tr").allInnerTexts();
+
+// The "step completed" toast never stays on the page.
+const toastsLeft = await player.locator(".edukors-player-toast").count();
+const toastsSeen = await player.locator("body").evaluate(() => window.__toasts);
+
+// The console: what the player, and an HTML step's frame inside it, write there reaches the Console tab.
+await page.getByRole("tab", { name: /^Console/ }).click();
+await player.locator("body").evaluate(() => {
+  console.error("e2e: from the player");
+  const f = document.createElement("iframe");
+  f.setAttribute("sandbox", "allow-scripts");
+  f.title = "e2e step";
+  f.srcdoc = "<!doctype html><html><head></head><body><script>console.warn('e2e: from a step'); undefinedCall();</script></body></html>";
+  document.body.append(f);
+});
+await page.locator(".console-line.level-error", { hasText: "e2e: from the player" }).waitFor({ timeout: 5000 }).catch(() => undefined);
+await page.locator(".console-line.level-warn", { hasText: "e2e: from a step" }).waitFor({ timeout: 5000 }).catch(() => undefined);
+await page.waitForTimeout(300);
+const consoleLines = await page.locator(".console-line").allInnerTexts();
+await page.screenshot({ path: `${out}/22-preview-console.png` });
+
+// A link to the web is handed to the editor, which opens it in the computer's browser (here, a popup).
+const popup = page.waitForEvent("popup", { timeout: 5000 }).catch(() => null);
+await player.locator("body").evaluate(() => {
+  const a = document.createElement("a");
+  a.href = "https://example.com/e2e";
+  a.target = "_blank";
+  a.textContent = "e2e link";
+  a.id = "e2e-link";
+  document.body.append(a);
+});
+await page.route("https://example.com/**", (route) => route.fulfill({ body: "ok" }));
+await player.locator("#e2e-link").click();
+const opened = await popup;
+const openedUrl = opened ? opened.url() : "";
 await browser.close();
 
 const check = (ok, what) => {
@@ -110,6 +159,13 @@ const nextOnServer = php({ op: "next", course, from: "s1", vars: server.vars });
 check(nextOnServer === "dm2", `course.php takes the same edge out of s1 (${nextOnServer})`);
 const block = php({ op: "block", judge: s1, vars: { ...server.vars, "f1.text": essay } });
 check(sent.chat[1]?.messages[1].content.endsWith(block), "the feedback prompt ends with ai.php's judgement block, to the character");
+
+check(toastsSeen > 0 && toastsLeft === 0, `the step-completed toast the player puts up (${toastsSeen}) is taken off the page`);
+check(consoleLines.some((l) => l.includes("e2e: from the player")), "the player's console.error reaches the Console tab");
+check(consoleLines.some((l) => l.includes("e2e: from a step") && l.includes("e2e step")), "an HTML step's console.warn reaches the Console tab, named after the step");
+// WebKit hides the message of an error thrown in a sandboxed frame; the line says so.
+check(consoleLines.some((l) => l.includes("e2e step") && (l.includes("undefinedCall") || /try\/catch/.test(l))), "an uncaught error in an HTML step reaches the Console tab");
+check(openedUrl.startsWith("https://example.com/e2e"), `a link to the web opens outside the preview (${openedUrl || "nothing opened"})`);
 
 console.log(problems.length ? `\nPROBLEMS:\n${problems.join("\n")}` : "\nall good");
 process.exit(problems.length ? 1 : 0);

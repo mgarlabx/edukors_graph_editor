@@ -17,7 +17,7 @@ export function StaticForm({ node }: { node: CourseNode }) {
       label={t("insp.content")}
       help={describe(html ? "staticHtmlContent" : "staticMdContent", "item")}
       kind={html ? "html" : "markdown"}
-      minRows={10}
+      fullEditor
     />
   );
 }
@@ -30,7 +30,7 @@ export function DynamicForm({ node }: { node: CourseNode }) {
   const judges = course.nodes.filter((n) => isJudge(n.type));
   return (
     <>
-      <LocalizedField path={`node:${node.id}/content/prompt`} label={t("insp.prompt")} help={describe(def, "prompt")} kind="prompt" minRows={8} owner={node.id} />
+      <LocalizedField path={`node:${node.id}/content/prompt`} label={t("insp.prompt")} help={describe(def, "prompt")} kind="prompt" owner={node.id} fullEditor />
       <Field label={t("insp.from")} help={describe("feedbackFrom")}>
         <select
           className="input"

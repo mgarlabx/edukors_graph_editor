@@ -10,8 +10,11 @@ import { closeDoc, createCourse, exportPlayer, openCourse, saveCourse, settleAll
 import { Toolbar } from "./app/Toolbar";
 import { DocTabs } from "./app/DocTabs";
 import { HelpModal } from "./app/HelpModal";
+import { AboutModal } from "./app/AboutModal";
+import { TERMS_VERSION, TermsGate, termsAccepted } from "./app/TermsModal";
 import { Canvas } from "./canvas/Canvas";
 import { Inspector } from "./inspector/Inspector";
+import { ContentEditor } from "./inspector/ContentEditor";
 import { AgentPanel } from "./agent/AgentPanel";
 import { jsonEditor } from "./json/ref";
 
@@ -37,8 +40,9 @@ const editable = (el: Element | null) =>
 const SWITCHES = new Set(["new", "open", "close-tab", "next-tab", "prev-tab"]);
 const asking = () => isDialogOpen() || useUi.getState().modal !== null;
 
-/** What the menu and the keyboard can ask for. */
+/** What the menu and the keyboard can ask for: nothing, until the terms of use are accepted. */
 export function command(id: string) {
+  if (!termsAccepted()) return;
   const store = useEditor.getState();
   const ui = useUi.getState();
   if ((SWITCHES.has(id) || id.startsWith("recent:")) && asking()) return;
@@ -74,7 +78,7 @@ export function command(id: string) {
     case "prefs":
       return ui.open("prefs");
     case "help":
-      return ui.open("help");
+      return ui.openHelp();
     case "agent":
       return store.course ? ui.toggleAgent() : undefined;
     case "sidebar":
@@ -98,7 +102,7 @@ export function command(id: string) {
       if (editable(document.activeElement)) return document.execCommand(id);
       return id === "undo" ? store.undo() : store.redo();
     case "duplicate": {
-      if (!store.selection.nodes.length || editable(document.activeElement)) return;
+      if (!store.selection.nodes.length || asking() || editable(document.activeElement)) return;
       let map: Record<string, string> = {};
       store.update((c) => (map = duplicateNodes(c, store.selection.nodes)), "duplicate");
       const positions = positionsOf(useEditor.getState().course);
@@ -118,10 +122,14 @@ export default function App() {
   const docId = useEditor((s) => s.docId);
   const modal = useUi((s) => s.modal);
   const agent = useUi((s) => s.agent);
+  const mustAccept = usePrefs((s) => s.loaded && s.terms !== TERMS_VERSION);
 
   // Boot: preferences, the file the system asked us to open, the menu.
   useEffect(() => {
-    usePrefs.getState().load();
+    // The opening, with the version: now, or once the terms are accepted (TermsGate).
+    usePrefs.getState().load().then(() => {
+      if (termsAccepted() && !useUi.getState().modal) useUi.getState().open("about");
+    });
     const cleanups: (() => void)[] = [watchMenu()];
     if (isTauri()) {
       (async () => {
@@ -201,9 +209,10 @@ export default function App() {
         selectAllNodes();
       }
     };
-    // Cutting, copying and pasting nodes, through the system clipboard.
+    // Cutting, copying and pasting nodes, through the system clipboard; over a dialog (the help, the
+    // content editor's View), the text selected there is what gets copied.
     const onCopy = (e: ClipboardEvent) => {
-      if (editable(document.activeElement) || !onCanvas()) return;
+      if (editable(document.activeElement) || !onCanvas() || asking()) return;
       const text = selectionClip();
       if (!text) return;
       e.clipboardData?.setData("text/plain", text);
@@ -211,7 +220,7 @@ export default function App() {
       if (e.type === "cut") deleteSelectedNodes("cut");
     };
     const onPaste = (e: ClipboardEvent) => {
-      if (editable(document.activeElement) || !onCanvas()) return;
+      if (editable(document.activeElement) || !onCanvas() || asking()) return;
       if (pasteClip(e.clipboardData?.getData("text/plain") ?? "")) e.preventDefault();
     };
     window.addEventListener("keydown", onKey);
@@ -238,23 +247,25 @@ export default function App() {
       </div>
       {modal === "prefs" && <PrefsDialog />}
       {modal === "help" && <HelpModal />}
+      {modal === "about" && <AboutModal />}
       {docId && modal === "languages" && <LanguagesModal />}
       {docId && modal === "probe" && <ProbeDialog />}
+      {docId && modal === "content" && <ContentEditor />}
       <DialogHost />
+      {mustAccept && <TermsGate />}
     </div>
   );
 }
 
 /**
- * The course on screen: stage, inspector (or, beside it all, the agent, App
- * above) and the panels below. Each
+ * The course on screen: stage, inspector and the panels below; the agent, when
+ * open, sits beside it all (App above), and neither panel hides the other. Each
  * tab gets its own, mounted fresh when it comes on screen -- the graph at the
  * view it was left with, the preview where its student was.
  */
 function Workspace() {
   const tab = useEditor((s) => s.tab);
   const bottom = useUi((s) => s.bottom);
-  const agent = useUi((s) => s.agent);
   const inspector = useUi((s) => s.inspector);
   const [previewMounted, setPreviewMounted] = useState(tab === "preview");
 
@@ -278,7 +289,7 @@ function Workspace() {
             </div>
           )}
         </main>
-        {tab !== "preview" && !agent && inspector && <Inspector />}
+        {tab !== "preview" && inspector && <Inspector />}
       </div>
       {bottom === "problems" && <ProblemsPanel />}
     </ReactFlowProvider>

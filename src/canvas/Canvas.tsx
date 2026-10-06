@@ -67,7 +67,6 @@ export function Canvas() {
   const layoutRequested = useEditor((s) => s.layoutRequested);
   const previewStates = usePreview((s) => s.states);
   const steps = usePreview((s) => s.steps);
-  const forced = usePreview((s) => s.forced);
   const rf = useReactFlow();
   const [nodes, setNodes] = useState<Node<CourseNodeData>[]>([]);
   const wrapper = useRef<HTMLDivElement>(null);
@@ -100,12 +99,11 @@ export function Canvas() {
               isStart: course.info?.start === n.id,
               issues: diagnostics?.byNode.get(n.id) ?? [],
               trail: trail ? (trail.current === n.id ? "current" : trail.visited.has(n.id) ? "visited" : undefined) : undefined,
-              forced: Boolean(forced[n.id]),
             },
           } as Node<CourseNodeData>;
         });
     });
-  }, [course, positions, lang, diagnostics, trail, selection.nodes, forced]);
+  }, [course, positions, lang, diagnostics, trail, selection.nodes]);
 
   const sectionNames = useMemo(() => {
     const map = new Map<number, string>();

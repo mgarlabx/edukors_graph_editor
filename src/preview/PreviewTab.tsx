@@ -1,26 +1,29 @@
 /**
  * The course as the student will see it, with real inference (plan 5.5), and
  * beside it what the author needs to tune it: every call, the student's state,
- * the path and why each branch was taken, and a way to force a judgement.
+ * the path and why each branch was taken, and what the course wrote to the
+ * console.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { courseLangs, useEditor } from "../store/editor";
 import { usePrefs } from "../store/prefs";
 import { useUi } from "../store/ui";
 import { useResizable } from "../ui/resize";
-import { currentState, usePreview, type CallLog, type PlayerState } from "./session";
+import { currentState, usePreview, type CallLog, type ConsoleLevel, type PlayerState } from "./session";
 import { previewHtml } from "./shim";
 import { answer } from "./host";
 import { chooseEdge, summarize } from "../course/condition";
 import { keysOfCourse, scaleLabel } from "../course/keys";
-import { isJudge } from "../course/nodeTypes";
 import { localize } from "../course/localize";
 import { formatCost } from "../ai/client";
 import { Tabs } from "../ui/controls";
+import { openLink } from "../app/platform";
 import type { Course } from "../schema/types";
 import { t } from "../i18n";
 
-type Side = "calls" | "state" | "path" | "judges";
+type Side = "calls" | "state" | "path" | "console";
+
+const LEVELS: ConsoleLevel[] = ["log", "info", "warn", "error", "debug"];
 
 /** The first time the preview opens with no key, it asks for one (plan 5.5); once per session. */
 let askedForKey = false;
@@ -54,7 +57,20 @@ export function PreviewTab() {
   useEffect(() => {
     const onMessage = async (event: MessageEvent) => {
       if (event.source !== frame.current?.contentWindow) return;
-      const m = event.data as { edukors?: string; id?: number; body?: string; state?: string; cover?: boolean; reviewing?: string | null };
+      const m = event.data as {
+        edukors?: string;
+        id?: number;
+        body?: string;
+        state?: string;
+        cover?: boolean;
+        reviewing?: string | null;
+        level?: string;
+        text?: string;
+        at?: number;
+        frame?: string;
+        title?: string | null;
+        href?: string;
+      };
       if (m?.edukors === "state" && typeof m.state === "string") {
         let state: PlayerState;
         try {
@@ -73,6 +89,18 @@ export function PreviewTab() {
         usePreview.getState().record(state, step);
       }
       if (m?.edukors === "screen") usePreview.getState().setScreen({ cover: m.cover === true, reviewing: typeof m.reviewing === "string" ? m.reviewing : null });
+      // WebKit's notice that a ResizeObserver loop was cut short is not the course's.
+      if (m?.edukors === "console" && typeof m.text === "string" && !/ResizeObserver loop/.test(m.text)) {
+        usePreview.getState().logConsole({
+          level: LEVELS.includes(m.level as ConsoleLevel) ? (m.level as ConsoleLevel) : "log",
+          // WebKit hides what an error thrown in a sandboxed frame says; the line says why.
+          text: /^Script error\.?$/.test(m.text.trim()) ? t("preview.consoleHidden") : m.text,
+          frame: m.frame === "step" ? "step" : "player",
+          title: typeof m.title === "string" ? m.title : null,
+          at: typeof m.at === "number" ? m.at : Date.now(),
+        });
+      }
+      if (m?.edukors === "open" && typeof m.href === "string") void openLink(m.href);
       if (m?.edukors === "ai" && typeof m.id === "number") {
         const reply = await answer(courseRef.current, currentState(usePreview.getState()), m.body ?? "{}");
         frame.current?.contentWindow?.postMessage({ edukors: "ai-result", id: m.id, ...reply }, "*");
@@ -134,7 +162,6 @@ export function PreviewTab() {
               </button>
             </span>
           )}
-          {Object.keys(usePreview.getState().forced).length > 0 && <span className="pill pill-warning">{t("preview.forcedMode")}</span>}
         </div>
         <iframe
           key={reload + (frozen === course ? 0 : 0)}
@@ -155,14 +182,14 @@ export function PreviewTab() {
               { id: "calls", label: t("preview.calls") },
               { id: "state", label: t("preview.state") },
               { id: "path", label: t("preview.path") },
-              { id: "judges", label: t("preview.judges") },
+              { id: "console", label: <ConsoleLabel /> },
             ]}
           />
           <div className="preview-side-body">
             {side === "calls" && <Calls />}
             {side === "state" && <StudentState course={frozen} />}
             {side === "path" && <PathView course={frozen} />}
-            {side === "judges" && <ForcedJudges course={frozen} />}
+            {side === "console" && <ConsoleView />}
           </div>
         </aside>
       )}
@@ -341,87 +368,46 @@ function PathView({ course }: { course: Course }) {
   );
 }
 
-function ForcedJudges({ course }: { course: Course }) {
-  const forced = usePreview((s) => s.forced);
-  const lang = useEditor((s) => s.canvasLang);
-  const judges = course.nodes.filter((n) => isJudge(n.type));
-  if (!judges.length) return <p className="muted">{t("preview.noJudges")}</p>;
+/** The tab's name, with the count of errors when there are any. */
+function ConsoleLabel() {
+  const errors = usePreview((s) => s.console.filter((e) => e.level === "error").length);
+  return (
+    <>
+      {t("preview.console")}
+      {errors > 0 && <span className="console-errors"> {errors}</span>}
+    </>
+  );
+}
+
+/** What the course wrote to the console, oldest first, as it runs. */
+function ConsoleView() {
+  const entries = usePreview((s) => s.console);
+  const list = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const box = list.current?.closest(".preview-side-body");
+    if (box) box.scrollTop = box.scrollHeight;
+  }, [entries.length]);
   return (
     <div>
-      <p className="small muted">{t("preview.forceHint")}</p>
-      {judges.map((node) => {
-        const pick = forced[node.id];
-        const items: { key: string; criteria?: unknown }[] = Array.isArray(node.content?.items) ? node.content.items : [];
-        return (
-          <div key={node.id} className={`force-box ${pick ? "is-on" : ""}`}>
-            <label className="check">
-              <input
-                type="checkbox"
-                checked={Boolean(pick)}
-                onChange={(e) =>
-                  usePreview.getState().setForced(
-                    node.id,
-                    e.target.checked
-                      ? Object.fromEntries(
-                          items.map((it) => [
-                            it.key,
-                            node.type === "choice"
-                              ? { value: Object.keys((it.criteria as object) ?? {})[0] ?? "", confidence: 1 }
-                              : node.type === "score"
-                                ? { value: Math.max(0, (Array.isArray(it.criteria) ? it.criteria.length : 1) - 1), confidence: 1 }
-                                : { value: 0.9 },
-                          ]),
-                        )
-                      : null,
-                  )
-                }
-              />
-              <strong>{node.id}</strong> {localize(node.title, lang)} <span className="muted">({node.type})</span>
-            </label>
-            {pick &&
-              items.map((it) => (
-                <div key={it.key} className="row small">
-                  <code>{it.key}</code>
-                  {node.type === "choice" ? (
-                    <select
-                      className="input input-small"
-                      value={String(pick[it.key]?.value ?? "")}
-                      onChange={(e) => usePreview.getState().setForced(node.id, { ...pick, [it.key]: { ...pick[it.key], value: e.target.value } })}
-                    >
-                      {Object.keys((it.criteria as object) ?? {}).map((o) => (
-                        <option key={o}>{o}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      className="input input-small input-number"
-                      type="number"
-                      step="0.01"
-                      min={0}
-                      max={node.type === "score" ? Math.max(1, (Array.isArray(it.criteria) ? it.criteria.length : 2) - 1) : 1}
-                      value={Number(pick[it.key]?.value ?? 0)}
-                      onChange={(e) => usePreview.getState().setForced(node.id, { ...pick, [it.key]: { ...pick[it.key], value: Number(e.target.value) } })}
-                    />
-                  )}
-                  {node.type !== "noul" && (
-                    <>
-                      <span className="muted">{t("preview.confidence")}</span>
-                      <input
-                        className="input input-small input-number"
-                        type="number"
-                        step="0.01"
-                        min={0}
-                        max={1}
-                        value={Number(pick[it.key]?.confidence ?? 1)}
-                        onChange={(e) => usePreview.getState().setForced(node.id, { ...pick, [it.key]: { ...pick[it.key], confidence: Number(e.target.value) } })}
-                      />
-                    </>
-                  )}
-                </div>
-              ))}
+      <div className="row small muted">
+        {t("preview.consoleCount", { n: entries.length })}
+        <span className="spacer" />
+        <button className="link" onClick={() => usePreview.getState().clearConsole()} disabled={!entries.length}>
+          {t("preview.clear")}
+        </button>
+      </div>
+      {!entries.length && <p className="small muted">{t("preview.consoleEmpty")}</p>}
+      <div className="console-list" ref={list}>
+        {entries.map((e) => (
+          <div key={e.id} className={`console-line level-${e.level}`}>
+            <span className="muted">{e.at}</span>
+            <span className="muted console-from" title={e.frame === "step" ? (e.title ?? t("preview.consoleStep")) : t("preview.consolePlayer")}>
+              {e.frame === "step" ? (e.title ?? t("preview.consoleStep")) : t("preview.consolePlayer")}
+            </span>
+            <pre>{e.text}</pre>
           </div>
-        );
-      })}
+        ))}
+      </div>
     </div>
   );
 }

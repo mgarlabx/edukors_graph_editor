@@ -44,7 +44,7 @@ The editor was made for teachers and course authors. With it you can:
 
 Each course is saved in a single file, `course.egf` (Edukors Graph Format: the course's JSON under its own extension, which the app is associated with), which is also what goes to the player. The Open dialog takes `.egf` only; an older `.json` course becomes one by renaming it. The position of each box on the map is saved in it too, in the node's `position` field, which players ignore.
 
-The [teacher's guide](docs/guia-do-professor.md) (in Portuguese) explains how to use the editor step by step.
+The teacher's guide explains how to use the editor step by step, in [Portuguese](docs/guia-do-professor.md), [English](docs/guia-do-professor.en.md) and [Spanish](docs/guia-do-professor.es.md). The app shows it under Help → Full guide, in the interface's language; the three files are bundled with it, so keep them in step.
 
 ## Installation
 

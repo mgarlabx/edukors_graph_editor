@@ -16,15 +16,21 @@ const MODIFIERS: [string, string][] = [
 ];
 const KEYS: Record<string, string> = { "⇥": "Tab", "↵": "Enter", "⌫": "Delete" };
 
-/** "⇧⌘S" → "Ctrl+Shift+S" off the Mac, in a label or in a sentence; as it is on a Mac. */
+/**
+ * "⇧⌘S" → "Ctrl+Shift+S" off the Mac, in a label or in a sentence; as it is on a
+ * Mac. A symbol followed by a blank names the key itself ("⌘ is Ctrl") and stays.
+ */
 export const keyLabel = (text: string): string =>
   notMac
-    ? text.replace(/([⌃⌘⌥⇧]+)(.)|[⇥↵⌫]/gu, (whole, mods?: string, key?: string) => {
+    ? text.replace(/([⌃⌘⌥⇧]+)(\S)|[⇥↵⌫]/gu, (whole, mods?: string, key?: string) => {
         if (!mods || !key) return KEYS[whole] ?? whole;
         const names = new Set(MODIFIERS.filter(([symbol]) => mods.includes(symbol)).map(([, name]) => name));
         return [...names, KEYS[key] ?? key].join("+");
       })
     : text;
+
+/** Whether a key event holds the system's command key: ⌘ on a Mac, Ctrl elsewhere (on a Mac, ⌃ keeps its text bindings). */
+export const commandKey = (e: { metaKey: boolean; ctrlKey: boolean }): boolean => (notMac ? e.ctrlKey : e.metaKey);
 
 const SEPARATOR = windows ? /[\\/]/ : "/";
 

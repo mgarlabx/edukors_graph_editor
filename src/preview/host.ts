@@ -2,27 +2,25 @@
  * What answers the player's model calls in the preview: a port of the two
  * things api/ai.php does with them. A step is written with the server's own
  * prompt (buildGeneration) and settings; a node is judged with the server's
- * body, its acceptance rules and its confidence floor (judgeNode). A judgement
- * the author forced replaces the call, and says so in the log.
+ * body, its acceptance rules and its confidence floor (judgeNode).
  */
 import { chatBody } from "../ai/client";
 import { native } from "../app/platform";
-import { buildGeneration, forcedVars, judgeNode, type Verdict } from "../judge/pipeline";
-import { usePrefs } from "../store/prefs";
+import { buildGeneration, judgeNode, type Verdict } from "../judge/pipeline";
+import { DEFAULT_PREFS, usePrefs } from "../store/prefs";
 import { usePreview, type PlayerState } from "./session";
 import type { Course } from "../schema/types";
 import { isDynamic, isJudge } from "../course/nodeTypes";
-import { t } from "../i18n";
-import { errorText } from "../i18n/errors";
 
 type Reply = { status: number; json: unknown };
 
 const text = (t: string): Reply => ({ status: 200, json: { content: [{ type: "text", text: t }] } });
 const failure = (message: string, status = 502): Reply => ({ status, json: { error: { message } } });
 
+/** The judge as the server runs it: the exact slug always, at the decisions endpoint (neither is a preference). */
 export const judgeSettings = () => {
   const j = usePrefs.getState().judge;
-  return { model: j.model, minConfidence: j.minConfidence, strictModel: j.strictModel, url: j.url, timeout: j.timeout };
+  return { model: j.model, minConfidence: j.minConfidence, strictModel: true, url: DEFAULT_PREFS.judge.url, timeout: j.timeout };
 };
 
 /**
@@ -67,17 +65,6 @@ export async function answer(course: Course, state: PlayerState | null, rawBody:
     const nodeId = marker[1];
     const node = course.nodes.find((n) => n.id === nodeId);
     if (!node || !isJudge(node.type)) return failure(`node ${nodeId} is not a node the AI judges`, 400);
-    const forced = usePreview.getState().forced[nodeId];
-    if (forced) {
-      try {
-        const forcedResult = forcedVars(node, forced);
-        usePreview.getState().log({ node: nodeId, kind: "judge", endpoint: "forced", model: "—", answered: "—", tokensIn: null, tokensOut: null, cost: null, ms: 0, ok: true, note: t("preview.forced"), request: forced, response: JSON.stringify(forcedResult) });
-        return text(JSON.stringify({ judged: true, vars: forcedResult }));
-      } catch (e) {
-        usePreview.getState().noteNotJudged(nodeId, `${t("preview.forced")}: ${errorText(e)}`);
-        return text(JSON.stringify({ judged: false, vars: {} }));
-      }
-    }
     const verdict = await judgeAndLog(course, nodeId, vars, doc);
     return text(JSON.stringify({ judged: verdict.judged, vars: verdict.judged ? verdict.vars : {} }));
   }

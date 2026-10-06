@@ -3,6 +3,8 @@
 // type in the JSON tab right before switching, close a tab with changes.
 //   node tests/e2e/tabs.mjs [outDir]
 import { webkit } from "playwright";
+import { readFileSync } from "node:fs";
+const sample = JSON.parse(readFileSync(new URL("../../samples/world-cats-3-full-course.json", import.meta.url), "utf8"));
 
 const out = process.argv[2] ?? "/tmp";
 const url = process.env.EDITOR_URL ?? "http://localhost:1420/";
@@ -45,11 +47,16 @@ const pasteOnCanvas = (text) =>
   }, text);
 
 await page.goto(url);
+// The terms of use come first, on a fresh profile.
+await page.getByRole("button", { name: "Aceito os termos" }).click();
+// then the opening, with the version
+await page.getByRole("button", { name: "Começar" }).click();
 let clip = "";
 let first = "";
 
 await step("open sample 3 in a tab", async () => {
-  await page.getByRole("button", { name: "world-cats-3-full" }).click();
+  // The welcome screen no longer lists the samples: the course is opened as a file would be.
+  await page.evaluate(async (c) => (await import("/src/store/docs.ts")).openDoc(c, { path: null, saved: true }), sample);
   await page.locator(".card-node").first().waitFor();
   await page.waitForTimeout(1200);
   const tabs = page.getByRole("tab", { name: /Cats of the World 3/ });

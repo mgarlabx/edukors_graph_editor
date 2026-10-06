@@ -1,7 +1,8 @@
 /**
- * Preferences (plan 5.7): the key, in the Keychain; the models and their
- * settings, mirroring the player's config.php; the interface's language and
- * theme.
+ * Preferences (plan 5.7): the interface's language and theme; the key, in the
+ * Keychain; the models and their settings, mirroring the player's config.php
+ * (the judge always holds to the exact slug, at the decisions endpoint: see
+ * judgeSettings); the agent's instructions, MCP servers and skills.
  */
 import { useEffect, useState } from "react";
 import { native } from "../app/platform";
@@ -35,7 +36,9 @@ export function PrefsDialog() {
     judge: prefs.judge,
     agent: prefs.agent,
     sidebar: prefs.sidebar,
+    editorWrap: prefs.editorWrap,
     recent: prefs.recent,
+    terms: prefs.terms,
   });
 
   useEffect(() => {
@@ -52,8 +55,8 @@ export function PrefsDialog() {
 
 
   const save = async () => {
-    // The agent panel keeps its own settings; they may have changed while this was open. The instructions and the MCP servers are this dialog's.
-    await prefs.save({ ...draft, sidebar: usePrefs.getState().sidebar, agent: { ...usePrefs.getState().agent, instructions: draft.agent.instructions, mcp: draft.agent.mcp } });
+    // The agent panel keeps its own settings, and the content editor its line wrapping; they may have changed while this was open. The instructions and the MCP servers are this dialog's.
+    await prefs.save({ ...draft, sidebar: usePrefs.getState().sidebar, editorWrap: usePrefs.getState().editorWrap, agent: { ...usePrefs.getState().agent, instructions: draft.agent.instructions, mcp: draft.agent.mcp } });
     close();
   };
 
@@ -64,7 +67,7 @@ export function PrefsDialog() {
       wide
       actions={
         <>
-          <button className="btn" onClick={() => setDraft({ ...DEFAULT_PREFS, uiLang: draft.uiLang, theme: draft.theme, recent: draft.recent, agent: draft.agent })}>
+          <button className="btn" onClick={() => setDraft({ ...DEFAULT_PREFS, uiLang: draft.uiLang, theme: draft.theme, recent: draft.recent, agent: draft.agent, terms: draft.terms })}>
             {t("prefs.defaults")}
           </button>
           <span className="spacer" />
@@ -82,6 +85,26 @@ export function PrefsDialog() {
           <option key={m} value={m} />
         ))}
       </datalist>
+      <h3>{t("prefs.app")}</h3>
+      <div className="grid-3">
+        <Field label={t("prefs.uiLang")}>
+          <select className="input" value={draft.uiLang} onChange={(e) => setDraft({ ...draft, uiLang: e.target.value as UiLang })}>
+            {UI_LANGS.map((l) => (
+              <option key={l} value={l}>
+                {t(`ui.${l}`)}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label={t("prefs.theme")}>
+          <select className="input" value={draft.theme} onChange={(e) => setDraft({ ...draft, theme: e.target.value as Prefs["theme"] })}>
+            <option value="system">{t("prefs.themeSystem")}</option>
+            <option value="light">{t("prefs.themeLight")}</option>
+            <option value="dark">{t("prefs.themeDark")}</option>
+          </select>
+        </Field>
+      </div>
+
       <h3>{t("prefs.key")}</h3>
       <p className="small muted">{t("prefs.keyHint")}</p>
       <div className="row">
@@ -140,16 +163,7 @@ export function PrefsDialog() {
         <Field label={t("prefs.minConfidence")} hint="judge.min_confidence">
           <NumberInput value={draft.judge.minConfidence} min={0} max={1} step={0.05} onChange={(v) => setDraft({ ...draft, judge: { ...draft.judge, minConfidence: v ?? 0 } })} />
         </Field>
-        <Field label={t("prefs.strictModel")} hint="judge.strict_model">
-          <label className="check">
-            <input type="checkbox" checked={draft.judge.strictModel} onChange={(e) => setDraft({ ...draft, judge: { ...draft.judge, strictModel: e.target.checked } })} />
-            {t("prefs.strictHint")}
-          </label>
-        </Field>
       </div>
-      <Field label={t("prefs.judgeUrl")} hint="judge.url">
-        <input className="input wide" value={draft.judge.url} onChange={(e) => setDraft({ ...draft, judge: { ...draft.judge, url: e.target.value } })} />
-      </Field>
 
       <h3>{t("prefs.agent")}</h3>
       <p className="small muted">{t("prefs.agentHint")}</p>
@@ -174,26 +188,6 @@ export function PrefsDialog() {
       <Field label={t("prefs.agentSkills")} hint={t("prefs.agentSkillsHint")}>
         <AgentSkills />
       </Field>
-
-      <h3>{t("prefs.app")}</h3>
-      <div className="grid-3">
-        <Field label={t("prefs.uiLang")}>
-          <select className="input" value={draft.uiLang} onChange={(e) => setDraft({ ...draft, uiLang: e.target.value as UiLang })}>
-            {UI_LANGS.map((l) => (
-              <option key={l} value={l}>
-                {t(`ui.${l}`)}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label={t("prefs.theme")}>
-          <select className="input" value={draft.theme} onChange={(e) => setDraft({ ...draft, theme: e.target.value as Prefs["theme"] })}>
-            <option value="system">{t("prefs.themeSystem")}</option>
-            <option value="light">{t("prefs.themeLight")}</option>
-            <option value="dark">{t("prefs.themeDark")}</option>
-          </select>
-        </Field>
-      </div>
     </Modal>
   );
 }

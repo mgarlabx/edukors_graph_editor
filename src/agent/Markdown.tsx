@@ -1,16 +1,7 @@
 import { useMemo, type MouseEvent } from "react";
 import DOMPurify from "dompurify";
 import { marked } from "marked";
-import { isTauri } from "../app/platform";
-
-/** Opens a link in the browser: the webview itself never leaves the editor. */
-async function openLink(href: string) {
-  if (!/^(https?:|mailto:)/i.test(href)) return;
-  if (isTauri()) {
-    const { openUrl } = await import("@tauri-apps/plugin-opener");
-    await openUrl(href);
-  } else window.open(href, "_blank", "noopener");
-}
+import { openLink } from "../app/platform";
 
 /** The agent's markdown, sanitized. */
 export function Markdown({ text, className = "" }: { text: string; className?: string }) {
