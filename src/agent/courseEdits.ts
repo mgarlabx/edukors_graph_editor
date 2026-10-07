@@ -33,7 +33,7 @@ export interface Applied {
 export class EditError extends Error {}
 
 /** The info fields a course may go without. */
-const OPTIONAL_INFO = new Set(["description", "sections", "system-prompt"]);
+const OPTIONAL_INFO = new Set(["description", "sections", "system-prompt", "extras"]);
 
 const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
 const isLoc = (v: unknown): v is Loc => Array.isArray(v) && v.every((e) => isObject(e) && typeof e.lang === "string" && typeof e.text === "string");
@@ -123,14 +123,24 @@ function applyOne(course: Course, op: Operation, applied: Applied): string {
     case "set_edges": {
       nodeOf(course, op.from);
       if (!Array.isArray(op.edges)) throw new EditError("edges must be a list.");
+      const slots = outgoingIndexes(course, op.from);
+      // An edge set again to where one went before keeps that one's extras: the same condition first, else the first left.
+      const old = slots.map((i) => course.edges[i]).filter((e) => e.extras);
+      const take = (match: (e: CourseEdge) => boolean) => {
+        const at = old.findIndex(match);
+        return at === -1 ? undefined : old.splice(at, 1)[0].extras;
+      };
+      const extrasFor = (to: string, when: unknown) =>
+        take((e) => e.to === to && JSON.stringify(e.when) === JSON.stringify(when)) ?? take((e) => e.to === to);
       const fresh: CourseEdge[] = op.edges.map((e, k) => {
         if (!isObject(e)) throw new EditError(`edge ${k + 1} is not an object.`);
         nodeOf(course, e.to);
         if (e.when !== undefined && !isObject(e.when)) throw new EditError(`edge ${k + 1}: when must be a condition object.`);
-        return e.when === undefined ? { from: op.from, to: e.to } : { from: op.from, to: e.to, when: e.when };
+        const edge: CourseEdge = e.when === undefined ? { from: op.from, to: e.to } : { from: op.from, to: e.to, when: e.when };
+        const extras = extrasFor(e.to, e.when);
+        return extras ? { ...edge, extras } : edge;
       });
       // The node's edges stay where they were in the file, so the order of everyone else's is untouched.
-      const slots = outgoingIndexes(course, op.from);
       const at = slots.length ? slots[0] : course.edges.length;
       const drop = new Set(slots);
       const before = course.edges.slice(0, at).filter((_, i) => !drop.has(i));

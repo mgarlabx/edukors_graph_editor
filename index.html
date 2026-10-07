@@ -5,6 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
     <title>Edukors Graph Editor</title>
+    <script>
+      // If the app fails before it draws anything (a WebKit too old for the bundle, say),
+      // the window shows the error instead of staying blank. React clears it if it mounts.
+      (function () {
+        var said = {
+          pt: "O editor não conseguiu iniciar. O erro foi:",
+          es: "El editor no pudo iniciarse. El error fue:",
+          en: "The editor could not start. The error was:",
+        };
+        function show(detail) {
+          var root = document.getElementById("root");
+          if (!root || root.hasChildNodes()) return;
+          var lang = (navigator.language || "en").slice(0, 2);
+          var box = document.createElement("pre");
+          box.style.cssText = "margin:32px;white-space:pre-wrap;font:13px/1.5 ui-monospace,Menlo,monospace";
+          box.textContent = (said[lang] || said.en) + "\n\n" + detail + "\n\n" + navigator.userAgent;
+          root.appendChild(box);
+        }
+        addEventListener("error", function (e) {
+          show(String(e.message || e.error) + (e.filename ? "\n" + e.filename + ":" + e.lineno + ":" + e.colno : ""));
+        });
+        addEventListener("unhandledrejection", function (e) {
+          show(String((e.reason && e.reason.message) || e.reason));
+        });
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

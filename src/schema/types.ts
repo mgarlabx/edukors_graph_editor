@@ -64,10 +64,14 @@ export type Condition =
   | { and: Condition[] }
   | { or: Condition[] };
 
+/** What a tool or use case keeps with the course, which the format does not define: kept as it was. */
+export type Extras = Record<string, unknown>;
+
 export interface CourseEdge {
   from: string;
   to: string;
   when?: Condition;
+  extras?: Extras;
 }
 
 export interface CourseNode {
@@ -79,6 +83,7 @@ export interface CourseNode {
   // The shape depends on `type`; see contentOf() in course/nodeTypes.ts.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   content: any;
+  extras?: Extras;
 }
 
 export interface Section {
@@ -98,6 +103,7 @@ export interface CourseInfo {
   start: string;
   sections?: Section[];
   "system-prompt"?: string;
+  extras?: Extras;
 }
 
 export interface Course {

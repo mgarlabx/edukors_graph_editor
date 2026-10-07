@@ -40,6 +40,9 @@ const ask = (title: string, message: string, choices: Choice[], input?: Pending[
 /** Whether one of these dialogs is waiting for an answer. */
 export const isDialogOpen = () => useDialogs.getState().pending !== null;
 
+/** Calls `fn` whenever one of these dialogs opens or closes; returns the unsubscribe. */
+export const watchDialogs = (fn: () => void) => useDialogs.subscribe(fn);
+
 /** `name`: the course asked about, there being several open at once. */
 export const askUnsaved = async (name: string): Promise<"save" | "discard" | "cancel"> =>
   (

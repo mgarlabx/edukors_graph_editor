@@ -72,6 +72,11 @@ await watchToasts();
 await next(); // sm1
 await next(); // sh1
 await next(); // sm3
+// sm3 ends the first section: the second opens on a screen of its own before q1
+await player.locator(".edukors-player-opening").waitFor();
+const opening = await player.locator(".edukors-player-opening").innerText();
+await player.locator('[data-action="open-section"]').click();
+await page.waitForTimeout(350);
 // q1: the wrong option everywhere, so q1.percent < 70 and the student goes to dm1
 const questions = course.nodes.find((n) => n.id === "q1").content.items;
 for (const [qi, q] of questions.entries()) {
@@ -137,6 +142,7 @@ const check = (ok, what) => {
 // The path the player took, as the editor recorded it.
 const hops = steps.map((s) => s.split("\n")[0].replace(/\s+/g, " "));
 console.log(hops.join("\n"));
+check(opening.includes("Check and delivery") && opening.includes("The cats"), "between sections, the next one opens naming it, and the one done");
 check(hops.some((h) => /^q1 → dm1/.test(h)), "a wrong quiz goes to the reinforcement (q1 → dm1)");
 check(hops.some((h) => /^s1 → dm2/.test(h)), "a judgement that happened goes to the feedback (s1 → dm2)");
 check(rows.length === 3, `three calls logged (generate, judge, generate): ${rows.length}`);

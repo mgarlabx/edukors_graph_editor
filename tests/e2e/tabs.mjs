@@ -131,7 +131,7 @@ await step("dragging a tab moves it", async () => {
 });
 
 await step("typing in the JSON tab lands in its own course, even right before switching", async () => {
-  await page.getByRole("tab", { name: "JSON" }).click();
+  await page.getByRole("tab", { name: "EGF" }).click();
   const editor = page.locator(".monaco-editor").first();
   await editor.waitFor({ timeout: 20000 });
   await page.waitForTimeout(600);

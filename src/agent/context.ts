@@ -18,7 +18,7 @@ export interface MessageContext {
   docId: string | null;
 }
 
-const VIEW = { canvas: "Graph", json: "JSON", preview: "Preview" } as const;
+const VIEW = { canvas: "Graph", json: "EGF", preview: "Preview" } as const;
 
 /**
  * The selection on screen as the chip of the composer shows it, and the

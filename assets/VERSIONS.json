@@ -1,10 +1,10 @@
 {
-  "date": "2026-10-06",
-  "source": "154ac32",
+  "date": "2026-10-07",
+  "source": "cd99156",
   "files": {
     "src/schema/schema.json": "3f9edf19eabebdca",
-    "assets/course_player.html": "27bc4c3f9ef685d6",
-    "assets/course_viewer.html": "9060682c6931cd43"
+    "assets/course_player.html": "3b2a099a74c2dbfc",
+    "assets/course_viewer.html": "8deeb222f15c902d"
   },
   "watched": {
     "bridge.js": "a070ab089c41c03d",

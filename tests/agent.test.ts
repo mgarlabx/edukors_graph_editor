@@ -90,6 +90,22 @@ describe("agent edits", () => {
     expect(c.edges.some((e) => e.from === "q1")).toBe(false);
   });
 
+  it("keeps the extras of an edge set again to where it went, and the course's own", () => {
+    const c = short();
+    c.edges[3].extras = { analytics: { tag: "passed" } };
+    c.edges[4].extras = { analytics: { tag: "retry" } };
+    const pass = { key: "q1.percent", operator: "gte", value: 80 } as const;
+    applyOperations(c, [{ op: "set_edges", from: "q1", edges: [{ to: "dm1", when: { key: "q1.percent", operator: "lt", value: 50 } }, { to: "f1", when: pass }, { to: "sm3" }] }]);
+    expect(c.edges.slice(3, 6)).toEqual([
+      { from: "q1", to: "dm1", when: { key: "q1.percent", operator: "lt", value: 50 }, extras: { analytics: { tag: "retry" } } },
+      { from: "q1", to: "f1", when: pass, extras: { analytics: { tag: "passed" } } },
+      { from: "q1", to: "sm3" },
+    ]);
+    c.info.extras = { "acme-lms": { course: "MAT-07" } };
+    applyOperations(c, [{ op: "update_info", info: { extras: null } }]);
+    expect(c.info.extras).toBeUndefined();
+  });
+
   it("changes the course info, opening every text in a language it adds", () => {
     const c = mini();
     applyOperations(c, [{ op: "update_info", info: { "other-languages": ["pt"], description: null, version: "1.2.0" } }]);

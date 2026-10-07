@@ -20,7 +20,7 @@ Tip: once installed, an `.egf` course opens in the editor with a double click. A
 | --- | --- |
 | **Graph** (center) | The steps and the arrows. Drag the steps to arrange them, or drag a section's title to move the whole section; use ⊞ to arrange everything automatically. |
 | **Inspector** (right) | The content of whatever is selected. It starts closed when you open a file and opens when you click a step or an arrow; the sidebar icon (⌥⌘0) opens and closes it, and its left edge can be dragged to change its width — in the Preview, the same icon opens and closes the panel with the calls, state, path and console. With nothing selected, it shows the course's information. It stays open when the AI agent appears beside it. |
-| **Top bar** | Save, the ＋ that **inserts** steps (the ten types, also in the **Insert** menu), undo, the **Map / JSON / Preview** tabs, the graph's language, the **problems** badge and, at the far right, the **AI agent** ✦. |
+| **Top bar** | Save, the ＋ that **inserts** steps (the ten types, also in the **Insert** menu), undo, the **Map / EGF / Preview** tabs, the graph's language, the **problems** badge and, at the far right, the **AI agent** ✦. |
 | **Course tabs** (just below) | One open course per tab; ＋ creates a new course. |
 
 ### Several courses at once
@@ -29,7 +29,7 @@ Every course you open or create gets a **course tab**, just below the top bar. C
 
 To **bring steps from one course to another**: select the steps on the graph, press ⌘C, switch tabs, click the graph and press ⌘V. The steps arrive with new ids, near the center of the screen and in the same arrangement; the arrows between them come along. References from one to another now point to the copies: a copied *Score (AI)* together with its form assesses the copied form. The texts arrive in the destination course's languages; if its main language is missing, the original text goes into that language, for you to translate right there.
 
-You can also paste onto the graph a step copied from the **JSON** tab (the whole step object, from `{` to `}`).
+You can also paste onto the graph a step copied from the **EGF** tab (the whole step object, from `{` to `}`).
 
 ## 4. The step types
 
@@ -202,7 +202,7 @@ On Windows, ⌘ and ⌃ stand for Ctrl, ⌥ for Alt and ⇧ for Shift; inside th
 | ⌘0 | Fit the graph |
 | ⇧⌘L | Arrange automatically |
 | ⇧⌘M | Open / close the problems panel |
-| ⌘M / ⌘J / ⌘P | Map / JSON / Preview tab |
+| ⌘M / ⌘E / ⌘P | Map / EGF / Preview tab |
 | ⌥⌘0 | Open / close the inspector (in the Preview, the side panel) |
 | ⌘, | Preferences |
 | ⇧⌘A | Open / close the AI agent |

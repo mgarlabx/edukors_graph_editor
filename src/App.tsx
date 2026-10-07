@@ -31,7 +31,7 @@ import { insertNode } from "./app/insert";
 import { NODE_TYPES } from "./course/nodeTypes";
 import type { NodeType } from "./schema/types";
 import { useUiLang } from "./i18n";
-import { syncMenu, watchMenu } from "./app/menu";
+import { needsCourse, syncMenu, watchMenu } from "./app/menu";
 
 const editable = (el: Element | null) =>
   !!el && (el.closest("input, textarea, select, [contenteditable=true], .monaco-editor") !== null || (el as HTMLElement).isContentEditable);
@@ -46,6 +46,8 @@ export function command(id: string) {
   const store = useEditor.getState();
   const ui = useUi.getState();
   if ((SWITCHES.has(id) || id.startsWith("recent:")) && asking()) return;
+  // Off in the menu without a course; the keys of the browser build come here all the same.
+  if (!store.course && needsCourse(id)) return;
   if (id === "recent-clear") return usePrefs.getState().save({ recent: [] });
   if (id.startsWith("recent:")) return openCourse(id.slice("recent:".length));
   if (id.startsWith("insert:")) {
@@ -190,7 +192,7 @@ export default function App() {
         return;
       }
       if (!isTauri() && meta) {
-        const map: Record<string, string> = { n: "new", o: "open", s: e.shiftKey ? "save-as" : "save", z: e.shiftKey ? "redo" : "undo", d: "duplicate", 0: "fit", m: "tab-canvas", j: "tab-json", p: "tab-preview", ",": "prefs" };
+        const map: Record<string, string> = { n: "new", o: "open", s: e.shiftKey ? "save-as" : "save", z: e.shiftKey ? "redo" : "undo", d: "duplicate", 0: "fit", m: "tab-canvas", e: "tab-json", p: "tab-preview", ",": "prefs" };
         const shifted: Record<string, string> = { l: "layout", m: "problems" };
         const id = (e.shiftKey && shifted[e.key.toLowerCase()]) || map[e.key.toLowerCase()];
         if (id && !(editable(document.activeElement) && ["z", "d"].includes(e.key.toLowerCase()))) {

@@ -33,7 +33,7 @@ S = {
 "unsaved.message": ("“{name}” tem alterações que não foram salvas. O que fazer com elas?", "“{name}” has changes that were not saved. What should happen to them?", "“{name}” tiene cambios sin guardar. ¿Qué hacer con ellos?"),
 "unsaved.discard": ("Descartar", "Discard", "Descartar"),
 "tab.canvas": ("Mapa", "Map", "Mapa"),
-"tab.json": ("JSON", "JSON", "JSON"),
+"tab.json": ("EGF", "EGF", "EGF"),
 "tab.preview": ("Preview", "Preview", "Vista previa"),
 "tabs.label": ("Cursos abertos", "Open courses", "Cursos abiertos"),
 "tabs.close": ("Fechar aba", "Close tab", "Cerrar pestaña"),

@@ -100,7 +100,7 @@ export function editorServer(callEditor) {
     tools: [
       def(
         "get_editor_state",
-        "What is open in the editor now: the course on screen (title, file, languages, size, problems, unsaved changes), the other courses open in tabs, what is selected on the canvas and which view (Graph, JSON or Preview) is showing. Each message already brings this; call it when you need it fresh in the middle of a task.",
+        "What is open in the editor now: the course on screen (title, file, languages, size, problems, unsaved changes), the other courses open in tabs, what is selected on the canvas and which view (Graph, EGF or Preview) is showing. Each message already brings this; call it when you need it fresh in the middle of a task.",
         {},
         { readOnlyHint: true, openWorldHint: false },
       ),

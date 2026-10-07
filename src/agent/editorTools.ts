@@ -31,7 +31,7 @@ export interface ToolResult {
 
 const json = (value: unknown) => JSON.stringify(value, null, 1);
 
-const VIEW = { canvas: "Graph", json: "JSON", preview: "Preview" } as const;
+const VIEW = { canvas: "Graph", json: "EGF", preview: "Preview" } as const;
 
 /** The course a tool acts on: the conversation's, else the one on screen. */
 function target(docId: string | null): { id: string; course: Course } {
@@ -97,7 +97,7 @@ const defs = (schema as { $defs: Record<string, { description?: string }> }).$de
 function getSchema(args: { definition?: unknown }): ToolResult {
   const name = typeof args.definition === "string" ? args.definition.trim() : "";
   if (!name) {
-    const lines = Object.entries(defs).map(([k, v]) => `- ${k}: ${String(v.description ?? "").split(/(?<=\.)\s/)[0]}`);
+    const lines = Object.entries(defs).map(([k, v]) => `- ${k}: ${String(v.description ?? "").replace(/\.\s[\s\S]*$/, ".")}`);
     return { text: `${(schema as { description?: string }).description ?? ""}\n\nDefinitions (get_schema with one of these names gives it in full; "course" gives the top level, "all" the whole schema):\n${lines.join("\n")}` };
   }
   if (name === "all") return { text: JSON.stringify(schema) };

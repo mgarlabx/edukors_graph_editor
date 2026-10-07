@@ -20,7 +20,7 @@ Consejo: una vez instalado, un curso `.egf` se abre en el editor con doble clic.
 | --- | --- |
 | **Grafo** (centro) | Los pasos y las flechas. Arrastre los pasos para organizarlos, o arrastre el título de una sección para mover la sección entera; use ⊞ para organizarlo todo automáticamente. |
 | **Inspector** (derecha) | El contenido de lo que esté seleccionado. Empieza cerrado al abrir un archivo y se abre al hacer clic en un paso o en una flecha; el icono de barra lateral (⌥⌘0) lo abre y lo cierra, y su borde izquierdo se arrastra para cambiar el ancho — en la Vista previa, el mismo icono abre y cierra el panel de llamadas, estado, camino y consola. Sin nada seleccionado, muestra la información del curso. Sigue abierto cuando el agente de IA aparece a su lado. |
-| **Barra superior** | Guardar, el ＋ que **inserta** pasos (los diez tipos, también en el menú **Insertar**), deshacer, las pestañas **Mapa / JSON / Vista previa**, el idioma del grafo, la insignia de **problemas** y, en el extremo derecho, el **agente de IA** ✦. |
+| **Barra superior** | Guardar, el ＋ que **inserta** pasos (los diez tipos, también en el menú **Insertar**), deshacer, las pestañas **Mapa / EGF / Vista previa**, el idioma del grafo, la insignia de **problemas** y, en el extremo derecho, el **agente de IA** ✦. |
 | **Pestañas de curso** (justo debajo) | Un curso abierto por pestaña; ＋ crea un curso nuevo. |
 
 ### Varios cursos a la vez
@@ -29,7 +29,7 @@ Cada curso que abre o crea recibe una **pestaña de curso**, justo debajo de la 
 
 Para **llevar pasos de un curso a otro**: seleccione los pasos en el grafo, pulse ⌘C, cambie de pestaña, haga clic en el grafo y pulse ⌘V. Los pasos llegan con ids nuevos, cerca del centro de la pantalla y con la misma disposición; las flechas entre ellos vienen también. Las referencias de uno a otro pasan a apuntar a las copias: una *Nota (IA)* copiada junto con su formulario evalúa el formulario copiado. Los textos llegan en los idiomas del curso de destino; si falta su idioma principal, el texto original va a ese idioma, para que lo traduzca allí mismo.
 
-También puede pegar en el grafo un paso copiado de la pestaña **JSON** (el objeto entero del paso, de `{` a `}`).
+También puede pegar en el grafo un paso copiado de la pestaña **EGF** (el objeto entero del paso, de `{` a `}`).
 
 ## 4. Los tipos de paso
 
@@ -202,7 +202,7 @@ En Windows, ⌘ y ⌃ corresponden a Ctrl, ⌥ a Alt y ⇧ a Shift; dentro del e
 | ⌘0 | Encuadrar el grafo |
 | ⇧⌘L | Organizar automáticamente |
 | ⇧⌘M | Abrir / cerrar el panel de problemas |
-| ⌘M / ⌘J / ⌘P | Pestaña Mapa / JSON / Vista previa |
+| ⌘M / ⌘E / ⌘P | Pestaña Mapa / EGF / Vista previa |
 | ⌥⌘0 | Abrir / cerrar el inspector (en la Vista previa, el panel lateral) |
 | ⌘, | Preferencias |
 | ⇧⌘A | Abrir / cerrar el agente de IA |

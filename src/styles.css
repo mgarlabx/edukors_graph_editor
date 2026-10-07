@@ -3459,3 +3459,27 @@ div.agent-tool-head {
 .agent-skills-list li {
   margin: 2px 0;
 }
+
+/* Safari before 16.2 (the WebKit of macOS 12 and earlier) drops color-mix(). The
+   properties above then fall back on their own, except the minimap mask, a custom
+   property that would turn into a black fill, and a few that would lose their tint. */
+@supports not (color: color-mix(in srgb, currentColor, transparent)) {
+  .react-flow {
+    --xy-minimap-mask-background-color: initial;
+  }
+  .doc-tab:hover {
+    background: var(--panel);
+  }
+  .type-pill {
+    background: var(--bg);
+  }
+  .agent-notice-error {
+    border-color: var(--error);
+  }
+  .agent-notice-warning {
+    border-color: var(--warning);
+  }
+  .agent-ask {
+    background: var(--accent-soft);
+  }
+}

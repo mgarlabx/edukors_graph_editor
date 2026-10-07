@@ -39,7 +39,7 @@ Sem assinatura, o macOS abre o app só depois de o usuário autorizá-lo em **Aj
    ```sh
    codesign --verify --deep --strict --verbose=2 "src-tauri/target/release/bundle/macos/Edukors Graph Editor.app"
    spctl --assess --type execute --verbose "src-tauri/target/release/bundle/macos/Edukors Graph Editor.app"
-   xcrun stapler validate "src-tauri/target/release/bundle/dmg/Edukors Graph Editor_1.12.0_aarch64.dmg"
+   xcrun stapler validate "src-tauri/target/release/bundle/dmg/Edukors Graph Editor_1.13.0_aarch64.dmg"
    ```
 
 ## Intel e Apple Silicon

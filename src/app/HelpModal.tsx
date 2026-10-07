@@ -34,7 +34,7 @@ const SHORTCUTS: [string, string][] = [
   ["⇧⌘L", "canvas.layout"],
   ["⇧⌘M", "problems.title"],
   ["⌘M", "tab.canvas"],
-  ["⌘J", "tab.json"],
+  ["⌘E", "tab.json"],
   ["⌘P", "tab.preview"],
   ["⌘,", "prefs.title"],
   ["⇧⌘A", "agent.title"],

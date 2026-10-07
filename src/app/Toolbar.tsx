@@ -36,7 +36,7 @@ import { keyLabel } from "./os";
 
 const TABS: { id: Tab; Icon: typeof MapIcon; key: string }[] = [
   { id: "canvas", Icon: MapIcon, key: "⌘M" },
-  { id: "json", Icon: JsonIcon, key: "⌘J" },
+  { id: "json", Icon: JsonIcon, key: "⌘E" },
   { id: "preview", Icon: PreviewIcon, key: "⌘P" },
 ];
 

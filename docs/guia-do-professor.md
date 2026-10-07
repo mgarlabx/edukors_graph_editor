@@ -20,7 +20,7 @@ Dica: depois de instalado, um curso `.egf` abre no editor com duplo clique. Um c
 | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Grafo** (centro)              | Os passos e as setas. Arraste os passos para organizá-los, ou arraste o título de uma seção para mover a seção inteira; use ⊞ para organizar tudo automaticamente.                                                                                                                                                                                               |
 | **Inspetor** (direita)          | O conteúdo do que estiver selecionado. Começa fechado ao abrir um arquivo e abre ao clicar num passo ou numa seta; o ícone de barra lateral (⌥⌘0) abre e fecha, e a borda esquerda dela se arrasta para mudar a largura — no Preview, o mesmo ícone abre e fecha o painel de chamadas, estado, caminho e console. Sem nada selecionado, mostra as informações do curso. Continua aberto quando o agente de IA aparece ao lado. |
-| **Barra de cima**               | Salvar, o ＋ que **insere** passos (os dez tipos, também no menu **Inserir**), desfazer, as abas **Mapa / JSON / Preview**, o idioma do grafo, o selo de **problemas** e, na ponta direita, o **agente de IA** ✦.                                                                                                                       |
+| **Barra de cima**               | Salvar, o ＋ que **insere** passos (os dez tipos, também no menu **Inserir**), desfazer, as abas **Mapa / EGF / Preview**, o idioma do grafo, o selo de **problemas** e, na ponta direita, o **agente de IA** ✦.                                                                                                                       |
 | **Abas de curso** (logo abaixo) | Um curso aberto por aba; ＋ cria um curso novo.                                                                                                                                                                                                                                                                                                                         |
 
 ### Vários cursos ao mesmo tempo
@@ -29,7 +29,7 @@ Cada curso que você abre ou cria ganha uma **aba de curso**, logo abaixo da bar
 
 Para **levar passos de um curso para outro**: selecione os passos no grafo, tecle ⌘C, troque de aba, clique no grafo e tecle ⌘V. Os passos chegam com ids novos, perto do centro da tela e na mesma arrumação; as setas entre eles vêm junto. As referências de um para o outro passam a apontar para as cópias: uma *Nota (IA)* copiada com o seu formulário avalia o formulário copiado. Os textos chegam nos idiomas do curso de destino; se faltar o idioma principal dele, o texto original vai para esse idioma, para você traduzir ali mesmo.
 
-Também dá para colar no grafo um passo copiado da aba **JSON** (o objeto inteiro do passo, de `{` a `}`).
+Também dá para colar no grafo um passo copiado da aba **EGF** (o objeto inteiro do passo, de `{` a `}`).
 
 ## 4. Os tipos de passo
 
@@ -202,7 +202,7 @@ No Windows, ⌘ e ⌃ correspondem a Ctrl, ⌥ a Alt e ⇧ a Shift; dentro do ed
 | ⌘0                     | Enquadrar o grafo                                              |
 | ⇧⌘L                   | Organizar automaticamente                                      |
 | ⇧⌘M                   | Abrir / fechar o painel de problemas                           |
-| ⌘M / ⌘J / ⌘P         | Aba Mapa / JSON / Preview                                      |
+| ⌘M / ⌘E / ⌘P         | Aba Mapa / EGF / Preview                                       |
 | ⌥⌘0                   | Abrir / fechar o inspetor (no Preview, o painel lateral)       |
 | ⌘,                     | Preferências                                                  |
 | ⇧⌘A                   | Abrir / fechar o agente de IA                                  |

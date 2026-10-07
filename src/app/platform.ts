@@ -104,7 +104,8 @@ export const native = {
   keyDelete: () => call<void>("key_delete"),
   aiPost: (url: string, body: unknown, timeout?: number) => call<HttpAnswer>("ai_post", { url, body, timeout }),
   aiModels: () => call<{ data?: unknown[] }>("ai_models"),
-  setMenu: (lang: string, recent: string[], map: { langs: string[]; current: string }) => call<void>("set_menu", { lang, recent, map }),
+  setMenu: (lang: string, recent: string[], map: { langs: string[]; current: string }, state: { course: boolean; tabs: number; dialog: boolean }) =>
+    call<void>("set_menu", { lang, recent, map, state }),
 };
 
 // ---------------------------------------------------------------- dialogs --

@@ -8,6 +8,11 @@ const host = process.env.TAURI_DEV_HOST;
 export default defineConfig(() => ({
   plugins: [react()],
 
+  // The window is the system WebKit, which on macOS 12 can be Safari 15. Vite's default
+  // (Safari 16.4) leaves syntax that WebKit 15 cannot parse, and the window stays blank.
+  // scripts/check-compat.mjs checks what lowering cannot fix.
+  build: { target: "safari15" },
+
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
   // 1. prevent Vite from obscuring rust errors

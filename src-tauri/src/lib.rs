@@ -191,7 +191,7 @@ fn labels(lang: &str) -> [&'static str; 31] {
     match lang {
         "en" => [
             "File", "New course", "Open…", "Save", "Save as…", "Clear history", "Export course…",
-            "Edit", "Undo", "Redo", "View", "Fit graph", "Auto layout", "Json", "Preview",
+            "Edit", "Undo", "Redo", "View", "Fit graph", "Auto layout", "EGF", "Preview",
             "Preferences…", "Window", "Help", "User guide", "Duplicate", "Close tab", "Next tab",
             "Previous tab", "AI agent", "Map", "Minimize", "Recent", "Delete", "Problems", "Map language",
             "Sidebar",
@@ -199,7 +199,7 @@ fn labels(lang: &str) -> [&'static str; 31] {
         "es" => [
             "Archivo", "Nuevo curso", "Abrir…", "Guardar", "Guardar como…", "Borrar historial",
             "Exportar curso…", "Editar", "Deshacer", "Rehacer", "Ver", "Ajustar grafo",
-            "Organizar automáticamente", "Json", "Vista previa", "Preferencias…",
+            "Organizar automáticamente", "EGF", "Vista previa", "Preferencias…",
             "Ventana", "Ayuda", "Guía de uso", "Duplicar", "Cerrar pestaña", "Pestaña siguiente",
             "Pestaña anterior", "Agente de IA", "Mapa", "Minimizar", "Recientes", "Eliminar",
             "Problemas", "Idioma del mapa", "Barra lateral",
@@ -207,7 +207,7 @@ fn labels(lang: &str) -> [&'static str; 31] {
         _ => [
             "Arquivo", "Novo curso", "Abrir…", "Salvar", "Salvar como…", "Limpar histórico",
             "Exportar curso…", "Editar", "Desfazer", "Refazer", "Ver", "Enquadrar grafo",
-            "Organizar automaticamente", "Json", "Preview", "Preferências…", "Janela",
+            "Organizar automaticamente", "EGF", "Preview", "Preferências…", "Janela",
             "Ajuda", "Guia de uso", "Duplicar", "Fechar aba", "Próxima aba", "Aba anterior",
             "Agente de IA", "Mapa", "Minimizar", "Recentes", "Excluir", "Problemas", "Idioma do mapa",
             "Barra lateral",
@@ -305,11 +305,41 @@ struct MapLangs {
     current: String,
 }
 
-fn build_menu(app: &AppHandle, lang: &str, recent: &[String], map: &MapLangs) -> tauri::Result<Menu<tauri::Wry>> {
+/// What else the menu follows of the webview: whether a course is open, how
+/// many tabs there are, and whether a dialog is (its text fields, such as the
+/// preferences' key, are there with no course open too).
+#[derive(Default, Deserialize)]
+struct MenuState {
+    course: bool,
+    tabs: usize,
+    dialog: bool,
+}
+
+/// Undo, redo, cut, copy, paste and select all: they act on the course or on
+/// the text fields of a dialog, and are off when neither is on screen.
+const TEXT_EDIT: [&str; 6] = ["undo", "redo", "cut", "copy", "paste", "select-all"];
+
+/// The items that act on the course on screen, off while there is none, and
+/// every type of the Insert menu with them. The webview keeps the same list
+/// (NEEDS_COURSE in src/app/menu.ts), for the keys the menu does not take.
+const NEEDS_COURSE: [&str; 14] = [
+    "close-tab", "save", "save-as", "export-player", "duplicate", "delete", "fit", "layout",
+    "tab-canvas", "tab-json", "tab-preview", "problems", "agent", "sidebar",
+];
+
+fn item_enabled(id: &str, state: &MenuState) -> bool {
+    match id {
+        "next-tab" | "prev-tab" => state.tabs > 1,
+        _ if TEXT_EDIT.contains(&id) => state.course || state.dialog,
+        _ => state.course || !(NEEDS_COURSE.contains(&id) || id.starts_with("insert:")),
+    }
+}
+
+fn build_menu(app: &AppHandle, lang: &str, recent: &[String], map: &MapLangs, state: &MenuState) -> tauri::Result<Menu<tauri::Wry>> {
     let l = labels(lang);
     let s = system_labels(lang);
     let item = |id: &str, text: &str, accel: Option<&str>| {
-        let b = MenuItemBuilder::with_id(id, text);
+        let b = MenuItemBuilder::with_id(id, text).enabled(item_enabled(id, state));
         match accel {
             Some(a) => b.accelerator(a).build(app),
             None => b.build(app),
@@ -363,11 +393,22 @@ fn build_menu(app: &AppHandle, lang: &str, recent: &[String], map: &MapLangs) ->
     let edit = SubmenuBuilder::new(app, l[7])
         .item(&item("undo", l[8], Some("CmdOrCtrl+Z"))?)
         .item(&item("redo", l[9], Some("CmdOrCtrl+Shift+Z"))?)
-        .separator()
-        .item(&PredefinedMenuItem::cut(app, Some(s[4]))?)
-        .item(&PredefinedMenuItem::copy(app, Some(s[5]))?)
-        .item(&PredefinedMenuItem::paste(app, Some(s[6]))?)
-        .item(&PredefinedMenuItem::select_all(app, Some(s[7]))?)
+        .separator();
+    // The system's cut, copy, paste and select all cannot be turned off, and on
+    // macOS a text field takes those keys only through them: while there is
+    // nothing for them to act on, stand-ins of ours, off, take their place.
+    let edit = if item_enabled("cut", state) {
+        edit.item(&PredefinedMenuItem::cut(app, Some(s[4]))?)
+            .item(&PredefinedMenuItem::copy(app, Some(s[5]))?)
+            .item(&PredefinedMenuItem::paste(app, Some(s[6]))?)
+            .item(&PredefinedMenuItem::select_all(app, Some(s[7]))?)
+    } else {
+        edit.item(&item("cut", s[4], Some("CmdOrCtrl+X"))?)
+            .item(&item("copy", s[5], Some("CmdOrCtrl+C"))?)
+            .item(&item("paste", s[6], Some("CmdOrCtrl+V"))?)
+            .item(&item("select-all", s[7], Some("CmdOrCtrl+A"))?)
+    };
+    let edit = edit
         .separator()
         .item(&item("duplicate", l[19], Some("CmdOrCtrl+D"))?)
         // No accelerator: ⌫ belongs to the text fields; the webview takes it on the map.
@@ -387,7 +428,7 @@ fn build_menu(app: &AppHandle, lang: &str, recent: &[String], map: &MapLangs) ->
         .item(&map_langs)
         .separator()
         .item(&item("tab-canvas", l[24], Some("CmdOrCtrl+M"))?)
-        .item(&item("tab-json", l[13], Some("CmdOrCtrl+J"))?)
+        .item(&item("tab-json", l[13], Some("CmdOrCtrl+E"))?)
         .item(&item("tab-preview", l[14], Some("CmdOrCtrl+P"))?)
         .separator()
         .item(&item("problems", l[28], Some("CmdOrCtrl+Shift+M"))?)
@@ -402,7 +443,7 @@ fn build_menu(app: &AppHandle, lang: &str, recent: &[String], map: &MapLangs) ->
     // (src/app/insert.ts), in the groups of the toolbar's + list: content,
     // activities, AI judgements.
     let (insert_title, type_labels) = insert_labels(lang);
-    let mut insert = SubmenuBuilder::new(app, insert_title);
+    let mut insert = SubmenuBuilder::new(app, insert_title).enabled(state.course);
     for (i, (ty, label)) in NODE_TYPES.iter().zip(type_labels).enumerate() {
         if i == 4 || i == 7 {
             insert = insert.separator();
@@ -432,11 +473,11 @@ fn build_menu(app: &AppHandle, lang: &str, recent: &[String], map: &MapLangs) ->
     MenuBuilder::new(app).items(&menus).build()
 }
 
-/// Rebuilt whenever the interface language, the recent files or the map's
-/// languages change (src/app/menu.ts).
+/// Rebuilt whenever the interface language, the recent files, the map's
+/// languages or whether a course is open change (src/app/menu.ts).
 #[tauri::command]
-fn set_menu(app: AppHandle, lang: String, recent: Vec<String>, map: Option<MapLangs>) -> Result<(), String> {
-    let menu = build_menu(&app, &lang, &recent, &map.unwrap_or_default()).map_err(|e| e.to_string())?;
+fn set_menu(app: AppHandle, lang: String, recent: Vec<String>, map: Option<MapLangs>, state: Option<MenuState>) -> Result<(), String> {
+    let menu = build_menu(&app, &lang, &recent, &map.unwrap_or_default(), &state.unwrap_or_default()).map_err(|e| e.to_string())?;
     app.set_menu(menu).map_err(|e| e.to_string())?;
     #[cfg(target_os = "macos")]
     app.run_on_main_thread(macos::strip_edit_menu).map_err(|e| e.to_string())?;
@@ -483,7 +524,8 @@ pub fn run() {
         .setup(|app| {
             #[cfg(target_os = "macos")]
             macos::quiet_edit_menu();
-            let menu = build_menu(app.handle(), "pt", &[], &MapLangs::default())?;
+            // No course is open yet: what needs one starts off.
+            let menu = build_menu(app.handle(), "pt", &[], &MapLangs::default(), &MenuState::default())?;
             app.set_menu(menu)?;
             // Files passed on the command line (useful in development).
             let args: Vec<String> = std::env::args()
@@ -612,7 +654,7 @@ mod tests {
         assert_eq!(labels("pt")[30], "Barra lateral");
         assert_eq!(labels("pt")[5], "Limpar histórico");
         assert_eq!(labels("pt")[6], "Exportar curso…");
-        assert_eq!(labels("pt")[13], "Json");
+        assert_eq!(labels("pt")[13], "EGF");
         for lang in ["pt", "en", "es", "xx"] {
             assert!(system_labels(lang).iter().all(|l| !l.is_empty()));
         }
@@ -638,6 +680,35 @@ mod tests {
             }
         }
         assert_eq!(insert_labels("pt").0, "Inserir");
+    }
+
+    #[test]
+    fn without_a_course_only_what_needs_none_is_on() {
+        let none = MenuState::default();
+        for id in ["new", "open", "recent-clear", "prefs", "help", "minimize", "fullscreen"] {
+            assert!(item_enabled(id, &none), "{id}");
+        }
+        for id in NEEDS_COURSE.iter().chain(&TEXT_EDIT).copied().chain(["insert:quiz", "next-tab", "prev-tab"]) {
+            assert!(!item_enabled(id, &none), "{id}");
+        }
+        // A dialog's text fields take undo, the clipboard and select all, with no course open.
+        let dialog = MenuState { dialog: true, ..MenuState::default() };
+        assert!(TEXT_EDIT.iter().all(|id| item_enabled(id, &dialog)));
+        assert!(!item_enabled("save", &dialog));
+        let one = MenuState { course: true, tabs: 1, dialog: false };
+        assert!(NEEDS_COURSE.iter().chain(&TEXT_EDIT).all(|id| item_enabled(id, &one)));
+        assert!(item_enabled("insert:quiz", &one));
+        assert!(!item_enabled("next-tab", &one));
+        assert!(item_enabled("prev-tab", &MenuState { course: true, tabs: 2, dialog: false }));
+    }
+
+    #[test]
+    fn the_webview_ignores_the_same_items_without_a_course() {
+        let ts = include_str!("../../src/app/menu.ts");
+        let list = &ts[ts.find("NEEDS_COURSE = [").unwrap()..];
+        let list = &list[..list.find("];").unwrap()];
+        let listed: Vec<&str> = list.split('"').skip(1).step_by(2).collect();
+        assert_eq!(listed, NEEDS_COURSE);
     }
 
     #[test]

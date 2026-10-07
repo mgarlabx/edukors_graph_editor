@@ -73,7 +73,7 @@ await step("problems panel", async () => {
   await shot("06-problems");
 });
 await step("json tab", async () => {
-  await page.getByRole("tab", { name: "JSON" }).click();
+  await page.getByRole("tab", { name: "EGF" }).click();
   await page.locator(".monaco-editor").first().waitFor({ timeout: 20000 });
   await page.waitForTimeout(800);
   await shot("08-json");
