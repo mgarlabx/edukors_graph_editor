@@ -1,0 +1,9 @@
+{"method":"turn/started","params":{"turn":{"id":"turn_1"}}}
+{"method":"item/started","params":{"item":{"id":"item_1","type":"reasoning"}}}
+{"method":"item/reasoning/delta","params":{"itemId":"item_1","delta":{"type":"text_delta","text":"Lendo o curso"}}}
+{"method":"item/completed","params":{"item":{"id":"item_1","type":"reasoning","content":[{"type":"text","text":"Lendo o curso."}],"status":"completed"}}}
+{"method":"item/started","params":{"item":{"id":"item_2","type":"agentMessage"}}}
+{"method":"item/agentMessage/delta","params":{"itemId":"item_2","delta":{"type":"text_delta","text":"O curso tem "}}}
+{"method":"item/agentMessage/delta","params":{"itemId":"item_2","delta":{"type":"text_delta","text":"seis passos."}}}
+{"method":"item/completed","params":{"item":{"id":"item_2","type":"agentMessage","content":[{"type":"text","text":"O curso tem seis passos."}],"status":"completed"}}}
+{"method":"turn/completed","params":{"turn":{"id":"turn_1","status":"completed"}}}

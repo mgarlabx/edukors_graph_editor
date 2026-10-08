@@ -1,8 +1,9 @@
 /**
  * The AI agent of the side panel, short of Claude itself: the edits it makes
  * to a course (all or nothing, one undo step, references kept), what it reads,
- * the context each message carries, and how the SDK's messages -- streamed or
- * read back from disk -- become the conversation on screen.
+ * the context each message carries, and how the agent's events -- streamed or
+ * read back from disk -- become the conversation on screen. Each provider's
+ * own translation into those events is tested beside it (agentClaude.test.ts).
  */
 import { beforeEach, describe, expect, it } from "vitest";
 import { useEditor } from "../src/store/editor";
@@ -10,7 +11,9 @@ import { docState, dropDoc, openDoc, useDocs } from "../src/store/docs";
 import { applyOperations, EditError, outline, placeAdded, type Operation } from "../src/agent/courseEdits";
 import { runTool } from "../src/agent/editorTools";
 import { messageContext, selectionLabel } from "../src/agent/context";
-import { applyMessage, emptyTranscript, fromHistory, settle, splitContext, type Transcript } from "../src/agent/transcript";
+import { useUi } from "../src/store/ui";
+import { applyEvent, emptyTranscript, fold, settle, splitContext, type Transcript } from "../src/agent/transcript";
+import type { AgentEvent } from "../src/agent/events";
 import { splitUsage } from "../src/agent/usageReport";
 import { diagnose } from "../src/validate";
 import type { Course } from "../src/schema/types";
@@ -240,78 +243,97 @@ describe("agent context", () => {
     expect(splitContext(messageContext(true).block + "\n\nhi").context).toBe("q1 → f1");
   });
 
+  it("says which text the full-screen editor has open, and in which language", () => {
+    openDoc(short(), { path: null, saved: true });
+    useUi.getState().openContent({ path: "node:sm1/content/item", kind: "markdown", lang: "pt", label: "Content", node: "sm1" });
+    const open = messageContext(true).block;
+    expect(open).toContain("sm1 (static-md)'s `content.item`");
+    expect(open).toContain('in language "pt"');
+    // The person reads another language in the editor: the agent works on that one.
+    useUi.getState().setContentLang("en");
+    expect(messageContext(true).block).toContain('in language "en"');
+    useUi.getState().close();
+    expect(messageContext(true).block).not.toContain("full-screen text editor");
+  });
+
   it("says when no course is open", () => {
     expect(messageContext(true).block).toContain("No course is open");
   });
 });
 
 describe("agent transcript", () => {
-  const stream = (event: unknown) => ({ type: "stream_event", event, uuid: "u", session_id: "s", parent_tool_use_id: null }) as never;
-  const assistant = (uuid: string, id: string, content: unknown[]) => ({ type: "assistant", uuid, session_id: "s", parent_tool_use_id: null, message: { id, content } }) as never;
-  const user = (content: unknown) => ({ type: "user", session_id: "s", parent_tool_use_id: null, message: { role: "user", content } }) as never;
-  const fold = (msgs: never[]) => msgs.reduce((t: Transcript, m) => applyMessage(t, m), emptyTranscript());
+  const fold1 = (events: AgentEvent[]) => events.reduce((t: Transcript, ev) => applyEvent(t, ev), emptyTranscript());
 
-  it("streams text, then keeps the finished block", () => {
-    let t = fold([stream({ type: "message_start", message: { id: "m1" } }), stream({ type: "content_block_start", index: 0, content_block: { type: "text", text: "" } }), stream({ type: "content_block_delta", index: 0, delta: { type: "text_delta", text: "Olá, " } }), stream({ type: "content_block_delta", index: 0, delta: { type: "text_delta", text: "mundo" } })]);
+  it("streams a block and replaces it with the finished one", () => {
+    let t = fold1([
+      { ev: "msg_start", messageId: "m1" },
+      { ev: "block_start", index: 0, type: "text", text: "" },
+      { ev: "block_delta", index: 0, text: "Olá, " },
+      { ev: "block_delta", index: 0, text: "mundo" },
+    ]);
     expect(t.live!.blocks[0].text).toBe("Olá, mundo");
     expect(t.items).toHaveLength(0);
-    t = applyMessage(applyMessage(t, stream({ type: "content_block_stop", index: 0 })), assistant("a1", "m1", [{ type: "text", text: "Olá, mundo" }]));
+    t = applyEvent(applyEvent(t, { ev: "block_stop", index: 0 }), { ev: "assistant", uuid: "a1", messageId: "m1", blocks: [{ type: "text", index: 0, text: "Olá, mundo" }] });
     expect(t.live!.blocks).toHaveLength(0);
     expect(t.items).toEqual([{ kind: "text", key: "a1:0", text: "Olá, mundo" }]);
   });
 
-  it("follows a tool call to its result", () => {
-    const t = fold([
-      assistant("a1", "m1", [{ type: "thinking", thinking: "Let me read it." }]),
-      assistant("a2", "m1", [{ type: "tool_use", id: "tu1", name: "mcp__edukors__read_course", input: {} }]),
-      user([{ type: "tool_result", tool_use_id: "tu1", content: [{ type: "text", text: "outline" }] }]),
-      assistant("a3", "m2", [{ type: "tool_use", id: "tu2", name: "mcp__edukors__edit_course", input: { summary: "x" } }]),
-      user([{ type: "tool_result", tool_use_id: "tu2", content: "The person declined this action.", is_error: true }]),
+  it("follows a tool call to its result, and counts a denial as an error", () => {
+    const t = fold1([
+      { ev: "assistant", uuid: "a1", blocks: [{ type: "tool_use", index: 0, id: "tu1", name: "mcp__edukors__read_course", input: {} }] },
+      { ev: "tool_result", toolUseId: "tu1", text: "outline" },
+      { ev: "assistant", uuid: "a2", blocks: [{ type: "tool_use", index: 0, id: "tu2", name: "mcp__edukors__edit_course", input: { summary: "x" } }] },
+      { ev: "tool_result", toolUseId: "tu2", text: "The person declined this action.", isError: true },
     ]);
-    expect(t.items.map((i) => i.kind)).toEqual(["thinking", "tool", "tool"]);
-    expect(t.items[1]).toMatchObject({ kind: "tool", status: "done", result: "outline" });
-    expect(t.items[2]).toMatchObject({ kind: "tool", status: "error" });
+    expect(t.items.map((i) => i.kind)).toEqual(["tool", "tool"]);
+    expect(t.items[0]).toMatchObject({ status: "done", result: "outline" });
+    expect(t.items[1]).toMatchObject({ status: "error" });
   });
 
-  it("notes errors, limits and compaction", () => {
-    const t = fold([
-      { type: "result", subtype: "error_max_turns", errors: ["too many"], session_id: "s" } as never,
-      { type: "rate_limit_event", rate_limit_info: { status: "rejected", resetsAt: 1790000000 }, session_id: "s" } as never,
-      { type: "system", subtype: "compact_boundary", session_id: "s" } as never,
-      { ...(assistant("a9", "m9", []) as object), error: "authentication_failed" } as never,
+  it("shows a tool call once, however many times it is announced", () => {
+    const call: AgentEvent = { ev: "assistant", uuid: "a1", blocks: [{ type: "tool_use", index: 0, id: "tu1", name: "x", input: {} }] };
+    expect(fold1([call, call]).items).toHaveLength(1);
+  });
+
+  it("notes an error, a divider and a notice, and starts over on a reset", () => {
+    const t = fold1([
+      { ev: "turn_end", status: "error", code: "error_max_turns", text: "too many" },
+      { ev: "divider", text: "compacted" },
+      { ev: "notice", level: "warning", text: "perto do limite", code: "rate_warning" },
     ]);
-    expect(t.items.map((i) => (i.kind === "notice" ? i.code : i.kind))).toEqual(["error_max_turns", "rate_rejected", "divider", "authentication_failed"]);
+    expect(t.items.map((i) => (i.kind === "notice" ? i.code : i.kind))).toEqual(["error_max_turns", "divider", "rate_warning"]);
+    expect(applyEvent(t, { ev: "reset" })).toEqual(emptyTranscript());
   });
 
   it("keeps what was written when the person interrupts, and does not call it an error", () => {
-    const t = fold([
-      stream({ type: "message_start", message: { id: "m1" } }),
-      stream({ type: "content_block_start", index: 0, content_block: { type: "text", text: "" } }),
-      stream({ type: "content_block_delta", index: 0, delta: { type: "text_delta", text: "Os gatos são" } }),
-      user([{ type: "text", text: "[Request interrupted by user]" }]),
-      { type: "result", subtype: "error_during_execution", terminal_reason: "aborted_streaming", errors: ["[ede_diagnostic] result_type=user"], session_id: "s" } as never,
+    const t = fold1([
+      { ev: "msg_start", messageId: "m1" },
+      { ev: "block_start", index: 0, type: "text", text: "" },
+      { ev: "block_delta", index: 0, text: "Os gatos são" },
+      { ev: "interrupted" },
+      { ev: "turn_end", status: "interrupted" },
     ]);
     expect(t.live).toBeNull();
     expect(t.items).toEqual([{ kind: "text", key: "m1:0", text: "Os gatos são" }, expect.objectContaining({ kind: "notice", level: "info", code: "interrupted" })]);
   });
 
   it("stops the tool calls a finished turn left running", () => {
-    const t = settle(fold([assistant("a1", "m1", [{ type: "tool_use", id: "tu1", name: "Read", input: {} }])]));
+    const t = settle(fold1([{ ev: "assistant", uuid: "a1", blocks: [{ type: "tool_use", index: 0, id: "tu1", name: "Read", input: {} }] }]));
     expect(t.items[0]).toMatchObject({ status: "error" });
   });
 
-  it("reads a conversation back from disk as it was on screen", () => {
-    const t = fromHistory([
-      { type: "user", uuid: "u1", message: { role: "user", content: '<editor-context>\nCourse on screen: "Gatos"\nSelected: q1 (quiz) "Quiz".\n</editor-context>\n\nQuantos passos?' } },
-      { type: "assistant", uuid: "a1", message: { id: "m1", content: [{ type: "thinking", thinking: "Reading." }] } },
-      { type: "assistant", uuid: "a2", message: { id: "m1", content: [{ type: "tool_use", id: "tu1", name: "mcp__edukors__read_course", input: {} }] } },
-      { type: "user", uuid: "u2", message: { role: "user", content: [{ tool_use_id: "tu1", type: "tool_result", content: [{ type: "text", text: "{}" }] }] } },
-      { type: "assistant", uuid: "a3", message: { id: "m2", content: [{ type: "text", text: "Dois passos." }] } },
-      { type: "user", uuid: "u3", message: { role: "user", content: [{ type: "text", text: "[Request interrupted by user]" }] } },
+  it("reads a conversation back as it was on screen, without the context block", () => {
+    const t = fold([
+      { ev: "user", key: "u1", text: '<editor-context>\nCourse on screen: "Gatos"\nSelected: q1 (quiz) "Quiz".\nMode: ask.\n</editor-context>\n\nQuantos passos?' },
+      { ev: "assistant", uuid: "a1", blocks: [{ type: "tool_use", index: 0, id: "tu1", name: "mcp__edukors__read_course", input: {} }] },
+      { ev: "tool_result", toolUseId: "tu1", text: "{}" },
+      { ev: "assistant", uuid: "a2", blocks: [{ type: "text", index: 0, text: "Dois passos." }] },
+      { ev: "assistant", uuid: "a3", blocks: [{ type: "tool_use", index: 0, id: "tu9", name: "x", input: {} }] },
     ]);
-    expect(t.items.map((i) => i.kind)).toEqual(["user", "thinking", "tool", "text", "notice"]);
+    expect(t.items.map((i) => i.kind)).toEqual(["user", "tool", "text", "tool"]);
     expect(t.items[0]).toEqual({ kind: "user", key: "u1", text: "Quantos passos?", context: "q1 · Quiz" });
-    expect(t.items[2]).toMatchObject({ status: "done", result: "{}" });
+    // A call with no result was cut short when the conversation stopped.
+    expect(t.items[3]).toMatchObject({ status: "error" });
   });
 });
 

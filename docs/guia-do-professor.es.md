@@ -70,6 +70,7 @@ El contenido de un paso *Texto* (markdown) o *HTML*, y el prompt de un paso *Tex
 - El prompt se escribe en markdown, con la misma barra más la lista **Insertar {{STORAGE: …}}**; escribir `{{` abre la lista de claves allí mismo, en el cursor.
 - El icono del extremo derecho de la barra activa y desactiva el ajuste de las líneas largas.
 - En un curso con varios idiomas, el selector de arriba cambia el idioma del texto.
+- El ✦ de arriba (o ⇧⌘A) abre el **agente de IA** junto al texto, y vuelve a cerrarlo. Sabe qué texto tiene abierto y en qué idioma: pídale "haz este texto más corto", "añade un ejemplo aquí", "traduce esto al español", y lo que escriba aparece en la caja de inmediato (⌘Z deshace).
 - Lo que escribe va al curso de inmediato: **Listo** (o Esc) cierra el editor sin perder nada, y ⌘Z deshace.
 
 ## 6. Caminos distintos para estudiantes distintos
@@ -141,9 +142,9 @@ Para probar una sola evaluación, use **Probar juicio** en el inspector de la No
 
 ## 12. El agente de IA
 
-El icono ✦ en el extremo derecho de la barra superior (o ⇧⌘A) abre el **agente de IA** en el extremo derecho de la ventana, al lado del grafo y del inspector; haga clic de nuevo para cerrarlo. Los dos paneles son independientes: el icono de barra lateral (⌥⌘0) abre y cierra solo el inspector, y el ✦ solo el agente. El editor está configurado para operar con el Claude Code que esté instalado en su computadora. El agente trabaja en el curso que está en pantalla: lee los pasos, escribe, conecta flechas, traduce, valida y corrige.
+El icono ✦ en el extremo derecho de la barra superior (o ⇧⌘A) abre el **agente de IA** en el extremo derecho de la ventana, al lado del grafo y del inspector; haga clic de nuevo para cerrarlo. Los dos paneles son independientes: el icono de barra lateral (⌥⌘0) abre y cierra solo el inspector, y el ✦ solo el agente. El editor opera con el agente de IA que usted elija en **Preferencias → Agente de IA**. El agente trabaja en el curso que está en pantalla: lee los pasos, escribe, conecta flechas, traduce, valida y corrige. Con el editor de contenido abierto, su ✦ trae el agente junto al texto, para trabajar en ese texto (sección 5).
 
-**Antes de usarlo:** el agente usa su cuenta de Claude, la misma de Claude Code. Si el panel dice que no hay ninguna cuenta conectada, abra la Terminal, escriba `claude` y, dentro de él, `/login`; después haga clic en **Reintentar**.
+**Antes de usarlo.** En **Preferencias → Agente de IA**, en el campo **Proveedor**, elija el agente que va a responder en el panel. Uno de ellos ya viene dentro del editor; los otros son programas que usted instala en su computadora — al lado del que falte, **Ver cómo instalar** muestra el camino. El agente trabaja con su propia cuenta en el servicio de ese agente, no con una cuenta del editor: si el panel dice que no hay ninguna cuenta conectada, siga allí la instrucción de inicio de sesión de ese agente (unos piden un comando en la Terminal, otros abren el navegador) y haga clic en **Reintentar**.
 
 **Cómo pedir.** Escriba en el campo de abajo y pulse ↵ (⇧↵ salta de línea). Ejemplos:
 
@@ -160,9 +161,9 @@ Lo que esté seleccionado en el grafo va junto con el mensaje: aparece en el chi
 **Skills y servidores MCP.** También en **Preferencias → Agente de IA** puede darle al agente habilidades extra:
 
 - Las **skills** son paquetes de instrucciones (una carpeta con un archivo `SKILL.md`, a veces con scripts) que le enseñan al agente a hacer una tarea de cierta manera. Haga clic en **Abrir carpeta de skills**, ponga allí la carpeta de la skill y haga clic en **Recargar**: aparece en la lista.
-- Los **servidores MCP** conectan al agente con otros programas y servicios (una carpeta de materiales, una base de documentos…). Pegue en el campo **Servidores MCP** el JSON que la documentación del servidor indica para Claude Code (el `.mcp.json`). Los servidores que piden iniciar sesión por la web no funcionan aquí.
+- Los **servidores MCP** conectan al agente con otros programas y servicios (una carpeta de materiales, una base de documentos…). Pegue en el campo **Servidores MCP** el JSON que la documentación del servidor indica (el `.mcp.json`). Los servidores que piden iniciar sesión por la web no funcionan aquí.
 
-Ambos valen a partir de la próxima sesión (**Nueva sesión**). El menú del modelo, al pie del panel, muestra las skills cargadas y si cada servidor se conectó (✓) o falló (✗). Si una skill necesita ejecutar un comando en el Mac, el agente pide su aprobación **para cada comando**, mostrando el comando, incluso en el modo Automático.
+Ambos valen a partir de la próxima sesión (**Nueva sesión**). El menú del modelo, al pie del panel, muestra las skills cargadas y si cada servidor se conectó (✓) o falló (✗). Si una skill necesita ejecutar un comando en la computadora, el agente pide su aprobación **para cada comando**, mostrando el comando, incluso en el modo Automático. No todos los agentes aceptan skills y servidores MCP; cuando el elegido no los acepta, el panel lo avisa.
 
 **Los tres modos** (en el botón ✋ del campo):
 
@@ -176,9 +177,9 @@ En cualquier modo, **cada cambio del agente es un paso de deshacer**: ⌘Z desha
 
 **Preguntas del agente.** Cuando el pedido admite más de un camino (el año escolar, la extensión, los idiomas), el agente pregunta en una tarjeta con opciones; elija una o escriba otra respuesta.
 
-**Modelo y esfuerzo.** En el botón del modelo (por ejemplo, *Opus 5.5*) usted elige el modelo de Claude y el **esfuerzo**: más esfuerzo, respuestas más cuidadosas y más lentas. El valor predeterminado sirve para casi todo.
+**Modelo y esfuerzo.** En el botón del modelo, al pie del panel, usted elige entre los modelos que el agente ofrece y, cuando él lo permite, el **esfuerzo**: más esfuerzo, respuestas más cuidadosas y más lentas. El valor predeterminado sirve para casi todo.
 
-**Cuenta y uso.** El mismo menú muestra la cuenta de Claude en uso y el **uso de la cuenta**: las ventanas de límite de la suscripción, tal como Claude Code las informa (en inglés), cada una con una barra. *Current session* es la ventana de 5 horas; *Current week*, la de la semana; cada línea dice cuándo se renueva la ventana. El uso se actualiza al abrir el panel y después de cada respuesta (⟳ lo actualiza en el momento), y aparece también al comienzo de cada conversación nueva. Las ventanas son de la cuenta, no del editor: cuentan también lo que usa en claude.ai y en Claude Code. Para usar otra cuenta, inicie sesión con ella en Claude Code (`claude`, después `/login`) y empiece una conversación nueva en el panel.
+**Cuenta y uso.** El mismo menú muestra la cuenta en uso y, cuando el agente lo informa, el **uso de la cuenta**: las ventanas de límite de su suscripción, tal como el propio agente las informa (en inglés), cada una con una barra — la de la sesión (*Current session*) y la de la semana (*Current week*), y cada línea dice cuándo se renueva la ventana. El uso se actualiza al abrir el panel y después de cada respuesta (⟳ lo actualiza en el momento), y aparece también al comienzo de cada conversación nueva. Las ventanas son de su cuenta, no del editor: cuentan también lo que usa en ese mismo servicio fuera de aquí. Para usar otra cuenta, inicie sesión con ella en el programa del agente y empiece una conversación nueva en el panel.
 
 **Sesiones.** Cada conversación queda guardada. El título en lo alto del panel abre la lista de conversaciones anteriores (con búsqueda); haga clic en una para seguir donde quedó. El icono ✎ empieza una conversación nueva; la 🗑 de cada elemento elimina la conversación.
 

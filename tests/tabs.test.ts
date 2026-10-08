@@ -9,7 +9,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { isDirty, useEditor } from "../src/store/editor";
 import { activateDoc, activateNth, cycleDoc, dirtyDocs, docState, dropDoc, onLeave, openDoc, patchDoc, useDocs } from "../src/store/docs";
 import { usePreview } from "../src/preview/session";
-import { pasteClip, readClip, selectionClip } from "../src/app/clipboard";
+import { pasteClip, readClip, selectionClip, textSelected } from "../src/app/clipboard";
 import { docLabel, withEgf } from "../src/app/files";
 import { duplicateNodes, pasteNodes } from "../src/course/ops";
 import { fitLanguages } from "../src/i18n/languages";
@@ -289,5 +289,29 @@ describe("fitting nodes to a course's languages", () => {
     expect(sm1.title[1].text).toBe("");
     // a prompt is never given a slot per language
     expect(dm1.content.prompt.map((e: { lang: string }) => e.lang)).toEqual(["pt"]);
+  });
+});
+
+/**
+ * A DOM selection, as much of one as the decision reads. `closest` answers for
+ * an element inside the canvas and for one outside it.
+ */
+const selection = (text: string, inCanvas: boolean) =>
+  ({
+    isCollapsed: !text,
+    toString: () => text,
+    anchorNode: { nodeType: 3, parentElement: { closest: (sel: string) => (inCanvas && sel === ".canvas" ? {} : null) } },
+  }) as unknown as Selection;
+
+describe("copying with text selected", () => {
+  it("copies the text the person highlighted off the canvas, not the nodes behind it", () => {
+    expect(textSelected(selection("o agente disse isto", false))).toBe(true);
+  });
+
+  it("copies the nodes when the selection is on the canvas, or empty, or none", () => {
+    expect(textSelected(selection("um nó", true))).toBe(false);
+    expect(textSelected(selection("", false))).toBe(false);
+    expect(textSelected(selection("   \n ", false))).toBe(false);
+    expect(textSelected(null)).toBe(false);
   });
 });

@@ -274,9 +274,11 @@ export function Canvas() {
     useEditor.getState().select({ edge: index, nodes: [] });
   }, []);
 
-  // A click on a node or a link brings out the inspector, to edit what was picked.
-  const showInspector = useCallback((_: unknown, item: { type?: string }) => {
-    if (item.type !== "section" && !useUi.getState().inspector) useUi.setState({ inspector: true });
+  // A click on a node or a link works the inspector both ways: out to edit what was picked, away again on the
+  // next click. A section is not edited there, so it leaves the panel alone; a drag never reaches here
+  // (d3-drag eats the click).
+  const toggleInspector = useCallback((_: unknown, item: { type?: string }) => {
+    if (item.type !== "section") useUi.getState().toggleSidebar();
   }, []);
 
   const onPaneClick = useCallback(() => useEditor.getState().select({ nodes: [], edge: null }), []);
@@ -394,8 +396,8 @@ export function Canvas() {
         onNodesChange={onNodesChange as never}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        onNodeClick={showInspector}
-        onEdgeClick={showInspector}
+        onNodeClick={toggleInspector}
+        onEdgeClick={toggleInspector}
         onPaneClick={onPaneClick}
         onMoveEnd={onMoveEnd}
         defaultViewport={savedViewport}

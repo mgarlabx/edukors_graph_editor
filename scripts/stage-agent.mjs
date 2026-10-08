@@ -6,15 +6,20 @@
  *
  *   node scripts/stage-agent.mjs
  *
- * It holds the sidecar's own files and a node_modules with only what they
- * import: the Claude Agent SDK and zod, with everything those need, copied
- * from the project's node_modules so that the versions are the package-lock's.
+ * It holds the agent's own files (the sidecar, the providers, the tools, the
+ * MCP bridge) and a node_modules with only what they import: the Claude Agent
+ * SDK, the MCP SDK and zod, with everything those need, copied from the
+ * project's node_modules so that the versions are the package-lock's.
  *
- * The SDK runs a native `claude` binary from a package of its own per
- * platform, and resolves it by Node's architecture. The Mac app is universal,
- * so both Mac packages go in; on Windows (x64 only) it is `claude.exe`. A
- * package npm did not install here is fetched once with `npm pack` and kept
- * in node_modules/.cache/edukors-agent/.
+ * The Claude Agent SDK runs a native `claude` binary from a package of its own
+ * per platform, and resolves it by Node's architecture. The Mac app is
+ * universal, so both Mac packages go in; on Windows (x64 only) it is
+ * `claude.exe`. A package npm did not install here is fetched once with
+ * `npm pack` and kept in node_modules/.cache/edukors-agent/.
+ *
+ * The other providers are not here: the Antigravity CLI and Codex are the
+ * person's own install (hundreds of megabytes each, per platform), which the
+ * agent finds on the machine and never ships.
  */
 import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { execFileSync } from "node:child_process";
@@ -27,9 +32,10 @@ const MODULES = join(ROOT, "node_modules");
 const OUT = join(ROOT, "src-tauri", "agent-bundle");
 const CACHE = join(MODULES, ".cache", "edukors-agent");
 const SDK = "@anthropic-ai/claude-agent-sdk";
-const FILES = ["sidecar.mjs", "tools.mjs", "extensions.mjs", "system-prompt.md"];
 /** What agent/*.mjs import from outside Node. */
-const ENTRIES = [SDK, "zod"];
+const ENTRIES = [SDK, "zod", "@modelcontextprotocol/sdk"];
+/** What must be where the bundle looks for it once staged. */
+const CHECKS = ["@modelcontextprotocol/sdk/server/mcp.js", "@modelcontextprotocol/sdk/server/streamableHttp.js", "@modelcontextprotocol/sdk/server/sse.js"];
 const WINDOWS = process.platform === "win32";
 const PLATFORMS = WINDOWS ? ["win32-x64"] : ["darwin-arm64", "darwin-x64"];
 const binary = (platform) => (platform.startsWith("win32") ? "claude.exe" : "claude");
@@ -90,7 +96,8 @@ function stagePlatform(platform, version) {
 
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT, { recursive: true });
-for (const file of FILES) cpSync(join(ROOT, "agent", file), join(OUT, file));
+// The whole agent folder: the sidecar, the providers, the bridge and the prompt.
+cpSync(join(ROOT, "agent"), OUT, { recursive: true });
 
 const packages = closure();
 for (const dir of packages) {
@@ -111,6 +118,15 @@ for (const platform of PLATFORMS) {
     require.resolve(`${SDK}-${platform}/${binary(platform)}`);
   } catch {
     throw new Error(`the ${platform} binary did not end up where the SDK looks for it`);
+  }
+}
+// And what the bridge will import from the staged copy.
+const fromAgent = createRequire(join(OUT, "mcpBridge.mjs"));
+for (const entry of CHECKS) {
+  try {
+    fromAgent.resolve(entry);
+  } catch {
+    throw new Error(`${entry} is missing from the staged agent`);
   }
 }
 

@@ -1,4 +1,4 @@
-//! The agent's process: `agent/sidecar.mjs`, the Claude Agent SDK under Node.
+//! The agent's process: `agent/sidecar.mjs`, under Node.
 //!
 //! The webview starts it the first time the agent panel opens. It is one child
 //! process spoken to in JSON lines: what the webview sends goes to its stdin as
@@ -6,9 +6,11 @@
 //! event, stamped with the generation of the process that wrote it, so that a
 //! line from a process already replaced is recognized as such.
 //!
-//! Claude Code, under the SDK, uses the Claude account logged in on this machine.
-//! API keys are taken out of the process's environment so that the account is
-//! what gets used.
+//! Which provider answers for the agent -- Claude Code through its SDK, the
+//! Antigravity CLI, Codex -- is the sidecar's business: it starts whatever it
+//! needs itself, and this side knows nothing about them. Every provider signs
+//! in with the account logged in on this machine, so the API keys of all three
+//! are taken out of the process's environment: an account, never a key.
 
 use std::collections::VecDeque;
 use std::io::{BufRead, BufReader, Write};
@@ -22,7 +24,7 @@ use serde::Serialize;
 use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter, Manager, State};
 
-/// Node versions older than this cannot run the SDK.
+/// Node versions older than this cannot run the agent.
 const MIN_NODE: u32 = 18;
 
 #[derive(Default)]
@@ -45,7 +47,7 @@ pub struct Started {
 }
 
 impl Agent {
-    /// Closes the process's stdin, which lets it close Claude Code cleanly, and
+    /// Closes the process's stdin, which lets it close the provider cleanly, and
     /// kills it if it is still there a second later.
     pub fn stop(&self) {
         let Some(Running { mut child, stdin, .. }) = self.running.lock().ok().and_then(|mut r| r.take()) else {
@@ -84,6 +86,10 @@ pub fn agent_start(app: AppHandle, agent: State<Agent>) -> Result<Started, Strin
         .env("PATH", search_path(&node))
         .env_remove("ANTHROPIC_API_KEY")
         .env_remove("ANTHROPIC_AUTH_TOKEN")
+        .env_remove("GEMINI_API_KEY")
+        .env_remove("GOOGLE_API_KEY")
+        .env_remove("GOOGLE_GENAI_API_KEY")
+        .env_remove("OPENAI_API_KEY")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

@@ -1922,14 +1922,27 @@ kbd {
 
 /* ------------------------------------------------------ content editor -- */
 
-/* A node's content, full screen: title, Raw/View and the toolbar, the text. */
+/* A node's content, full screen: title, Raw/View and the toolbar, the text,
+   and the agent beside it when it is open. */
 .content-editor {
   position: fixed;
   inset: 0;
   z-index: 100;
   display: flex;
-  flex-direction: column;
   background: var(--panel);
+}
+
+/* The text and everything above it; the agent panel takes the rest. */
+.ce-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ce-head .ce-agent.is-on {
+  color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .ce-head {

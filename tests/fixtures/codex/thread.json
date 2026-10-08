@@ -1,0 +1,18 @@
+{
+  "thread": {
+    "id": "thr_9",
+    "name": "Revisar o quiz",
+    "updatedAt": 1790000000,
+    "turns": [
+      {
+        "id": "turn_a",
+        "items": [
+          { "id": "u1", "type": "userMessage", "content": [{ "type": "text", "text": "<editor-context>\nCourse on screen: \"Gatos\"\nSelected: q1 (quiz) \"Quiz\".\nMode: ask.\n</editor-context>\n\nRevise o quiz" }] },
+          { "id": "i1", "type": "mcpToolCall", "server": "edukors", "tool": "read_course", "status": "completed", "output": "outline" },
+          { "id": "i2", "type": "commandExecution", "command": ["bash", "-lc", "cat README.md"], "status": "completed", "output": "ok" },
+          { "id": "i3", "type": "agentMessage", "content": [{ "type": "text", "text": "O quiz está bom." }], "status": "completed" }
+        ]
+      }
+    ]
+  }
+}

@@ -5,13 +5,14 @@
  */
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useAgent, type Effort, type Mode } from "./store";
+import { PROVIDER_IDS, type ModelInfo, type ProviderId } from "./events";
 import { selectionLabel } from "./context";
 import { Usage } from "./Usage";
 import { useEditor } from "../store/editor";
+import { usePrefs } from "../store/prefs";
 import { isTauri, pickOpen } from "../app/platform";
 import { t } from "../i18n";
 import { BoltIcon, CheckIcon, ChevronDownIcon, HandIcon, PaperclipIcon, PlanIcon, SendIcon, StopIcon, TargetIcon } from "../ui/icons";
-import type { ModelInfo } from "@anthropic-ai/claude-agent-sdk";
 
 const MODES: { id: Mode; Icon: typeof HandIcon }[] = [
   { id: "ask", Icon: HandIcon },
@@ -54,7 +55,7 @@ function Popover({ button, title, children, className = "" }: { button: ReactNod
 /** The model the default stands for, by name: "Opus 5.5". */
 const defaultModel = (models: ModelInfo[]) => {
   const own = models.find((m) => m.value === "default");
-  return own?.resolvedModel ? models.find((m) => m.value !== "default" && m.resolvedModel === own.resolvedModel)?.displayName : undefined;
+  return own?.resolved ? models.find((m) => m.value !== "default" && m.resolved === own.resolved)?.displayName : undefined;
 };
 
 /** A model's name in the menu: "Padrão (Opus 5.5)", "Sonnet 5.5". */
@@ -110,6 +111,40 @@ function ModeMenu() {
   );
 }
 
+/** Which provider runs the agent: the first thing in the model menu, since it decides the models. */
+function ProviderGroup() {
+  const provider = useAgent((s) => s.provider);
+  const available = useAgent((s) => s.available);
+  const setProvider = useAgent((s) => s.setProvider);
+  const state = (id: ProviderId) => available.find((p) => p.id === id);
+  return (
+    <>
+      <div className="agent-menu-label">{t("agent.provider")}</div>
+      {PROVIDER_IDS.map((id) => {
+        const here = state(id);
+        // Before the process has answered, nothing is known to be missing.
+        const missing = here ? !here.available : false;
+        return (
+          <button
+            key={id}
+            type="button"
+            role="menuitemradio"
+            aria-checked={id === provider}
+            className={`agent-menu-item ${id === provider ? "is-on" : ""} ${missing ? "is-missing" : ""}`}
+            onClick={() => void setProvider(id)}
+          >
+            <span className="agent-menu-text">
+              <span>{t(`agent.provider.${id}`)}</span>
+              {missing && <span className="agent-menu-hint">{t("agent.provider.missing")}</span>}
+            </span>
+            {id === provider && <CheckIcon size={14} />}
+          </button>
+        );
+      })}
+    </>
+  );
+}
+
 function ModelMenu() {
   const models = useAgent((s) => s.models);
   const model = useAgent((s) => s.model);
@@ -117,8 +152,9 @@ function ModelMenu() {
   const account = useAgent((s) => s.account);
   const setModel = useAgent((s) => s.setModel);
   const setEffort = useAgent((s) => s.setEffort);
+  const capabilities = useAgent((s) => s.capabilities);
   const info = models.find((m) => m.value === model);
-  const levels = info?.supportedEffortLevels;
+  const levels = capabilities?.efforts ? info?.efforts : undefined;
   const label = modelName(models, model);
   return (
     <Popover
@@ -133,9 +169,10 @@ function ModelMenu() {
     >
       {() => (
         <>
+          <ProviderGroup />
           <div className="agent-menu-label">{t("agent.model")}</div>
           <div className="agent-menu-scroll">
-            {(models.length ? models : [{ value: "default", displayName: "", description: "" } as ModelInfo]).map((m) => (
+            {(models.length ? models : [{ value: "default", displayName: "" } as ModelInfo]).map((m) => (
               <button key={m.value} type="button" role="menuitemradio" aria-checked={m.value === model} className={`agent-menu-item ${m.value === model ? "is-on" : ""}`} onClick={() => setModel(m.value)}>
                 <span className="agent-menu-text">
                   <span>{modelName(models, m.value)}</span>
@@ -162,11 +199,11 @@ function ModelMenu() {
           {account?.email && (
             <div className="agent-menu-account">
               {t("agent.signedIn", { email: account.email })}
-              {account.subscriptionType ? ` · ${account.subscriptionType}` : ""}
+              {account.plan ? ` · ${account.plan}` : ""}
             </div>
           )}
           <Extensions />
-          <Usage />
+          {capabilities?.usage && <Usage />}
         </>
       )}
     </Popover>
@@ -177,10 +214,15 @@ function ModelMenu() {
 function Extensions() {
   const skills = useAgent((s) => s.skills);
   const mcp = useAgent((s) => s.mcp);
-  if (!skills.length && !mcp.length) return null;
+  const capabilities = useAgent((s) => s.capabilities);
+  const hasOwnMcp = !!usePrefs.getState().agent.mcp.trim();
+  const unsupported = capabilities && ((!capabilities.mcp && hasOwnMcp) || (!capabilities.skills && !!skills.length));
+  if (!skills.length && !mcp.length && !unsupported) return null;
   return (
     <div className="agent-menu-ext">
-      {skills.length > 0 && (
+      {capabilities && !capabilities.mcp && hasOwnMcp && <div className="agent-menu-hint">{t("agent.mcp.unsupported")}</div>}
+      {capabilities && !capabilities.skills && skills.length > 0 && <div className="agent-menu-hint">{t("agent.skills.unsupported")}</div>}
+      {capabilities?.skills !== false && skills.length > 0 && (
         <div title={skills.map((s) => s.name).join("\n")}>
           {t("agent.skills", { n: String(skills.length) })}: {skills.map((s) => s.name).join(", ")}
         </div>
@@ -224,7 +266,10 @@ export function Composer({ focusKey }: { focusKey: number }) {
   const [text, setText] = useState("");
   const area = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => area.current?.focus(), [focusKey]);
+  // 0: the panel came on screen without asking for the focus (ContentEditor.tsx).
+  useEffect(() => {
+    if (focusKey) area.current?.focus();
+  }, [focusKey]);
 
   // The box grows with the text, up to a point.
   useLayoutEffect(() => {

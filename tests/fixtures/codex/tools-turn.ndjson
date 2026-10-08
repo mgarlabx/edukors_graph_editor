@@ -1,0 +1,7 @@
+{"method":"turn/started","params":{"turn":{"id":"turn_2"}}}
+{"method":"item/started","params":{"item":{"id":"item_3","type":"mcpToolCall","server":"edukors","tool":"read_course","arguments":{}}}}
+{"method":"item/completed","params":{"item":{"id":"item_3","type":"mcpToolCall","server":"edukors","tool":"read_course","status":"completed","output":"outline"}}}
+{"method":"item/started","params":{"item":{"id":"item_4","type":"commandExecution","command":["bash","-lc","ls samples"],"cwd":"/w"}}}
+{"method":"item/completed","params":{"item":{"id":"item_4","type":"commandExecution","command":["bash","-lc","ls samples"],"status":"failed","output":"ls: samples: No such file or directory"}}}
+{"method":"item/completed","params":{"item":{"id":"item_5","type":"fileChange","content":[{"type":"text","text":"notes.md"}]}}}
+{"method":"turn/completed","params":{"turn":{"id":"turn_2","status":"completed"}}}

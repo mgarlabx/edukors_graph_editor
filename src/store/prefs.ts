@@ -6,6 +6,7 @@
  */
 import { create } from "zustand";
 import { native } from "../app/platform";
+import { PROVIDER_IDS, type ProviderId } from "../agent/events";
 import { syncMenu } from "../app/menu";
 import { setUiLang, type UiLang } from "../i18n";
 
@@ -15,10 +16,21 @@ export interface Prefs {
   ai: { model: string; temperature: number; maxTokens: number; timeout: number; url: string };
   judge: { model: string; minConfidence: number; strictModel: boolean; url: string; timeout: number };
   /**
-   * the AI agent of the side panel: what its composer was left with, the panel's width, the person's
-   * standing instructions, and their MCP servers (the text of a .mcp.json, see src/agent/mcpConfig.ts)
+   * the AI agent of the side panel: which provider runs it and what its composer was left with for
+   * each one, the panel's width, the person's standing instructions, and their MCP servers (the text
+   * of a .mcp.json, see src/agent/mcpConfig.ts). `model` and `effort` are Claude's, kept beside
+   * `providers` so that an older build still finds them.
    */
-  agent: { model: string; effort: string; mode: "ask" | "auto"; width: number; instructions: string; mcp: string };
+  agent: {
+    provider: ProviderId;
+    providers: Record<ProviderId, { model: string; effort: string }>;
+    model: string;
+    effort: string;
+    mode: "ask" | "auto";
+    width: number;
+    instructions: string;
+    mcp: string;
+  };
   /** the widths of the right side panels, as last dragged: the inspector's and the preview's */
   sidebar: { inspector: number; preview: number };
   /** whether the content editor breaks long lines at its edge */
@@ -45,7 +57,16 @@ export const DEFAULT_PREFS: Prefs = {
     url: "https://openrouter.ai/api/alpha/decisions",
     timeout: 45,
   },
-  agent: { model: "default", effort: "auto", mode: "ask", width: 420, instructions: "", mcp: "" },
+  agent: {
+    provider: "claude",
+    providers: { claude: { model: "default", effort: "auto" }, antigravity: { model: "default", effort: "auto" }, codex: { model: "default", effort: "auto" } },
+    model: "default",
+    effort: "auto",
+    mode: "ask",
+    width: 420,
+    instructions: "",
+    mcp: "",
+  },
   sidebar: { inspector: 420, preview: 440 },
   editorWrap: true,
   recent: [],
@@ -61,6 +82,18 @@ interface PrefsState extends Prefs {
   refreshKey(): Promise<void>;
 }
 
+/**
+ * The agent's settings, with one model and effort per provider. Before the
+ * provider choice there was one pair, which was Claude's: it seeds Claude's.
+ */
+function mergeAgent(raw: Partial<Prefs["agent"]> | undefined): Prefs["agent"] {
+  const agent = { ...DEFAULT_PREFS.agent, ...(raw ?? {}) };
+  const providers = { ...DEFAULT_PREFS.agent.providers };
+  for (const id of PROVIDER_IDS) providers[id] = { ...providers[id], ...(raw?.providers?.[id] ?? {}) };
+  if (!raw?.providers?.claude) providers.claude = { model: agent.model, effort: agent.effort };
+  return { ...agent, provider: PROVIDER_IDS.includes(agent.provider) ? agent.provider : "claude", providers };
+}
+
 const merge = (raw: Record<string, unknown>): Prefs => {
   const r = raw as Partial<Prefs>;
   return {
@@ -69,7 +102,7 @@ const merge = (raw: Record<string, unknown>): Prefs => {
     ai: { ...DEFAULT_PREFS.ai, ...(r.ai ?? {}) },
     // The exact slug and the decisions endpoint are no longer preferences: whatever an older version saved, the server's are used.
     judge: { ...DEFAULT_PREFS.judge, ...(r.judge ?? {}), strictModel: true, url: DEFAULT_PREFS.judge.url },
-    agent: { ...DEFAULT_PREFS.agent, ...(r.agent ?? {}) },
+    agent: mergeAgent(r.agent),
     sidebar: { ...DEFAULT_PREFS.sidebar, ...(r.sidebar ?? {}) },
     editorWrap: typeof r.editorWrap === "boolean" ? r.editorWrap : DEFAULT_PREFS.editorWrap,
     recent: Array.isArray(r.recent) ? r.recent.filter((p) => typeof p === "string") : [],

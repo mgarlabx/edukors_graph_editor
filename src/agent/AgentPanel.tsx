@@ -3,11 +3,12 @@
  * a new conversation and the past ones; the conversation; what the agent asks;
  * and the composer with the conversation's settings.
  *
- * It takes the inspector's place while it is open (App.tsx).
+ * It takes the inspector's place while it is open (App.tsx), and goes beside
+ * the text in the full-screen content editor (ContentEditor.tsx).
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { SDKSessionInfo } from "@anthropic-ai/claude-agent-sdk";
-import { useAgent } from "./store";
+import { sessionTitle, useAgent } from "./store";
+import { PROVIDER_INSTALL } from "./events";
 import { Messages } from "./Messages";
 import { Asks } from "./Asks";
 import { Composer } from "./Composer";
@@ -15,9 +16,10 @@ import { Usage } from "./Usage";
 import { useUi } from "../store/ui";
 import { usePrefs } from "../store/prefs";
 import { useResizable } from "../ui/resize";
-import { confirmDialog } from "../app/platform";
-import { t } from "../i18n";
+import { confirmDialog, openLink } from "../app/platform";
+import { hasKey, t } from "../i18n";
 import { AiIcon, ChevronDownIcon, CloseIcon, NewChatIcon, SearchIcon, TrashIcon } from "../ui/icons";
+import type { SessionInfo } from "./events";
 
 const DAY = 86_400_000;
 
@@ -34,7 +36,7 @@ const when = (ms: number, group: string) =>
     ? new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     : new Date(ms).toLocaleDateString([], { day: "numeric", month: "short" });
 
-const titleOf = (s: SDKSessionInfo) => s.customTitle || s.summary || s.firstPrompt || s.sessionId.slice(0, 8);
+const titleOf = sessionTitle;
 
 function SessionList({ onClose }: { onClose: () => void }) {
   const sessions = useAgent((s) => s.sessions);
@@ -50,7 +52,7 @@ function SessionList({ onClose }: { onClose: () => void }) {
   const groups = useMemo(() => {
     const now = new Date();
     const q = query.trim().toLowerCase();
-    const out = new Map<string, SDKSessionInfo[]>();
+    const out = new Map<string, SessionInfo[]>();
     for (const s of sessions ?? []) {
       if (q && !`${titleOf(s)} ${s.firstPrompt ?? ""}`.toLowerCase().includes(q)) continue;
       const g = groupOf(s.lastModified, now);
@@ -77,13 +79,13 @@ function SessionList({ onClose }: { onClose: () => void }) {
           <section key={group}>
             <h4>{t(group)}</h4>
             {list.map((s) => (
-              <div key={s.sessionId} className={`agent-session ${s.sessionId === current ? "is-current" : ""}`}>
+              <div key={s.id} className={`agent-session ${s.id === current ? "is-current" : ""}`}>
                 <button
                   type="button"
                   className="agent-session-open"
                   onClick={() => {
                     onClose();
-                    void resume(s.sessionId);
+                    void resume(s.id);
                   }}
                   title={s.firstPrompt ?? titleOf(s)}
                 >
@@ -96,7 +98,7 @@ function SessionList({ onClose }: { onClose: () => void }) {
                   title={t("agent.deleteSession")}
                   aria-label={t("agent.deleteSession")}
                   onClick={async () => {
-                    if (await confirmDialog(t("agent.deleteConfirm", { name: titleOf(s) }), t("agent.deleteSession"), t("agent.deleteSession"), t("common.cancel"))) await remove(s.sessionId);
+                    if (await confirmDialog(t("agent.deleteConfirm", { name: titleOf(s) }), t("agent.deleteSession"), t("agent.deleteSession"), t("common.cancel"))) await remove(s.id);
                   }}
                 >
                   <TrashIcon size={14} />
@@ -148,7 +150,11 @@ function Start() {
   const connection = useAgent((s) => s.connection);
   const error = useAgent((s) => s.error);
   const account = useAgent((s) => s.account);
+  const provider = useAgent((s) => s.provider);
+  const capabilities = useAgent((s) => s.capabilities);
+  const signingIn = useAgent((s) => s.signingIn);
   const retry = useAgent((s) => s.retry);
+  const login = useAgent((s) => s.login);
 
   // The process stopped before any message: start it again.
   useEffect(() => {
@@ -161,36 +167,57 @@ function Start() {
         <span className="spinner" /> {t("agent.connecting")}
       </div>
     );
-  if (connection === "error" && error)
+  if (connection === "error" && error) {
+    const key = hasKey(`agent.err.${error.code}`) ? `agent.err.${error.code}` : "agent.err.failed";
+    const missing = error.code === "missing" || error.code === "agy-missing" || error.code === "codex-missing";
     return (
       <div className="agent-start">
         <div className="agent-notice agent-notice-error" role="alert">
-          <div>{t(`agent.err.${error.code}`)}</div>
-          {error.detail && (
+          <div>{missing ? t("agent.err.providerMissing", { provider: t(`agent.provider.${provider}`) }) : t(key)}</div>
+          {error.detail && !missing && (
             <details>
               <summary>{t("agent.details")}</summary>
               <pre className="agent-pre">{error.detail}</pre>
             </details>
           )}
         </div>
-        {error.code !== "unavailable" && (
-          <button type="button" className="btn btn-small" onClick={() => void retry()}>
-            {t("agent.retry")}
-          </button>
-        )}
+        <div className="agent-start-actions">
+          {missing && (
+            <button type="button" className="btn btn-small btn-primary" onClick={() => void openLink(PROVIDER_INSTALL[provider])}>
+              {t("agent.provider.install")}
+            </button>
+          )}
+          {error.code !== "unavailable" && (
+            <button type="button" className="btn btn-small" onClick={() => void retry()}>
+              {t("agent.retry")}
+            </button>
+          )}
+        </div>
       </div>
     );
-  const signedIn = !!(account?.email || account?.subscriptionType || account?.apiKeySource || account?.tokenSource);
-  if (!signedIn)
+  }
+  if (account?.signedIn === false)
     return (
       <div className="agent-start">
         <div className="agent-notice agent-notice-warning">
-          <strong>{t("agent.loginTitle")}</strong>
-          <div>{t("agent.loginHelp")}</div>
+          <strong>{t(`agent.loginTitle.${provider}`)}</strong>
+          <div>{t(`agent.loginHelp.${provider}`)}</div>
         </div>
-        <button type="button" className="btn btn-small" onClick={() => void retry()}>
-          {t("agent.retry")}
-        </button>
+        <div className="agent-start-actions">
+          {capabilities?.login !== "none" && (
+            <button type="button" className="btn btn-small btn-primary" disabled={signingIn} onClick={() => void login()}>
+              {capabilities?.login === "browser" ? t("agent.loginBrowser") : t("agent.openTerminal")}
+            </button>
+          )}
+          <button type="button" className="btn btn-small" onClick={() => void retry()}>
+            {t("agent.retry")}
+          </button>
+        </div>
+        {signingIn && (
+          <p className="muted small">
+            <span className="spinner" /> {t("agent.signingIn")}
+          </p>
+        )}
       </div>
     );
   return (
@@ -207,12 +234,10 @@ function Start() {
           </button>
         ))}
       </div>
-      {account?.email && (
-        <p className="agent-account muted small">
-          {t("agent.account", { email: account.email })}
-          {account.subscriptionType ? ` · ${account.subscriptionType}` : ""}
-        </p>
-      )}
+      <p className="agent-account muted small">
+        {account?.email ? t(`agent.account.${provider}`, { email: account.email }) : t(`agent.provider.${provider}`)}
+        {account?.plan ? ` · ${account.plan}` : ""}
+      </p>
       <Usage compact />
     </div>
   );
@@ -221,13 +246,14 @@ function Start() {
 const MIN_WIDTH = 320;
 const MAX_WIDTH = 760;
 
-export function AgentPanel() {
+/** `focus`: the composer takes the focus when the panel opens, not when it only moves (into the content editor and back). */
+export function AgentPanel({ focus = true }: { focus?: boolean } = {}) {
   const saved = usePrefs((s) => s.agent.width);
   // Dragging the left edge resizes the panel; the width is kept in the preferences.
   const { width, handle } = useResizable(saved, MIN_WIDTH, MAX_WIDTH, (w) =>
     usePrefs.getState().save({ agent: { ...usePrefs.getState().agent, width: w } }),
   );
-  const [focusKey] = useState(() => Date.now());
+  const [focusKey] = useState(() => (focus ? Date.now() : 0));
 
   useEffect(() => {
     void useAgent.getState().ensure().catch(() => undefined);

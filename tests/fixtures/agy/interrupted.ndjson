@@ -1,0 +1,3 @@
+{"event":"init","conversation_id":"beef","init":{"cwd":"/w","tools":[],"permission_mode":"always-proceed"}}
+{"event":"step_update","step_update":{"step_index":0,"state":"ACTIVE","step_type":"agent_response","text_delta":"Vou come"}}
+{"event":"result","result":{"conversation_id":"beef","status":"INTERRUPTED","response":"","error":"interrupted"}}

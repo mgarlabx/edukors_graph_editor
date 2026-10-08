@@ -70,6 +70,7 @@ The content of a *Text* (markdown) or *HTML* step, and the prompt of an *AI text
 - A prompt is written in markdown, with the same bar plus the **Insert {{STORAGE: …}}** list; typing `{{` opens the list of keys right at the cursor.
 - The icon at the right end of the bar turns the wrapping of long lines on and off.
 - In a course with several languages, the selector at the top switches the text's language.
+- The ✦ at the top (or ⇧⌘A) opens the **AI agent** beside the text, and closes it again. It knows which text you have open and in which language: ask it to "make this shorter", "add an example here", "translate this into Spanish", and what it writes appears in the box right away (⌘Z undoes).
 - What you type goes into the course right away: **Done** (or Esc) closes the editor without losing anything, and ⌘Z undoes.
 
 ## 6. Different paths for different students
@@ -141,9 +142,9 @@ To test a single assessment, use **Test judgement** in the inspector of the Scor
 
 ## 12. The AI agent
 
-The ✦ icon at the far right of the top bar (or ⇧⌘A) opens the **AI agent** at the right end of the window, beside the graph and the inspector; click it again to close it. The two panels are independent: the sidebar icon (⌥⌘0) opens and closes only the inspector, and ✦ only the agent. The editor is set up to work with the Claude Code installed on your computer. The agent works on the course on screen: it reads the steps, writes, connects arrows, translates, validates and fixes.
+The ✦ icon at the far right of the top bar (or ⇧⌘A) opens the **AI agent** at the right end of the window, beside the graph and the inspector; click it again to close it. The two panels are independent: the sidebar icon (⌥⌘0) opens and closes only the inspector, and ✦ only the agent. The editor works with the AI agent you pick in **Preferences → AI agent**. The agent works on the course on screen: it reads the steps, writes, connects arrows, translates, validates and fixes. With the content editor open, its own ✦ brings the agent beside the text, to work on that text (section 5).
 
-**Before you start:** the agent uses your Claude account, the same one as Claude Code. If the panel says no account is connected, open Terminal, type `claude` and, inside it, `/login`; then click **Try again**.
+**Before you start.** In **Preferences → AI agent**, under **Provider**, pick the agent that answers in the panel. One of them comes inside the editor; the others are programs you install on your computer — next to the one that is missing, **See how to install** shows the way. The agent works with your own account in its service, not with an editor account: if the panel says no account is connected, follow the login instruction it shows for that agent (some ask for a command in Terminal, others open the browser) and click **Try again**.
 
 **How to ask.** Write in the field at the bottom and press ↵ (⇧↵ starts a new line). Examples:
 
@@ -160,9 +161,9 @@ Whatever is selected on the graph goes along with the message: it shows in the �
 **Skills and MCP servers.** Also in **Preferences → AI agent** you can give the agent extra abilities:
 
 - **Skills** are packages of instructions (a folder with a `SKILL.md` file, sometimes with scripts) that teach the agent to do a task in a certain way. Click **Open skills folder**, put the skill's folder there and click **Reload**: it shows up in the list.
-- **MCP servers** connect the agent to other programs and services (a folder of materials, a document base…). Paste into the **MCP servers** field the JSON the server's documentation gives for Claude Code (the `.mcp.json`). Servers that ask you to log in on the web don't work here.
+- **MCP servers** connect the agent to other programs and services (a folder of materials, a document base…). Paste into the **MCP servers** field the JSON the server's documentation gives (the `.mcp.json`). Servers that ask you to log in on the web don't work here.
 
-Both apply from the next session on (**New session**). The model menu, at the foot of the panel, shows the loaded skills and whether each server connected (✓) or failed (✗). If a skill needs to run a command on the Mac, the agent asks for your approval **for every command**, showing the command, even in Auto mode.
+Both apply from the next session on (**New session**). The model menu, at the foot of the panel, shows the loaded skills and whether each server connected (✓) or failed (✗). If a skill needs to run a command on the computer, the agent asks for your approval **for every command**, showing the command, even in Auto mode. Not every agent takes skills and MCP servers; when the one you picked doesn't, the panel says so.
 
 **The three modes** (on the ✋ button in the field):
 
@@ -176,9 +177,9 @@ In any mode, **each change the agent makes is one undo step**: ⌘Z undoes the l
 
 **The agent's questions.** When the request could go more than one way (the school year, the length, the languages), the agent asks in a card with options; pick one or write another answer.
 
-**Model and effort.** On the model button (for example, *Opus 5.5*) you choose Claude's model and the **effort**: more effort, more careful and slower answers. The default works for almost everything.
+**Model and effort.** On the model button, at the foot of the panel, you choose among the models the agent offers and, when it allows it, the **effort**: more effort, more careful and slower answers. The default works for almost everything.
 
-**Account and usage.** The same menu shows the Claude account in use and the **account usage**: the subscription's limit windows, as Claude Code reports them, each with a bar. *Current session* is the 5-hour window; *Current week*, the weekly one; each line says when the window resets. Usage is updated when the panel opens and after each answer (⟳ updates it right away), and it also shows at the start of each new conversation. The windows belong to the account, not to the editor: they also count what you use on claude.ai and in Claude Code. To use another account, log in with it in Claude Code (`claude`, then `/login`) and start a new conversation in the panel.
+**Account and usage.** The same menu shows the account in use and, when the agent reports it, the **account usage**: your subscription's limit windows, as the agent itself reports them (in English), each with a bar — the session one (*Current session*) and the weekly one (*Current week*), and each line says when the window resets. Usage is updated when the panel opens and after each answer (⟳ updates it right away), and it also shows at the start of each new conversation. The windows belong to your account, not to the editor: they also count what you use in that same service elsewhere. To use another account, log in with it in the agent's own program and start a new conversation in the panel.
 
 **Sessions.** Each conversation is kept. The title at the top of the panel opens the list of past conversations (with search); click one to carry on from where it stopped. The ✎ icon starts a new conversation; each item's 🗑 deletes the conversation.
 

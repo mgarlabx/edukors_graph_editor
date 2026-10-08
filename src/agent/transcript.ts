@@ -1,14 +1,17 @@
 /**
- * The conversation as the panel shows it, built from the SDK's messages.
+ * The conversation as the panel shows it, built from the agent's events.
  *
- * Claude Code sends each block of an answer -- a thought, a text, a tool call
- * -- as a message of its own once it is complete, and, as it is written, a
- * stream of events with the text so far. The stream fills `live`, which is
- * shown at the end of the conversation; each complete block replaces its live
- * copy with an item for good. A conversation read back from disk goes through
- * the same steps, without the stream.
+ * The agent's process sends each block of an answer -- a thought, a text, a
+ * tool call -- as an event of its own once it is complete, and, as it is
+ * written, a stream of events with the text so far. The stream fills `live`,
+ * which is shown at the end of the conversation; each complete block replaces
+ * its live copy with an item for good. A conversation read back from disk goes
+ * through the same steps, without the stream (`fold`).
+ *
+ * Which provider is behind the agent makes no difference here: the events are
+ * the same for all of them (src/agent/events.ts).
  */
-import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
+import type { AgentEvent, Block } from "./events";
 
 export type ToolStatus = "running" | "done" | "error";
 
@@ -56,35 +59,27 @@ export function splitContext(text: string): { text: string; context?: string } {
   return { text: rest, context: nodes.map((n) => n?.[1]).filter(Boolean).join(", ") || undefined };
 }
 
-/** The text of a tool result, which comes as a string or as a list of blocks. */
-export function resultText(content: unknown): string {
-  if (typeof content === "string") return content;
-  if (!Array.isArray(content)) return "";
-  return content.map((c) => (c?.type === "text" ? String(c.text ?? "") : c?.type ? `[${c.type}]` : "")).join("\n");
-}
-
 let seq = 0;
 const key = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${++seq}`;
 
 /** A notice in the conversation: an error, a limit reached, an interruption. */
 export const notice = (level: "info" | "warning" | "error", text: string, code?: string): Item => ({ kind: "notice", key: key("n"), level, text, code });
 
-/** The blocks of a complete assistant message, as items; the live copies of those blocks go. */
-function assistantBlocks(t: Transcript, uuid: string, messageId: string | undefined, content: unknown[]): Transcript {
+/** The blocks of a complete answer, as items; the live copies of those blocks go. */
+function assistantBlocks(t: Transcript, uuid: string, messageId: string | undefined, blocks: Block[]): Transcript {
   const items = [...t.items];
   let live = t.live;
-  content.forEach((block, i) => {
-    const b = block as { type?: string; text?: string; thinking?: string; id?: string; name?: string; input?: Record<string, unknown> };
-    if (b.type === "text" && b.text?.trim()) items.push({ kind: "text", key: `${uuid}:${i}`, text: b.text });
-    else if (b.type === "thinking" && b.thinking?.trim()) items.push({ kind: "thinking", key: `${uuid}:${i}`, text: b.thinking });
-    else if (b.type === "tool_use" && b.id && !items.some((it) => it.kind === "tool" && it.id === b.id))
-      items.push({ kind: "tool", key: b.id, id: b.id, name: String(b.name ?? ""), input: b.input ?? {}, status: "running" });
-    else return;
+  for (const b of blocks) {
+    if (b.type === "tool_use") {
+      if (items.some((it) => it.kind === "tool" && it.id === b.id)) continue;
+      items.push({ kind: "tool", key: b.id, id: b.id, name: b.name, input: b.input, status: "running" });
+    } else if (b.type === "text") items.push({ kind: "text", key: `${uuid}:${b.index}`, text: b.text });
+    else items.push({ kind: "thinking", key: `${uuid}:${b.index}`, text: b.text });
     if (live && live.messageId === messageId) {
       const at = live.blocks.findIndex((l) => l.type === b.type && (b.type !== "tool_use" || l.id === b.id));
       if (at !== -1) live = { ...live, blocks: live.blocks.filter((_, k) => k !== at) };
     }
-  });
+  }
   return { items, live };
 }
 
@@ -105,107 +100,53 @@ const interrupted = (t: Transcript): Transcript => {
   return last?.kind === "notice" && last.code === "interrupted" ? t : { ...t, items: [...t.items, notice("info", "", "interrupted")] };
 };
 
-/** Tool results and the other things a user message can carry back. */
-function userBlocks(t: Transcript, content: unknown): Transcript {
-  if (!Array.isArray(content)) return t;
-  let items = t.items;
-  for (const block of content) {
-    const b = block as { type?: string; tool_use_id?: string; content?: unknown; is_error?: boolean; text?: string };
-    if (b.type === "tool_result" && b.tool_use_id) {
-      const text = resultText(b.content);
-      items = items.map((it) =>
-        it.kind === "tool" && it.id === b.tool_use_id ? { ...it, status: b.is_error ? "error" : "done", result: text } : it,
-      );
-    } else if (b.type === "text" && /^\[Request interrupted/.test(b.text ?? "")) {
-      return interrupted(freeze({ ...t, items }));
+/** One event from the agent's process, folded into the conversation. */
+export function applyEvent(t: Transcript, ev: AgentEvent): Transcript {
+  switch (ev.ev) {
+    case "msg_start":
+      return { ...t, live: { messageId: ev.messageId, blocks: [] } };
+    case "block_start": {
+      const live = t.live ?? { messageId: "", blocks: [] };
+      const block: LiveBlock = { index: ev.index, type: ev.type, text: ev.text ?? "", name: ev.name, id: ev.id, done: false };
+      return { ...t, live: { ...live, blocks: [...live.blocks, block] } };
     }
-  }
-  return { ...t, items };
-}
-
-const ERROR_CODES = new Set(["authentication_failed", "oauth_org_not_allowed", "account_on_hold", "billing_error", "rate_limit", "overloaded", "invalid_request", "model_not_found", "server_error", "max_output_tokens"]);
-
-/** One message from the agent's process, folded into the conversation. */
-export function applyMessage(t: Transcript, msg: SDKMessage): Transcript {
-  const m = msg as SDKMessage & Record<string, any>;
-  switch (m.type) {
-    case "stream_event":
-      return applyStream(t, m.event);
-    case "assistant": {
-      if (m.parent_tool_use_id) return t;
-      const next = assistantBlocks(t, m.uuid, m.message?.id, Array.isArray(m.message?.content) ? m.message.content : []);
-      return m.error && ERROR_CODES.has(m.error) ? { ...next, items: [...next.items, notice("error", "", m.error)] } : next;
-    }
-    case "user":
-      return m.parent_tool_use_id ? t : userBlocks(t, m.message?.content);
-    case "result": {
-      const done = freeze(t);
-      if (m.subtype === "success") return done;
-      // Stopped by the person: not an error.
-      if (typeof m.terminal_reason === "string" && m.terminal_reason.startsWith("aborted")) return interrupted(done);
-      const text = Array.isArray(m.errors) ? m.errors.join("\n") : "";
-      return { ...done, items: [...done.items, notice("error", text, m.subtype)] };
-    }
-    case "system":
-      if (m.subtype === "compact_boundary") return { ...t, items: [...t.items, { kind: "divider", key: key("d"), text: "compacted" }] };
-      if (m.subtype === "informational" && m.content) return { ...t, items: [...t.items, notice(m.level === "warning" ? "warning" : "info", String(m.content))] };
-      return t;
-    case "rate_limit_event": {
-      const info = m.rate_limit_info ?? {};
-      const when = typeof info.resetsAt === "number" ? new Date(info.resetsAt * (info.resetsAt < 1e12 ? 1000 : 1)).toISOString() : "";
-      return { ...t, items: [...t.items, notice(info.status === "rejected" ? "error" : "warning", when, info.status === "rejected" ? "rate_rejected" : "rate_warning")] };
-    }
-    case "auth_status":
-      return m.error ? { ...t, items: [...t.items, notice("error", String(m.error), "authentication_failed")] } : t;
-    case "conversation_reset":
-      return emptyTranscript();
-    default:
-      return t;
-  }
-}
-
-function applyStream(t: Transcript, event: any): Transcript {
-  switch (event?.type) {
-    case "message_start":
-      return { ...t, live: { messageId: String(event.message?.id ?? ""), blocks: [] } };
-    case "content_block_start": {
-      const cb = event.content_block ?? {};
-      if (!t.live || !["text", "thinking", "tool_use"].includes(cb.type)) return t;
-      const block: LiveBlock = { index: event.index, type: cb.type, text: cb.text ?? cb.thinking ?? "", name: cb.name, id: cb.id, done: false };
-      return { ...t, live: { ...t.live, blocks: [...t.live.blocks, block] } };
-    }
-    case "content_block_delta": {
-      const d = event.delta ?? {};
-      const add = d.type === "text_delta" ? d.text : d.type === "thinking_delta" ? d.thinking : null;
-      if (!t.live || typeof add !== "string") return t;
-      return { ...t, live: { ...t.live, blocks: t.live.blocks.map((b) => (b.index === event.index && !b.done ? { ...b, text: b.text + add } : b)) } };
-    }
-    case "content_block_stop":
+    case "block_delta":
       if (!t.live) return t;
-      return { ...t, live: { ...t.live, blocks: t.live.blocks.map((b) => (b.index === event.index ? { ...b, done: true } : b)) } };
-    default:
-      return t;
+      return { ...t, live: { ...t.live, blocks: t.live.blocks.map((b) => (b.index === ev.index && !b.done ? { ...b, text: b.text + ev.text } : b)) } };
+    case "block_stop":
+      if (!t.live) return t;
+      return { ...t, live: { ...t.live, blocks: t.live.blocks.map((b) => (b.index === ev.index ? { ...b, done: true } : b)) } };
+    case "assistant":
+      return assistantBlocks(t, ev.uuid, ev.messageId, ev.blocks);
+    case "tool_result":
+      return {
+        ...t,
+        items: t.items.map((it) => (it.kind === "tool" && it.id === ev.toolUseId ? { ...it, status: ev.isError ? "error" : "done", result: ev.text } : it)),
+      };
+    case "user": {
+      const { text, context } = splitContext(ev.text);
+      return { ...t, items: [...t.items, { kind: "user", key: ev.key, text, ...(context ? { context } : {}) }] };
+    }
+    case "interrupted":
+      return interrupted(freeze(t));
+    case "turn_end": {
+      const done = freeze(t);
+      if (ev.status === "success") return done;
+      if (ev.status === "interrupted") return interrupted(done);
+      return { ...done, items: [...done.items, notice("error", ev.text ?? "", ev.code)] };
+    }
+    case "notice":
+      return { ...t, items: [...t.items, notice(ev.level, ev.text, ev.code)] };
+    case "divider":
+      return { ...t, items: [...t.items, { kind: "divider", key: key("d"), text: ev.text }] };
+    case "reset":
+      return emptyTranscript();
   }
 }
 
-/** A conversation read back from disk (getSessionMessages). */
-export function fromHistory(messages: { type: string; uuid: string; message: unknown; parent_tool_use_id?: string | null }[]): Transcript {
-  let t = emptyTranscript();
-  for (const entry of messages) {
-    if (entry.parent_tool_use_id) continue;
-    const message = (entry.message ?? {}) as { content?: unknown; id?: string };
-    if (entry.type === "assistant") {
-      t = assistantBlocks(t, entry.uuid, message.id, Array.isArray(message.content) ? message.content : []);
-    } else if (entry.type === "user") {
-      const content = message.content;
-      const typed = typeof content === "string" ? content : Array.isArray(content) ? content.filter((b: any) => b?.type === "text").map((b: any) => String(b.text ?? "")).join("\n") : "";
-      if (typed.trim() && !/^\[Request interrupted/.test(typed) && !/^<(local-command|command-|system-reminder)/.test(typed)) {
-        const { text, context } = splitContext(typed);
-        t = { ...t, items: [...t.items, { kind: "user", key: entry.uuid, text, ...(context ? { context } : {}) }] };
-      }
-      t = userBlocks(t, content);
-    }
-  }
+/** A conversation read back from disk: its events, folded, with nothing still running. */
+export function fold(events: AgentEvent[]): Transcript {
+  const t = events.reduce(applyEvent, emptyTranscript());
   // A tool call with no result was cut short when the conversation stopped.
   return { items: t.items.map((it) => (it.kind === "tool" && it.status === "running" ? { ...it, status: "error" } : it)), live: null };
 }

@@ -7,9 +7,13 @@
 // past sessions are listed and reopened.
 //
 // With --live, the page talks to the real agent/sidecar.mjs (through a small
-// bridge here, standing in for the app's Rust side) and so to Claude, with the
-// Claude account logged in on this Mac, on Haiku: one short edit of a course.
-//   node tests/e2e/agent.mjs [outDir] [--live]
+// bridge here, standing in for the app's Rust side) and so to the provider,
+// with the account logged in on this Mac: one short edit of a course.
+//   node tests/e2e/agent.mjs [outDir] [--live] [--provider=claude|antigravity|codex] [--fake-agy]
+//
+// --fake-agy and --fake-codex put tests/fake-agy.mjs and tests/fake-codex.mjs
+// in the place of the vendors' CLIs, so those providers can be driven on a
+// machine that does not have them.
 import http from "node:http";
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
@@ -21,6 +25,7 @@ import { webkit } from "playwright";
 
 const args = process.argv.slice(2);
 const live = args.includes("--live");
+const liveProvider = args.find((a) => a.startsWith("--provider="))?.slice("--provider=".length) ?? "claude";
 const out = args.find((a) => !a.startsWith("--")) ?? "/tmp";
 const url = process.env.EDITOR_URL ?? "http://localhost:1420/";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -51,7 +56,7 @@ const editor = () =>
   });
 const agent = () => page.evaluate(() => {
   const s = window.__agent.getState();
-  return { busy: s.busy, asks: s.asks.length, items: s.items.map((i) => i.kind), mode: s.mode, model: s.model, sessionId: s.sessionId, connection: s.connection };
+  return { busy: s.busy, asks: s.asks.length, items: s.items.map((i) => i.kind), mode: s.mode, model: s.model, sessionId: s.sessionId, connection: s.connection, provider: s.provider, capabilities: s.capabilities };
 });
 
 // ------------------------------------------------- the process, scripted ----
@@ -61,20 +66,58 @@ function scriptedTransport() {
   const listeners = [];
   const sent = [];
   const emit = (msg) => setTimeout(() => listeners.forEach((cb) => cb({ ...msg, gen: 1 })), 15);
-  const sdk = (msg) => emit({ t: "sdk", sid: "s-new", msg: { session_id: "s-new", uuid: crypto.randomUUID(), parent_tool_use_id: null, ...msg } });
-  const models = [
-    { value: "default", resolvedModel: "claude-opus-5-5", displayName: "Default (recommended)", description: "", supportedEffortLevels: ["low", "medium", "high", "xhigh", "max"] },
-    { value: "opus", resolvedModel: "claude-opus-5-5", displayName: "Opus 5.5", description: "", supportedEffortLevels: ["low", "medium", "high", "xhigh", "max"] },
-    { value: "haiku", resolvedModel: "claude-haiku-4-5", displayName: "Haiku 4.5", description: "" },
-  ];
-  const sessions = [{ sessionId: "s-old", summary: "Revisar o quiz", lastModified: Date.now() - 3600_000, customTitle: "Revisar o quiz", firstPrompt: "Revise o quiz" }];
+  let sid = "s-new";
+  const ev = (e) => emit({ t: "ev", sid, ev: e });
+  const text = (uuid, messageId, body) => {
+    ev({ ev: "msg_start", messageId });
+    ev({ ev: "block_start", index: 0, type: "text", text: "" });
+    ev({ ev: "block_delta", index: 0, text: body });
+    ev({ ev: "block_stop", index: 0 });
+    ev({ ev: "assistant", uuid, messageId, blocks: [{ type: "text", index: 0, text: body }] });
+  };
+  const CAPS = {
+    claude: { efforts: true, usage: true, bash: true, skills: true, mcp: true, login: "external", ownQuestions: true },
+    antigravity: { efforts: false, usage: false, bash: false, skills: true, mcp: false, login: "external", ownQuestions: false },
+    codex: { efforts: true, usage: false, bash: true, skills: false, mcp: false, login: "browser", ownQuestions: false },
+  };
+  const MODELS = {
+    claude: [
+      { value: "default", resolved: "claude-opus-5-5", displayName: "Default (recommended)", efforts: ["low", "medium", "high", "xhigh", "max"] },
+      { value: "opus", resolved: "claude-opus-5-5", displayName: "Opus 5.5", efforts: ["low", "medium", "high", "xhigh", "max"] },
+      { value: "haiku", resolved: "claude-haiku-4-5", displayName: "Haiku 4.5" },
+    ],
+    antigravity: [
+      { value: "default", displayName: "Padrão" },
+      { value: "gemini-3.8-flash-high", displayName: "gemini-3.8-flash-high" },
+    ],
+    codex: [{ value: "default", displayName: "GPT-6.1 Sol", efforts: ["low", "medium", "high"] }],
+  };
+  const ACCOUNTS = {
+    claude: { provider: "claude", signedIn: true, email: "professora@exemplo.org", plan: "Claude Pro" },
+    antigravity: { provider: "antigravity", signedIn: true, email: "professora@gmail.com", plan: "Google AI Pro" },
+    codex: { provider: "codex", signedIn: false },
+  };
+  const SESSIONS = {
+    claude: [{ id: "s-old", title: "Revisar o quiz", lastModified: Date.now() - 3600_000, firstPrompt: "Revise o quiz" }],
+    antigravity: [{ id: "a-old", title: "Curso de frações", lastModified: Date.now() - 7200_000, firstPrompt: "Monte um curso de frações" }],
+    codex: [],
+  };
+  let provider = "claude";
   let turn = 0;
   const pendingTool = {};
   window.__agentSent = sent;
   const reply = (id, data) => emit({ t: "reply", id, ok: true, data });
   window.__edukorsAgentTransport = {
     async start() {
-      emit({ t: "ready", sdk: "test", cwd: "/tmp" });
+      emit({
+        t: "ready",
+        cwd: "/tmp",
+        providers: [
+          { id: "claude", available: true, version: "test" },
+          { id: "antigravity", available: true, version: "1.2.2" },
+          { id: "codex", available: false, reason: "missing" },
+        ],
+      });
       return { generation: 1, fresh: true };
     },
     async stop() {},
@@ -86,9 +129,19 @@ function scriptedTransport() {
       sent.push(msg);
       switch (msg.t) {
         case "open":
-          return reply(msg.id, { sessionId: msg.resume ?? "s-new", resumed: !!msg.resume, account: { email: "professora@exemplo.org", subscriptionType: "Claude Pro" }, models });
+          provider = msg.provider ?? "claude";
+          sid = msg.resume ?? (provider === "claude" ? "s-new" : `${provider}-new`);
+          turn = 0;
+          return reply(msg.id, {
+            sessionId: sid,
+            resumed: !!msg.resume,
+            provider,
+            account: ACCOUNTS[provider],
+            models: MODELS[provider],
+            capabilities: CAPS[provider],
+          });
         case "list":
-          return reply(msg.id, sessions);
+          return reply(msg.id, SESSIONS[msg.provider ?? provider] ?? []);
         case "usage":
           return reply(msg.id, {
             at: Date.now(),
@@ -96,19 +149,15 @@ function scriptedTransport() {
           });
         case "history":
           return reply(msg.id, [
-            { type: "user", uuid: "h1", message: { role: "user", content: '<editor-context>\nCourse on screen: "x"\n</editor-context>\n\nRevise o quiz' } },
-            { type: "assistant", uuid: "h2", message: { id: "m0", content: [{ type: "text", text: "O quiz está **bom**." }] } },
+            { ev: "user", key: "h1", text: '<editor-context>\nCourse on screen: "x"\nMode: ask.\n</editor-context>\n\nRevise o quiz' },
+            { ev: "assistant", uuid: "h2", messageId: "m0", blocks: [{ type: "text", index: 0, text: "O quiz está **bom**." }] },
           ]);
         case "send": {
-          reply(msg.id, { sessionId: "s-new" });
+          reply(msg.id, { sessionId: sid });
           turn += 1;
           if (turn === 1) {
             // Streams a sentence, asks to edit, and waits for the answer.
-            sdk({ type: "stream_event", event: { type: "message_start", message: { id: "m1" } } });
-            sdk({ type: "stream_event", event: { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } } });
-            sdk({ type: "stream_event", event: { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: "Vou adicionar uma pergunta de sim ou não depois de **sm5**." } } });
-            sdk({ type: "stream_event", event: { type: "content_block_stop", index: 0 } });
-            sdk({ type: "assistant", message: { id: "m1", content: [{ type: "text", text: "Vou adicionar uma pergunta de sim ou não depois de **sm5**." }] } });
+            text("a1", "m1", "Vou adicionar uma pergunta de sim ou não depois de **sm5**.");
             const input = {
               summary: "Adiciona uma pergunta sim/não depois de sm5",
               operations: [
@@ -117,28 +166,28 @@ function scriptedTransport() {
               ],
             };
             pendingTool.input = input;
-            sdk({ type: "assistant", message: { id: "m1", content: [{ type: "tool_use", id: "tu1", name: "mcp__edukors__edit_course", input }] } });
-            emit({ t: "ask", id: "ask1", sid: "s-new", kind: "permission", tool: "mcp__edukors__edit_course", input, toolUseId: "tu1", reason: null });
+            ev({ ev: "assistant", uuid: "a2", messageId: "m1", blocks: [{ type: "tool_use", index: 0, id: "tu1", name: "mcp__edukors__edit_course", input }] });
+            emit({ t: "ask", id: "ask1", sid, kind: "permission", tool: "mcp__edukors__edit_course", input, toolUseId: "tu1", reason: null });
           } else if (turn === 2) {
             emit({
               t: "ask",
               id: "ask2",
-              sid: "s-new",
+              sid,
               kind: "question",
-              tool: "AskUserQuestion",
+              tool: CAPS[provider].ownQuestions ? "AskUserQuestion" : "ask_user",
               toolUseId: "tu2",
               reason: null,
               input: { questions: [{ question: "Para qual ano?", header: "Ano", multiSelect: false, options: [{ label: "6º ano", description: "11–12 anos" }, { label: "9º ano", description: "14–15 anos" }] }] },
             });
           } else if (turn === 3) {
-            emit({ t: "ask", id: "ask3", sid: "s-new", kind: "plan", tool: "ExitPlanMode", toolUseId: "tu3", reason: null, input: { plan: "1. Ler o curso\n2. Adicionar um quiz no fim" } });
+            emit({ t: "ask", id: "ask3", sid, kind: "plan", tool: CAPS[provider].ownQuestions ? "ExitPlanMode" : "plan_ready", toolUseId: "tu3", reason: null, input: { plan: "1. Ler o curso\n2. Adicionar um quiz no fim" } });
           } else if (turn === 4) {
-            // A plan written as the reply, with no ExitPlanMode after it.
-            sdk({ type: "assistant", message: { id: "m4", content: [{ type: "text", text: "## Plano\n1. Adicionar **q1** depois de sm5." }] } });
-            sdk({ type: "result", subtype: "success", is_error: false, result: "" });
+            // A plan written as the reply, with no plan tool after it.
+            ev({ ev: "assistant", uuid: "a4", messageId: "m4", blocks: [{ type: "text", index: 0, text: "## Plano\n1. Adicionar **q1** depois de sm5." }] });
+            ev({ ev: "turn_end", status: "success" });
           } else {
-            sdk({ type: "assistant", message: { id: `m${turn}`, content: [{ type: "text", text: "Feito." }] } });
-            sdk({ type: "result", subtype: "success", is_error: false, result: "" });
+            ev({ ev: "assistant", uuid: `a${turn}`, messageId: `m${turn}`, blocks: [{ type: "text", index: 0, text: "Feito." }] });
+            ev({ ev: "turn_end", status: "success" });
           }
           return;
         }
@@ -148,15 +197,15 @@ function scriptedTransport() {
             // The approved edit runs in the editor, as the real process asks it to.
             emit({ t: "tool", id: "call1", name: "edit_course", args: pendingTool.input });
           } else {
-            sdk({ type: "assistant", message: { id: `m${turn}x`, content: [{ type: "text", text: "Entendido." }] } });
-            sdk({ type: "result", subtype: "success", is_error: false, result: "" });
+            ev({ ev: "assistant", uuid: `a${turn}x`, messageId: `m${turn}x`, blocks: [{ type: "text", index: 0, text: "Entendido." }] });
+            ev({ ev: "turn_end", status: "success" });
           }
           return;
         case "tool_reply":
           window.__agentToolReply = msg;
-          sdk({ type: "user", message: { role: "user", content: [{ type: "tool_result", tool_use_id: "tu1", content: [{ type: "text", text: msg.text }], is_error: msg.isError }] } });
-          sdk({ type: "assistant", message: { id: "m2", content: [{ type: "text", text: "Pronto: **b1** pergunta se o estudante quer saber mais." }] } });
-          sdk({ type: "result", subtype: "success", is_error: false, result: "" });
+          ev({ ev: "tool_result", toolUseId: "tu1", text: msg.text, isError: !!msg.isError });
+          ev({ ev: "assistant", uuid: "a3", messageId: "m2", blocks: [{ type: "text", index: 0, text: "Pronto: **b1** pergunta se o estudante quer saber mais." }] });
+          ev({ ev: "turn_end", status: "success" });
           return;
         default:
           if (msg.id) reply(msg.id, null);
@@ -191,7 +240,15 @@ function startBridge() {
       if (req.url === "/start") {
         if (child && child.exitCode === null) return res.end(JSON.stringify({ generation, fresh: false }));
         const gen = ++generation;
-        child = spawn(process.execPath, [join(root, "agent", "sidecar.mjs")], { env: { ...process.env, EDUKORS_AGENT_CWD: cwd }, stdio: ["pipe", "pipe", "pipe"] });
+        child = spawn(process.execPath, [join(root, "agent", "sidecar.mjs")], {
+          env: {
+            ...process.env,
+            EDUKORS_AGENT_CWD: cwd,
+            ...(args.includes("--fake-agy") ? { EDUKORS_AGY: join(root, "tests", "fake-agy.mjs") } : {}),
+            ...(args.includes("--fake-codex") ? { EDUKORS_CODEX: join(root, "tests", "fake-codex.mjs") } : {}),
+          },
+          stdio: ["pipe", "pipe", "pipe"],
+        });
         createInterface({ input: child.stdout }).on("line", (line) => {
           try {
             emit({ ...JSON.parse(line), gen });
@@ -250,6 +307,9 @@ function bridgeTransport(base) {
 const bridge = live ? await startBridge() : null;
 if (bridge) await page.addInitScript(bridgeTransport, bridge.base);
 else await page.addInitScript(scriptedTransport);
+// A live run against another provider starts with it chosen in the preferences.
+if (live && liveProvider !== "claude")
+  await page.addInitScript((provider) => localStorage.setItem("edukors-editor.prefs", JSON.stringify({ agent: { provider } })), liveProvider);
 
 await page.goto(url);
 // The terms of use come first, on a fresh profile.
@@ -283,8 +343,8 @@ await step("the AI button sits at the right end of the toolbar and opens the age
   await page.locator(".inspector").waitFor();
   await page.locator(".agent-hello, .agent-account").first().waitFor({ timeout: 60_000 });
   expect((await agent()).connection === "ready", "not connected");
-  // The start of a conversation shows the usage windows under the account.
-  await page.locator(".agent-usage.is-compact .agent-usage-line").first().waitFor({ timeout: 60_000 });
+  // The start of a conversation shows the usage windows under the account, where the provider reports them.
+  if (liveProvider === "claude") await page.locator(".agent-usage.is-compact .agent-usage-line").first().waitFor({ timeout: 60_000 });
   await shot("a01-panel-open");
 });
 
@@ -394,6 +454,44 @@ if (!live) {
     expect((await page.locator(".agent-user").count()) > 0, "the conversation did not survive closing the panel");
   });
 
+  await step("the provider changes from the model menu, with its own models and sessions", async () => {
+    await page.locator(".agent-model > .agent-chip").click();
+    await page.getByRole("menuitemradio", { name: /Antigravity/ }).click();
+    // The provider changes at once; the conversation on the other side takes a round trip.
+    await page.waitForFunction(() => window.__agent.getState().sessionId === "antigravity-new");
+    const opened = await page.evaluate(() => window.__agentSent.filter((m) => m.t === "open").at(-1));
+    expect(opened.provider === "antigravity", `opened on ${opened.provider}`);
+    const s = await agent();
+    expect(s.items.length === 0 && s.sessionId === "antigravity-new", `the conversation did not change: ${s.sessionId}`);
+    // The sessions are the other provider's, read when the list opens.
+    await page.locator(".agent-head .agent-title").click();
+    await page.getByText("Curso de frações").waitFor();
+    const listed = await page.evaluate(() => window.__agentSent.filter((m) => m.t === "list").at(-1));
+    expect(listed.provider === "antigravity", "the session list did not follow the provider");
+    await page.keyboard.press("Escape");
+    await page.locator(".agent-sessions").waitFor({ state: "detached" });
+    // Antigravity takes no effort level and reports no usage, so neither shows.
+    await page.locator(".agent-model > .agent-chip").click();
+    expect((await page.locator(".agent-menu .agent-effort").count()) === 0, "the effort levels should not show");
+    expect((await page.locator(".agent-menu .agent-usage").count()) === 0, "the usage should not show");
+    expect((await page.getByText("Conta Google: professora@gmail.com").count()) === 1, "the Google account is not shown");
+    await shot("a07-provider");
+    await page.keyboard.press("Escape");
+    // Back to Claude Code, with its own conversation.
+    await page.locator(".agent-model > .agent-chip").click();
+    await page.getByRole("menuitemradio", { name: /Claude Code/ }).click();
+    await page.waitForFunction(() => window.__agent.getState().sessionId === "s-new" && window.__agent.getState().models.length === 3);
+    await page.keyboard.press("Escape");
+  });
+
+  await step("a provider that is not installed is offered but marked", async () => {
+    await page.locator(".agent-model > .agent-chip").click();
+    const codex = page.getByRole("menuitemradio", { name: /Codex/ });
+    expect((await codex.count()) === 1, "Codex is not in the menu");
+    expect((await codex.innerText()).includes("não instalado"), "Codex is not marked as missing");
+    await page.keyboard.press("Escape");
+  });
+
   await step("past sessions are listed and reopened with their history", async () => {
     await page.locator(".agent-head .agent-title").click();
     await page.getByText("Revisar o quiz").waitFor();
@@ -424,14 +522,13 @@ if (!live) {
     await plain.close();
   });
 
-  await step("a process that cannot load the SDK says so, and the message stays", async () => {
+  await step("a provider that cannot start says so, and the message stays", async () => {
     const broken = await browser.newPage({ viewport: { width: 1200, height: 800 } });
     await broken.addInitScript(() => {
       const listeners = [];
       window.__edukorsAgentTransport = {
         async start() {
-          setTimeout(() => listeners.forEach((cb) => cb({ t: "fatal", code: "sdk-missing", message: "Cannot find package '@anthropic-ai/claude-agent-sdk'", gen: 1 })), 10);
-          setTimeout(() => listeners.forEach((cb) => cb({ t: "exit", stderr: "", gen: 1 })), 60);
+          setTimeout(() => listeners.forEach((cb) => cb({ t: "ready", cwd: "/tmp", providers: [{ id: "claude", available: false, reason: "sdk-missing" }], gen: 1 })), 10);
           return { generation: 1, fresh: true };
         },
         async stop() {},
@@ -439,7 +536,10 @@ if (!live) {
           listeners.push(cb);
           return () => undefined;
         },
-        async send() {},
+        async send(msg) {
+          if (msg.t === "open") setTimeout(() => listeners.forEach((cb) => cb({ t: "reply", id: msg.id, ok: false, error: "Cannot find package", code: "sdk-missing", gen: 1 })), 10);
+          else if (msg.id) setTimeout(() => listeners.forEach((cb) => cb({ t: "reply", id: msg.id, ok: true, data: null, gen: 1 })), 10);
+        },
       };
     });
     await broken.goto(url);
@@ -454,11 +554,15 @@ if (!live) {
     expect((await broken.evaluate(() => window.__agent.getState().connection)) === "error", "not in error");
     await broken.close();
   });
+
 } else {
-  await step("Claude edits the course through the editor, after approval", async () => {
-    await page.locator(".agent-model > .agent-chip").click();
-    await page.getByRole("menuitemradio", { name: /Haiku/ }).click();
-    await page.keyboard.press("Escape");
+  await step(`${liveProvider} edits the course through the editor, after approval`, async () => {
+    expect((await agent()).provider === liveProvider, `the panel is on ${(await agent()).provider}`);
+    if (liveProvider === "claude") {
+      await page.locator(".agent-model > .agent-chip").click();
+      await page.getByRole("menuitemradio", { name: /Haiku/ }).click();
+      await page.keyboard.press("Escape");
+    }
     await page.evaluate(() => window.__editor.getState().select({ nodes: ["sm5"], edge: null }));
     await page.locator(".agent-input").fill("Adicione depois do passo selecionado um passo do tipo sim/não (bool) que pergunta, em inglês, se o estudante quer saber mais, com uma seta do passo selecionado para ele. Faça só isso, numa única edição.");
     await page.keyboard.press("Enter");

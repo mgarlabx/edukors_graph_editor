@@ -1,10 +1,17 @@
 /**
  * What the editor tells the agent with each message: the course on screen,
- * the other courses open, the view and, unless the person turned it off, the
- * selection. It goes in front of the message, in a block the panel does not
- * show (transcript.ts takes it off again when a conversation is read back).
+ * the other courses open, the view, the text the full-screen editor has open
+ * beside the agent, the mode the editor is in and, unless the person turned it
+ * off, the selection. It goes in front of the message, in a block the panel
+ * does not show (transcript.ts takes it off again when a conversation is read
+ * back).
+ *
+ * The mode travels with every message because only Claude Code is told it by
+ * its own process; the other providers read it here. Whatever it says, the
+ * editor's own gate is what refuses a change (agent/sidecar.mjs).
  */
 import { useEditor } from "../store/editor";
+import { useUi } from "../store/ui";
 import { useDocs, docState } from "../store/docs";
 import { docLabel } from "../app/files";
 import { baseName } from "../app/os";
@@ -19,6 +26,12 @@ export interface MessageContext {
 }
 
 const VIEW = { canvas: "Graph", json: "EGF", preview: "Preview" } as const;
+
+const MODE = {
+  ask: "ask (each change to the course waits for the person's approval)",
+  auto: "auto (changes to the course are applied without asking)",
+  plan: "plan (nothing may change: present a plan and wait for the person to approve it)",
+} as const;
 
 /**
  * The selection on screen as the chip of the composer shows it, and the
@@ -41,7 +54,23 @@ export function selectionLabel(): string | null {
   return null;
 }
 
-export function messageContext(withSelection: boolean): MessageContext {
+/**
+ * The text the full-screen editor has open beside the agent, when it is open:
+ * which node's field, in which language. "This text", "the paragraph above"
+ * and the like mean that one, and a change to it shows up in the box at once.
+ */
+function openTextLine(): string | null {
+  const ui = useUi.getState();
+  if (ui.modal !== "content" || !ui.content) return null;
+  const { path, kind, lang, node } = ui.content;
+  const field = (path.startsWith("node:") ? path.split("/").slice(1).join(".") : path.replace(/\//g, ".")) || path;
+  const type = node ? useEditor.getState().course?.nodes.find((n) => n.id === node)?.type : undefined;
+  const what = kind === "prompt" ? "the prompt the AI runs for each student" : `${kind === "html" ? "HTML" : "Markdown"} shown to the student`;
+  const where = node ? `${node}${type ? ` (${type})` : ""}'s \`${field}\`` : `\`${field}\``;
+  return `The person has the full-screen text editor open on ${where} — ${what} — in language "${lang}", and is writing in it right now. "This text" and the like mean that one; change it with edit_course as usual and the editor shows the change at once.`;
+}
+
+export function messageContext(withSelection: boolean, mode: "ask" | "auto" | "plan" = "ask"): MessageContext {
   const s = useEditor.getState();
   const lines: string[] = [];
   if (!s.course || !s.docId) {
@@ -61,6 +90,9 @@ export function messageContext(withSelection: boolean): MessageContext {
         lines.push(`Selected: the edge ${s.selection.edge} (${e.from} → ${e.to}).`);
       } else lines.push("Nothing is selected.");
     }
+    const open = openTextLine();
+    if (open) lines.push(open);
   }
+  lines.push(`Mode: ${MODE[mode]}.`);
   return { block: `<editor-context>\n${lines.join("\n")}\n</editor-context>`, docId: s.docId };
 }

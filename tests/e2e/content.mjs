@@ -1,7 +1,7 @@
 // The content editor in WebKit (the engine Tauri uses on macOS), against `npm run dev`:
 // the inspector shows a node's content or prompt read-only, ✎ opens it full screen,
-// the toolbar formats it, Raw/View, long lines, a prompt's {{STORAGE: key}}; and the
-// help's shortcuts on Windows.
+// the toolbar formats it, Raw/View, long lines, the agent beside the text, a prompt's
+// {{STORAGE: key}}; and the help's shortcuts on Windows.
 //   node tests/e2e/content.mjs [outDir]
 import { webkit } from "playwright";
 import { readFileSync } from "node:fs";
@@ -31,6 +31,12 @@ const start = async (platform) => {
 const page = await start();
 const text = (id, lang) =>
   page.evaluate(([id, lang]) => window.__editor.getState().course.nodes.find((n) => n.id === id).content.item.find((e) => e.lang === lang).text, [id, lang]);
+// A click on a node or a link works the inspector both ways, so with the panel already out it takes a second click.
+const pick = async (id) => {
+  const node = page.locator(".card-node", { hasText: id });
+  await node.click();
+  if (!(await page.locator(".inspector").count())) await node.click();
+};
 const select = (from, to) =>
   page.evaluate(([from, to]) => {
     const el = document.querySelector(".ce-text");
@@ -39,7 +45,7 @@ const select = (from, to) =>
   }, [from, to]);
 
 // The inspector: the content read-only, with ✎; no compare, preview, copy, cut or paste.
-await page.locator(".card-node", { hasText: "sm1" }).click();
+await pick("sm1");
 const inspector = page.locator(".inspector");
 await inspector.locator(".content-peek").waitFor();
 check((await inspector.getByText(/comparar idiomas|visualizar/).count()) === 0, "inspector: no compare languages, no preview");
@@ -87,6 +93,19 @@ check((await page.evaluate(() => import("/src/store/prefs.ts").then((m) => m.use
 await page.screenshot({ path: `${out}/c4-editor-nowrap.png` });
 await editor.getByRole("button", { name: "Quebrar linhas longas" }).click();
 
+// The agent, beside the text: ✦ opens it inside the editor, Esc there is the composer's, ✦ closes it.
+const agentButton = editor.getByRole("button", { name: /Agente de IA/ });
+await agentButton.click();
+await editor.locator(".agent-panel").waitFor();
+check((await editor.locator(".agent-panel").count()) === 1, "agent: the panel opens beside the text");
+check((await page.evaluate(() => document.activeElement?.className)) === "agent-input", "agent: the composer takes the focus");
+await page.screenshot({ path: `${out}/c6-editor-agent.png` });
+await editor.locator(".agent-input").click();
+await page.keyboard.press("Escape");
+check((await editor.count()) === 1, "agent: Esc in the composer leaves the editor open");
+await agentButton.click();
+check((await editor.locator(".agent-panel").count()) === 0, "agent: ✦ closes the panel again");
+
 // Another language, from the selector; Esc closes and the inspector shows the change.
 await editor.getByRole("combobox", { name: "Idioma do texto" }).selectOption("pt");
 check((await editor.locator(".ce-text").inputValue()) === (await text("sm1", "pt")), "language selector: the Portuguese text");
@@ -95,7 +114,7 @@ await editor.waitFor({ state: "detached" });
 check((await inspector.locator(".content-peek").innerText()).startsWith("- "), "Esc closes; the inspector shows the text as changed");
 
 // HTML: its own toolbar, and the View in a sandboxed frame.
-await page.locator(".card-node", { hasText: "sh1" }).click();
+await pick("sh1");
 await inspector.getByRole("button", { name: "Editar em tela cheia" }).click();
 check((await editor.getByRole("button", { name: "Parágrafo" }).count()) === 1, "HTML: a paragraph command");
 await editor.getByRole("tab", { name: "View" }).click();
@@ -106,7 +125,7 @@ await editor.getByRole("button", { name: "Concluir" }).click();
 // A dynamic node's prompt: read-only too; the Markdown bar, the keys, and "{{" completing a key where it is typed.
 const promptText = (id) => page.evaluate((id) => window.__editor.getState().course.nodes.find((n) => n.id === id).content.prompt.find((e) => e.lang === "en").text, id);
 const refs = (text) => text.split("{{STORAGE:").length - 1;
-await page.locator(".card-node", { hasText: "dm1" }).click();
+await pick("dm1");
 await inspector.locator(".content-peek.mono").waitFor();
 check((await inspector.locator("textarea").count()) === 0, "prompt: read-only in the inspector");
 await inspector.getByRole("button", { name: "Editar em tela cheia" }).click();
@@ -131,7 +150,7 @@ await keyList.selectOption({ index: 1 });
 check(refs(await promptText("dm1")) === typed + 1, "prompt: a key picked in the bar is written at the caret");
 await page.keyboard.press("Escape");
 await editor.waitFor({ state: "detached" });
-await page.locator(".card-node", { hasText: "dh1" }).click();
+await pick("dh1");
 await inspector.getByRole("button", { name: "Editar em tela cheia" }).click();
 check((await editor.locator(".ce-kind").innerText()) === "Markdown" && (await editor.getByRole("button", { name: "Parágrafo" }).count()) === 0, "AI HTML: its prompt in the Markdown editor too");
 await editor.getByRole("button", { name: "Concluir" }).click();

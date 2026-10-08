@@ -14,6 +14,8 @@ import { AutoTextarea, Field, Modal, NumberInput } from "../ui/controls";
 import { UI_LANGS, t, type UiLang } from "../i18n";
 import { errorText } from "../i18n/errors";
 import { parseMcpConfig } from "../agent/mcpConfig";
+import { useAgent } from "../agent/store";
+import { PROVIDER_IDS, type ProviderId } from "../agent/events";
 import { AgentSkills } from "./AgentSkills";
 
 const MCP_EXAMPLE = `{
@@ -55,8 +57,11 @@ export function PrefsDialog() {
 
 
   const save = async () => {
-    // The agent panel keeps its own settings, and the content editor its line wrapping; they may have changed while this was open. The instructions and the MCP servers are this dialog's.
-    await prefs.save({ ...draft, sidebar: usePrefs.getState().sidebar, editorWrap: usePrefs.getState().editorWrap, agent: { ...usePrefs.getState().agent, instructions: draft.agent.instructions, mcp: draft.agent.mcp } });
+    // The agent panel keeps its own settings, and the content editor its line wrapping; they may have changed while this was open. The instructions, the MCP servers and the provider are this dialog's.
+    const live = usePrefs.getState().agent;
+    await prefs.save({ ...draft, sidebar: usePrefs.getState().sidebar, editorWrap: usePrefs.getState().editorWrap, agent: { ...live, instructions: draft.agent.instructions, mcp: draft.agent.mcp } });
+    // Changing the provider closes the conversation and opens one on the other side.
+    if (draft.agent.provider !== live.provider) void useAgent.getState().setProvider(draft.agent.provider);
     close();
   };
 
@@ -166,6 +171,15 @@ export function PrefsDialog() {
       </div>
 
       <h3>{t("prefs.agent")}</h3>
+      <Field label={t("prefs.agentProvider")} hint={t("prefs.agentProviderHint")}>
+        <select className="input" value={draft.agent.provider} onChange={(e) => setDraft({ ...draft, agent: { ...draft.agent, provider: e.target.value as ProviderId } })}>
+          {PROVIDER_IDS.map((id) => (
+            <option key={id} value={id}>
+              {t(`agent.provider.${id}`)}
+            </option>
+          ))}
+        </select>
+      </Field>
       <p className="small muted">{t("prefs.agentHint")}</p>
       <Field label={t("prefs.agentInstructions")}>
         <AutoTextarea

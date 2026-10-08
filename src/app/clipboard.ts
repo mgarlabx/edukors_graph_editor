@@ -32,6 +32,19 @@ export const onCanvas = () => {
   return !!s.course && s.tab === "canvas";
 };
 
+/**
+ * Whether what the person highlighted is text away from the canvas -- the
+ * agent's answer, the problems panel, a label in the inspector -- in which
+ * case copying is that text and not the nodes selected behind it. A selection
+ * inside the canvas is left to the nodes: dragging one selects no text there.
+ */
+export function textSelected(selection: Selection | null): boolean {
+  if (!selection || selection.isCollapsed || !selection.toString().trim()) return false;
+  const node = selection.anchorNode;
+  const el = node && node.nodeType === 1 ? (node as Element) : (node?.parentElement ?? null);
+  return !!el && !el.closest(".canvas");
+}
+
 /** The selected nodes, and the edges between them, as clipboard text; null with nothing selected. */
 export function selectionClip(): string | null {
   const store = useEditor.getState();

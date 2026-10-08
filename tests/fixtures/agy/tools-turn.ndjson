@@ -1,0 +1,9 @@
+{"event":"init","conversation_id":"77ab","init":{"cwd":"/w","tools":["mcp__edukors__read_course","run_command","write_to_file"],"permission_mode":"always-proceed"}}
+{"event":"step_update","step_update":{"conversation_id":"77ab","step_index":0,"state":"ACTIVE","step_type":"tool","tool_name":"mcp__edukors__read_course","tool_info":{"name":"mcp__edukors__read_course","parameters":{}}}}
+{"event":"step_update","step_update":{"conversation_id":"77ab","step_index":0,"state":"DONE","step_type":"tool","tool_info":{"name":"mcp__edukors__read_course","parameters":{},"output":"outline"}}}
+{"event":"step_update","step_update":{"conversation_id":"77ab","step_index":1,"state":"ACTIVE","step_type":"tool","tool_name":"codesearch","tool_info":{"name":"codesearch","parameters":{"query":"frações"}}}}
+{"event":"step_update","step_update":{"conversation_id":"77ab","step_index":1,"state":"DONE","step_type":"tool","tool_info":{"name":"codesearch","parameters":{"query":"frações"},"output":"nothing found"}}}
+{"event":"step_update","step_update":{"conversation_id":"77ab","step_index":2,"state":"ACTIVE","step_type":"checkpoint"}}
+{"event":"step_update","step_update":{"conversation_id":"77ab","step_index":3,"state":"ACTIVE","step_type":"agent_response","text_delta":"Pronto."}}
+{"event":"step_update","step_update":{"conversation_id":"77ab","step_index":3,"state":"DONE","step_type":"agent_response"}}
+{"event":"result","result":{"conversation_id":"77ab","status":"SUCCESS","response":"Pronto."}}

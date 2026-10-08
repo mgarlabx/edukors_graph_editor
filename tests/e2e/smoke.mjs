@@ -13,6 +13,12 @@ page.on("console", (m) => m.type() === "error" && problems.push(`console: ${m.te
 // WebKit reports ResizeObserver's benign "loop completed" notice as an error.
 page.on("pageerror", (e) => !/ResizeObserver loop/.test(e.message) && !String(e.stack).includes("web-inspector://") && problems.push(`pageerror: ${e.message}`));
 const nodeCount = () => page.evaluate(() => window.__editor.getState().course.nodes.length);
+// A click on a node or a link works the inspector both ways, so with the panel already out it takes a second click.
+const pick = async (selector, text) => {
+  const item = page.locator(selector, { hasText: text }).first();
+  await item.click();
+  if (!(await page.locator(".inspector").count())) await item.click();
+};
 const shot = async (name) => page.screenshot({ path: `${out}/${name}.png` });
 const step = async (name, fn) => {
   try {
@@ -51,19 +57,19 @@ await step("counts", async () => {
   if ((await nodeCount()) !== 16) throw new Error("expected 16 nodes in the store");
 });
 await step("select quiz node", async () => {
-  await page.locator(".card-node", { hasText: "q1" }).click();
+  await pick(".card-node", "q1");
   await page.locator(".inspector").getByText("Quiz").first().waitFor();
   await shot("03-inspector-quiz");
 });
 await step("select score node", async () => {
-  await page.locator(".diamond-node", { hasText: "s1" }).click();
+  await pick(".diamond-node", "s1");
   await page.locator(".inspector").getByText("Testar julgamento").first().waitFor();
   await shot("04-inspector-score");
 });
 await step("select an edge", async () => {
   await page.evaluate(() => window.__editor.getState().reveal({ edge: 7 }));
   await page.waitForTimeout(700);
-  await page.locator(".edge-label", { hasText: "q1.percent" }).first().click();
+  await pick(".edge-label", "q1.percent");
   await page.locator(".cond-row").first().waitFor();
   await shot("05-edge");
 });

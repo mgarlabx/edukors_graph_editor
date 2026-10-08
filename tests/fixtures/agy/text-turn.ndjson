@@ -1,0 +1,6 @@
+{"event":"init","conversation_id":"3f2c1a","init":{"cwd":"/Users/me/Library/Application Support/org.edukors.grapheditor/agent/antigravity","tools":["mcp__edukors__read_course","mcp__edukors__edit_course","mcp__edukors__ask_user"],"permission_mode":"always-proceed"}}
+{"event":"step_update","step_update":{"conversation_id":"3f2c1a","step_index":0,"state":"ACTIVE","step_type":"user_input"}}
+{"event":"step_update","step_update":{"conversation_id":"3f2c1a","step_index":1,"state":"ACTIVE","step_type":"agent_response","text_delta":"O curso tem "}}
+{"event":"step_update","step_update":{"conversation_id":"3f2c1a","step_index":1,"state":"ACTIVE","step_type":"agent_response","text_delta":"seis passos."}}
+{"event":"step_update","step_update":{"conversation_id":"3f2c1a","step_index":1,"state":"DONE","step_type":"agent_response","duration_seconds":1.4,"usage":{"input_tokens":1200,"output_tokens":18}}}
+{"event":"result","result":{"conversation_id":"3f2c1a","status":"SUCCESS","response":"O curso tem seis passos.","duration_seconds":7.16,"num_turns":1,"usage":{"input_tokens":10415,"output_tokens":657,"total_tokens":11072}}}

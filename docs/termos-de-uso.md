@@ -18,7 +18,7 @@ O software é fornecido "no estado em que se encontra", sem garantia de nenhum t
 
 ## Serviços de terceiros
 
-Alguns recursos usam serviços externos com a sua própria conta: a OpenRouter, no Preview, e o Claude Code instalado no seu computador, no agente de IA. O uso desses serviços segue os termos de cada um, e os custos ficam com você.
+Alguns recursos usam serviços externos com a sua própria conta: a OpenRouter, no Preview, e o serviço do agente de IA que você escolher nas Preferências. O uso desses serviços segue os termos de cada um, e os custos ficam com você.
 
 ## Código-fonte
 

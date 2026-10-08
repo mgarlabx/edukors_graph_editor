@@ -1,6 +1,6 @@
 [package]
 name = "edukors-editor"
-version = "1.13.0"
+version = "2.0.0"
 description = "Editor visual de cursos Edukors Graph"
 authors = ["Edukors"]
 license = "MIT"

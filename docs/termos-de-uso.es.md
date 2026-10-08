@@ -18,7 +18,7 @@ El software se proporciona "tal cual", sin garantía de ningún tipo, expresa o 
 
 ## Servicios de terceros
 
-Algunas funciones usan servicios externos con su propia cuenta: OpenRouter, en la Vista previa, y el Claude Code instalado en su computadora, en el agente de IA. El uso de esos servicios se rige por los términos de cada uno, y sus costos corren por su cuenta.
+Algunas funciones usan servicios externos con su propia cuenta: OpenRouter, en la Vista previa, y el servicio del agente de IA que usted elija en las Preferencias. El uso de esos servicios se rige por los términos de cada uno, y sus costos corren por su cuenta.
 
 ## Código fuente
 

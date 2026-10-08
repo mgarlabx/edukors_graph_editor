@@ -1,13 +1,13 @@
 /**
  * The line to the agent's process (agent/sidecar.mjs), through the app
  * (src-tauri/src/agent.rs): requests that get a reply, notes that do not, and
- * what the process sends on its own -- the SDK's messages, questions for the
- * person, tool calls for the editor.
+ * what the process sends on its own -- the conversation's events, questions
+ * for the person, tool calls for the editor.
  *
  * In a plain browser (`npm run dev`) there is no process to start. A test can
  * put its own transport in `window.__edukorsAgentTransport`.
  */
-import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
+import type { AgentEvent, ProviderId, ProviderState } from "./events";
 import { invoke } from "@tauri-apps/api/core";
 import { isTauri } from "../app/platform";
 
@@ -29,14 +29,15 @@ export interface SkillInfo {
 
 /** What the process sends. The app stamps each with `gen`, the process that wrote it. */
 export type Incoming = { gen?: number } & (
-  | { t: "ready"; sdk: string; cwd: string }
+  | { t: "ready"; cwd: string; providers: ProviderState[] }
   | { t: "fatal"; code: string; message: string }
-  | { t: "reply"; id: string; ok: boolean; data?: unknown; error?: string }
-  | { t: "sdk"; sid: string; msg: SDKMessage }
+  | { t: "reply"; id: string; ok: boolean; data?: unknown; error?: string; code?: string }
+  | { t: "ev"; sid: string; ev: AgentEvent }
   | { t: "ask"; id: string; sid: string; kind: AskKind; tool: string; input: Record<string, unknown>; toolUseId: string; reason: string | null; blockedPath?: string | null; once?: boolean }
   | { t: "ask_cancel"; id: string }
   | { t: "tool"; id: string; name: string; args: Record<string, unknown> }
   | { t: "mcp"; sid: string; servers: McpState[] }
+  | { t: "login"; provider: ProviderId; ok: boolean; error?: string }
   | { t: "ended"; sid: string; error?: string }
   | { t: "exit"; stderr?: string }
   | { t: "log"; text: string }
@@ -71,7 +72,7 @@ const transport = (): Transport | null =>
 /** Why the agent could not start: one of the codes the panel explains. */
 export class AgentError extends Error {
   constructor(
-    public code: "unavailable" | "node-missing" | "sidecar-missing" | "sdk-missing" | "exited" | "timeout" | "failed",
+    public code: string,
     message = "",
   ) {
     super(message || code);
@@ -90,6 +91,10 @@ export const onIncoming = (fn: (msg: Incoming) => void) => {
   handler = fn;
 };
 
+/** What the process said it can run, as of the last start. */
+let providerStates: ProviderState[] = [];
+export const providers = () => providerStates;
+
 function receive(msg: Incoming) {
   // A line from a process that has since been replaced.
   if (typeof msg.gen === "number") {
@@ -98,6 +103,7 @@ function receive(msg: Incoming) {
   }
   switch (msg.t) {
     case "ready":
+      providerStates = msg.providers ?? [];
       ready?.resolve();
       ready = null;
       return;
@@ -111,7 +117,7 @@ function receive(msg: Incoming) {
       pending.delete(msg.id);
       clearTimeout(waiting.timer);
       if (msg.ok) waiting.resolve(msg.data);
-      else waiting.reject(new Error(msg.error ?? "failed"));
+      else waiting.reject(msg.code ? new AgentError(msg.code, msg.error ?? "") : new Error(msg.error ?? "failed"));
       return;
     }
     case "exit":

@@ -40,7 +40,7 @@ The editor was made for teachers and course authors. With it you can:
 
 **Tabs.** Several courses can be open at the same time, and you can copy activities from one to another.
 
-**The AI agent.** A panel on the right provides an agent, built with Claude, that reads the open course and changes it on request. By default, each change waits for your approval, and everything can be undone.
+**The AI agent.** A panel on the right provides an AI agent that reads the open course and changes it on request. By default, each change waits for your approval, and everything can be undone.
 
 Each course is saved in a single file, `course.egf` (Edukors Graph Format: the course's JSON under its own extension, which the app is associated with), which is also what goes to the player. The Open dialog takes `.egf` only; an older `.json` course becomes one by renaming it. The position of each box on the map is saved in it too, in the node's `position` field, which players ignore.
 
@@ -78,9 +78,9 @@ The Windows installer can only be built on Windows. It is built on GitHub: **Act
 
 **4. Optional: AI in the preview.** Create a key at [OpenRouter](https://openrouter.ai) and paste it into **Preferences** (⌘,).
 
-**5. Optional: the AI agent.** The agent uses [Claude Code](https://code.claude.com) installed and logged in on this Mac. Install it, run `claude` in Terminal and sign in to your account with `/login`.
+**5. Optional: the AI agent.** In **Preferences → AI agent**, pick the agent that answers in the panel. One of them comes inside the editor; the others are programs you install on this Mac, and the panel shows how to install and sign in to the one you pick.
 
-> The agent uses your personal Claude Code login, which works for people using the editor on their own Mac. To distribute the app to other people, Anthropic requires API key authentication; see [docs/distribuicao.md](docs/distribuicao.md) (in Portuguese).
+> The agent signs in with your own personal account in the chosen service, which works for people using the editor on their own Mac. Distributing the app to other people may call for a different kind of authentication, depending on the service; see [docs/distribuicao.md](docs/distribuicao.md) (in Portuguese).
 
 ## Project status
 

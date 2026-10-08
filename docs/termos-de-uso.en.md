@@ -18,7 +18,7 @@ The software is provided "as is", without warranty of any kind, express or impli
 
 ## Third-party services
 
-Some features use external services with your own account: OpenRouter, in the Preview, and the Claude Code installed on your computer, in the AI agent. Using those services is governed by each one's terms, and their costs are yours.
+Some features use external services with your own account: OpenRouter, in the Preview, and the service of the AI agent you pick in Preferences. Using those services is governed by each one's terms, and their costs are yours.
 
 ## Source code
 

@@ -26,7 +26,7 @@ import { PrefsDialog } from "./prefs/PrefsDialog";
 import { ProbeDialog } from "./judge/ProbeDialog";
 import { DialogHost, isDialogOpen } from "./ui/dialogs";
 import { duplicateNodes } from "./course/ops";
-import { deleteSelectedNodes, deleteSelection, onCanvas, pasteClip, selectAllNodes, selectionClip } from "./app/clipboard";
+import { deleteSelectedNodes, deleteSelection, onCanvas, pasteClip, selectAllNodes, selectionClip, textSelected } from "./app/clipboard";
 import { insertNode } from "./app/insert";
 import { NODE_TYPES } from "./course/nodeTypes";
 import type { NodeType } from "./schema/types";
@@ -212,9 +212,10 @@ export default function App() {
       }
     };
     // Cutting, copying and pasting nodes, through the system clipboard; over a dialog (the help, the
-    // content editor's View), the text selected there is what gets copied.
+    // content editor's View) or wherever text is selected off the canvas (the agent's answer), the
+    // text selected there is what gets copied.
     const onCopy = (e: ClipboardEvent) => {
-      if (editable(document.activeElement) || !onCanvas() || asking()) return;
+      if (editable(document.activeElement) || !onCanvas() || asking() || textSelected(window.getSelection())) return;
       const text = selectionClip();
       if (!text) return;
       e.clipboardData?.setData("text/plain", text);
@@ -245,7 +246,8 @@ export default function App() {
           {docId && <DocTabs />}
           {docId ? <Workspace key={docId} /> : <div className="welcome" />}
         </div>
-        {agent && docId && <AgentPanel />}
+        {/* While the full-screen content editor is open it takes the agent in beside the text. */}
+        {agent && docId && modal !== "content" && <AgentPanel />}
       </div>
       {modal === "prefs" && <PrefsDialog />}
       {modal === "help" && <HelpModal />}
@@ -261,7 +263,8 @@ export default function App() {
 
 /**
  * The course on screen: stage, inspector and the panels below; the agent, when
- * open, sits beside it all (App above), and neither panel hides the other. Each
+ * open, sits beside it all (App above, or beside the text in the content
+ * editor), and neither panel hides the other. Each
  * tab gets its own, mounted fresh when it comes on screen -- the graph at the
  * view it was left with, the preview where its student was.
  */

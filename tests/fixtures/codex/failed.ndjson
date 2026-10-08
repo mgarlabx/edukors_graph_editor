@@ -1,0 +1,1 @@
+{"method":"turn/completed","params":{"turn":{"id":"turn_3","status":"failed","error":{"message":"model not available for this account"}}}}
