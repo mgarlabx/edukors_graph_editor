@@ -19,7 +19,7 @@ Dica: depois de instalado, um curso `.egf` abre no editor com duplo clique. Um c
 | Parte                                 | O que faz                                                                                                                                                                                                                                                                                                                                                               |
 | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Grafo** (centro)              | Os passos e as setas. Arraste os passos para organizá-los, ou arraste o título de uma seção para mover a seção inteira; use ⊞ para organizar tudo automaticamente.                                                                                                                                                                                               |
-| **Inspetor** (direita)          | O conteúdo do que estiver selecionado. Começa fechado ao abrir um arquivo e abre ao clicar num passo ou numa seta; o ícone de barra lateral (⌥⌘0) abre e fecha, e a borda esquerda dela se arrasta para mudar a largura — no Preview, o mesmo ícone abre e fecha o painel de chamadas, estado, caminho e console. Sem nada selecionado, mostra as informações do curso. Continua aberto quando o agente de IA aparece ao lado. |
+| **Inspetor** (direita)          | O conteúdo do que estiver selecionado. O título, o tipo e o id ficam fixos no alto; abaixo, o passo se divide em duas partes: *Dados gerais* (identificação, saídas e extras) e a parte do tipo (o conteúdo, as perguntas, o julgamento…). Começa fechado ao abrir um arquivo e abre ao clicar num passo ou numa seta; o ícone de barra lateral (⌥⌘0) abre e fecha, e a borda esquerda dela se arrasta para mudar a largura — no Preview, o mesmo ícone abre e fecha o painel de chamadas, estado, caminho e console. Sem nada selecionado, mostra as informações do curso. Continua aberto quando o agente de IA aparece ao lado. |
 | **Barra de cima**               | Salvar, o ＋ que **insere** passos (os dez tipos, também no menu **Inserir**), desfazer, as abas **Mapa / EGF / Preview**, o idioma do grafo, o selo de **problemas** e, na ponta direita, o **agente de IA** ✦.                                                                                                                       |
 | **Abas de curso** (logo abaixo) | Um curso aberto por aba; ＋ cria um curso novo.                                                                                                                                                                                                                                                                                                                         |
 
@@ -102,7 +102,7 @@ O inspetor da Nota mostra as instruções do formulário ao lado do state e avis
 
 ## 8. Encontrar e corrigir problemas
 
-O selo na barra de cima mostra ✖ erros e ⚠ avisos. Clique nele para ver a lista; clique num item para ir até o passo ou a seta. Os passos com problema também ganham um selo vermelho ou laranja no grafo.
+O selo na barra de cima mostra ✖ erros e ⚠ avisos. Clique nele para ver a lista; clique num item para ir até o passo ou a seta. Os passos com problema também ganham um selo vermelho ou laranja no grafo; pare o mouse sobre o passo para ver, num balão, o que está errado nele.
 
 - **Erros** impedem o curso de funcionar (uma seta para um passo que não existe, um quiz sem resposta correta).
 - **Avisos** são conselhos (um texto muito curto, uma tradução que falta). O curso funciona, mas vale a pena ler.
@@ -131,7 +131,7 @@ Para testar só uma avaliação, use **Testar julgamento** no inspetor da Nota/E
 ## 10. Vários idiomas
 
 - **Idiomas do curso…** (no inspetor do curso): adicione idiomas (`pt`, `en`, `es`, `pt-BR`…). O idioma de origem é sempre o primeiro.
-- Cada texto ganha uma aba por idioma; as vazias aparecem com um ponto laranja.
+- O inspetor mostra e edita todos os textos num só idioma, escolhido na barra **Idioma dos textos**, logo abaixo do título do passo (é o mesmo idioma dos títulos no grafo: trocar num troca no outro). Um ponto laranja marca o idioma em que algum texto do passo ainda está vazio, e cada campo traz ao lado do nome a etiqueta do idioma que está mostrando.
 - O seletor 🌐 na barra muda o idioma dos títulos no grafo; no Preview você escolhe o idioma do estudante.
 
 ## 11. Publicar

@@ -67,6 +67,11 @@ export function Help({ text }: { text?: string }) {
 
 /** The bubble under its mark, or over it when there is no room below, kept inside the window. */
 function HelpBubble({ anchor, text }: { anchor: HTMLElement; text: string }) {
+  return <Bubble anchor={anchor}>{text}</Bubble>;
+}
+
+/** A bubble like the help's, with any content, under (or over) `anchor`: the webview shows no `title` tooltips. */
+export function Bubble({ anchor, children, className = "" }: { anchor: HTMLElement; children: ReactNode; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const el = ref.current;
@@ -80,10 +85,10 @@ function HelpBubble({ anchor, text }: { anchor: HTMLElement; text: string }) {
     el.style.left = `${left}px`;
     el.style.top = `${below ? a.bottom + gap : a.top - gap - height}px`;
     el.style.visibility = "visible";
-  }, [anchor, text]);
+  }, [anchor, children]);
   return createPortal(
-    <div ref={ref} className="help-bubble" role="tooltip">
-      {text}
+    <div ref={ref} className={`help-bubble ${className}`} role="tooltip">
+      {children}
     </div>,
     document.body,
   );
@@ -106,11 +111,13 @@ export const Field = ({
   actions?: ReactNode;
 }) => (
   <div className="field">
-    <div className="field-label">
-      <span>{label}</span>
-      <Help text={help} />
-      {actions && <span className="field-actions">{actions}</span>}
-    </div>
+    {(label || help || actions) && (
+      <div className="field-label">
+        <span>{label}</span>
+        <Help text={help} />
+        {actions && <span className="field-actions">{actions}</span>}
+      </div>
+    )}
     {children}
     {hint && <div className="field-hint">{hint}</div>}
     {error && <div className="field-error">{error}</div>}

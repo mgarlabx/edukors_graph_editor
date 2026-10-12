@@ -10,31 +10,32 @@ import { localize } from "../course/localize";
 import { deleteEdges, outgoingIndexes, reorderEdge } from "../course/ops";
 import { keysOfNode, operatorsFor } from "../course/keys";
 import { ConditionEditor } from "../conditions/ConditionEditor";
-import { Field, Help, Section } from "../ui/controls";
+import { Field } from "../ui/controls";
+import { Group, PanelHeader } from "./common";
+import { ExtrasField } from "./ExtrasField";
 import { RowTools } from "./fields";
 import { t } from "../i18n";
-import { issueText } from "../validate";
 
 export function OutgoingEdges({ node }: { node: CourseNode }) {
   const course = useEditor((s) => s.course)!;
   const update = useEditor((s) => s.update);
   const select = useEditor((s) => s.select);
-  const diagnostics = useEditor((s) => s.diagnostics);
   const lang = useEditor((s) => s.canvasLang);
   const indexes = outgoingIndexes(course, node.id);
   return (
-    <Section title={<>{t("edges.outgoing")} <Help text={tip("course", "edges")} /></>}>
-      {!indexes.length && <p className="muted">{t("edges.none")}</p>}
+    <Group title={t("insp.group.exits")} help={`${t("edges.outgoing")}. ${tip("course", "edges")}`} count={indexes.length}>
+      {!indexes.length && <p className="muted small">{t("edges.none")}</p>}
       <ol className="edge-list">
         {indexes.map((index, position) => {
           const e = course.edges[index];
           const target = course.nodes.find((n) => n.id === e.to);
-          const issues = diagnostics?.byEdge.get(index) ?? [];
           return (
-            <li key={index} className={`edge-item ${issues.some((i) => i.level === "error") ? "has-error" : issues.length ? "has-warning" : ""}`}>
+            <li key={index} className="edge-item">
               <span className="edge-order">{position + 1}</span>
-              <button className="edge-summary link" onClick={() => select({ edge: index, nodes: [] })} title={issues.map(issueText).join("\n")}>
-                <span>→ {e.to}</span> <span className="muted">{target ? localize(target.title, lang) : "?"}</span>
+              <button className="edge-summary" onClick={() => select({ edge: index, nodes: [] })}>
+                <span className="edge-target">
+                  <code>{e.to}</code> <span className="edge-target-title">{target ? localize(target.title, lang) : "?"}</span>
+                </span>
                 <span className={`edge-when ${e.when ? "" : "is-fallback"}`}>{e.when ? summarize(e.when) : t("edges.fallback")}</span>
               </button>
               <RowTools
@@ -47,8 +48,8 @@ export function OutgoingEdges({ node }: { node: CourseNode }) {
           );
         })}
       </ol>
-      <p className="field-hint">{t("edges.orderHint")}</p>
-    </Section>
+      {indexes.length > 1 && <p className="field-hint">{t("edges.orderHint")}</p>}
+    </Group>
   );
 }
 
@@ -56,13 +57,11 @@ export function EdgeInspector({ index }: { index: number }) {
   const course = useEditor((s) => s.course)!;
   const update = useEditor((s) => s.update);
   const select = useEditor((s) => s.select);
-  const diagnostics = useEditor((s) => s.diagnostics);
   const lang = useEditor((s) => s.canvasLang);
   const edge = course.edges[index];
   if (!edge) return <p className="muted pad">{t("insp.nothing")}</p>;
   const siblings = outgoingIndexes(course, edge.from);
   const position = siblings.indexOf(index);
-  const issues = diagnostics?.byEdge.get(index) ?? [];
   const source = course.nodes.find((n) => n.id === edge.from);
   const set = (fn: (e: typeof edge) => void, label: string) =>
     update((c) => {
@@ -75,61 +74,80 @@ export function EdgeInspector({ index }: { index: number }) {
     return { key: "", operator: "eq", value: "" };
   };
 
+  const target = course.nodes.find((n) => n.id === edge.to);
   return (
     <div className="inspector-body">
-      <div className="node-header">
-        <div className="node-header-top">
-          <span className="type-pill">{t("edges.edge")}</span>
-        </div>
-        <p className="type-description">{describe("edge")}</p>
-      </div>
-      {issues.map((i, k) => (
-        <div key={k} className={`notice notice-${i.level === "error" ? "error" : "warning"}`}>
-          {issueText(i)}
-        </div>
-      ))}
-      <div className="grid-2">
-        <Field label={t("edges.from")} help={tip("edge", "from")}>
-          <button className="btn wide" onClick={() => select({ nodes: [edge.from], edge: null })}>
-            {edge.from} — {source ? localize(source.title, lang) : "?"}
-          </button>
-        </Field>
-        <Field label={t("edges.to")} help={tip("edge", "to")}>
-          <select className="input" value={edge.to} onChange={(e) => set((x) => (x.to = e.target.value), "to")}>
-            {!course.nodes.some((n) => n.id === edge.to) && <option value={edge.to}>{edge.to} (?)</option>}
-            {course.nodes.map((n) => (
-              <option key={n.id} value={n.id}>
-                {n.id} — {localize(n.title, lang)}
-              </option>
-            ))}
-          </select>
-        </Field>
-      </div>
-      <Field label={t("edges.position")} help={t("edges.orderHint")}>
-        <div className="row">
-          <span>
-            {position + 1} / {siblings.length}
+      <PanelHeader
+        kind={t("edges.edge")}
+        icon="→"
+        title={
+          <span className="edge-title">
+            <code>{edge.from}</code> → <code>{edge.to}</code>
           </span>
-          <RowTools index={position} count={siblings.length} onMove={(to) => update((c) => reorderEdge(c, edge.from, position, to), "reorder")} />
-        </div>
-      </Field>
-      <Field label={t("edges.condition")} help={tip("edge", "when")}>
-        {edge.when ? (
-          <>
-            <ConditionEditor value={edge.when} onChange={(c) => set((x) => (x.when = c), "when")} />
-            <button className="link danger" onClick={() => set((x) => delete x.when, "fallback")}>
-              {t("edges.makeFallback")}
+        }
+      />
+      <div className="insp-groups">
+        <Group title={t("insp.group.connection")} help={describe("edge")}>
+          <Field label={t("edges.from")} help={tip("edge", "from")}>
+            <button className="btn wide edge-from" onClick={() => select({ nodes: [edge.from], edge: null })} title={t("insp.goToNode")}>
+              <code>{edge.from}</code> <span className="muted">{source ? localize(source.title, lang) : "?"}</span>
             </button>
-          </>
-        ) : (
-          <>
-            <p className="muted">{t("edges.isFallback")}</p>
-            <button className="btn btn-small" onClick={() => set((x) => (x.when = firstCondition()), "add-when")}>
-              + {t("edges.addCondition")}
-            </button>
-          </>
-        )}
-      </Field>
+          </Field>
+          <Field label={t("edges.to")} help={tip("edge", "to")}>
+            <div className="row">
+              <select className="input grow" value={edge.to} onChange={(e) => set((x) => (x.to = e.target.value), "to")}>
+                {!course.nodes.some((n) => n.id === edge.to) && <option value={edge.to}>{edge.to} (?)</option>}
+                {course.nodes.map((n) => (
+                  <option key={n.id} value={n.id}>
+                    {n.id} — {localize(n.title, lang)}
+                  </option>
+                ))}
+              </select>
+              <button className="btn btn-small" disabled={!target} onClick={() => select({ nodes: [edge.to], edge: null })} title={t("insp.goToNode")}>
+                →
+              </button>
+            </div>
+          </Field>
+          <Field label={t("edges.position")} help={t("edges.orderHint")}>
+            <div className="row">
+              <span className="edge-order">{position + 1}</span>
+              <span className="muted small">/ {siblings.length}</span>
+              <span className="spacer" />
+              <RowTools index={position} count={siblings.length} onMove={(to) => update((c) => reorderEdge(c, edge.from, position, to), "reorder")} />
+            </div>
+          </Field>
+        </Group>
+        <Group title={t("edges.condition")} help={tip("edge", "when")}>
+          {edge.when ? (
+            <>
+              <ConditionEditor value={edge.when} onChange={(c) => set((x) => (x.when = c), "when")} />
+              <button className="link danger" onClick={() => set((x) => delete x.when, "fallback")}>
+                {t("edges.makeFallback")}
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="muted small">{t("edges.isFallback")}</p>
+              <button className="btn btn-small" onClick={() => set((x) => (x.when = firstCondition()), "add-when")}>
+                + {t("edges.addCondition")}
+              </button>
+            </>
+          )}
+        </Group>
+        <Group>
+          <ExtrasField
+            owner={`edge-${index}`}
+            value={edge.extras}
+            help={tip("edge", "extras")}
+            onChange={(v) =>
+              set((x) => {
+                if (v === undefined) delete x.extras;
+                else x.extras = v;
+              }, "extras")
+            }
+          />
+        </Group>
+      </div>
     </div>
   );
 }

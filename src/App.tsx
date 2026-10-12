@@ -16,7 +16,7 @@ import { Canvas } from "./canvas/Canvas";
 import { Inspector } from "./inspector/Inspector";
 import { ContentEditor } from "./inspector/ContentEditor";
 import { AgentPanel } from "./agent/AgentPanel";
-import { jsonEditor } from "./json/ref";
+import { focusedEditor } from "./json/ref";
 
 const JsonTab = lazy(() => import("./json/JsonTab"));
 import { PreviewTab } from "./preview/PreviewTab";
@@ -100,7 +100,7 @@ export function command(id: string) {
     case "undo":
     case "redo":
       // In a text field the field's own history wins; elsewhere, the course's.
-      if (document.activeElement?.closest(".monaco-editor")) return jsonEditor.current?.trigger("menu", id, null);
+      if (document.activeElement?.closest(".monaco-editor")) return focusedEditor()?.trigger("menu", id, null);
       if (editable(document.activeElement)) return document.execCommand(id);
       return id === "undo" ? store.undo() : store.redo();
     case "duplicate": {

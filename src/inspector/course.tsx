@@ -4,8 +4,11 @@ import { useUi } from "../store/ui";
 import { describe, tip } from "../schema/describe";
 import { emptyLoc, isJudge, SCHEMA_URL } from "../course/nodeTypes";
 import { localize } from "../course/localize";
-import { AutoTextarea, Field, Help, Section, TextInput } from "../ui/controls";
+import { AutoTextarea, Field, TextInput } from "../ui/controls";
+import { emptyLangs, Group, PanelHeader } from "./common";
+import { MapIcon } from "../ui/icons";
 import { LocalizedField, RowTools, move } from "./fields";
+import { ExtrasField } from "./ExtrasField";
 import { t } from "../i18n";
 
 export function CourseInfoForm() {
@@ -20,83 +23,88 @@ export function CourseInfoForm() {
 
   return (
     <div className="inspector-body">
-      <div className="node-header">
-        <div className="node-header-top">
-          <span className="type-pill">{t("course.info")}</span>
-        </div>
-        <p className="type-description">{describe("courseInfo")}</p>
-      </div>
-      <LocalizedField path="info/title" label={t("course.title")} help={tip("courseInfo", "title")} kind="plain" />
-      <LocalizedField path="info/description" label={t("course.description")} help={tip("courseInfo", "description")} kind="plain" optional minRows={2} />
-      <div className="grid-2">
-        <Field label={t("course.author")} help={tip("courseInfo", "author")}>
-          <TextInput value={info.author ?? ""} onChange={(v) => set((i) => (i.author = v), "author")} />
-        </Field>
-        <Field label={t("course.version")} help={tip("courseInfo", "version")}>
-          <TextInput value={info.version ?? ""} pattern={/^[0-9]+\.[0-9]+\.[0-9]+$/} onChange={(v) => set((i) => (i.version = v), "version")} />
-        </Field>
-        <Field label={t("course.date")} help={tip("courseInfo", "date")}>
-          <input className="input" type="date" value={info.date ?? ""} onChange={(e) => set((i) => (i.date = e.target.value), "date")} />
-        </Field>
-        <Field label={t("course.start")} help={tip("courseInfo", "start")}>
-          <select className="input" value={info.start ?? ""} onChange={(e) => set((i) => (i.start = e.target.value), "start")}>
-            {!course.nodes.some((n) => n.id === info.start) && <option value={info.start}>{info.start} (?)</option>}
-            {course.nodes
-              .filter((n) => !isJudge(n.type))
-              .map((n) => (
-                <option key={n.id} value={n.id}>
-                  {n.id} — {localize(n.title, lang)}
-                </option>
-              ))}
-          </select>
-        </Field>
-      </div>
-      <Field label="course-id" help={tip("courseInfo", "course-id")}>
-        <div className="row">
-          <TextInput className="mono grow" value={info["course-id"] ?? ""} onChange={(v) => set((i) => (i["course-id"] = v), "id")} />
-          <button className="btn btn-small" onClick={() => set((i) => (i["course-id"] = crypto.randomUUID()), "new-id")} title={t("course.newIdHint")}>
-            {t("course.newId")}
-          </button>
-        </div>
-      </Field>
-      <Field label={t("course.languages")} help={tip("courseInfo", "other-languages")}>
-        <div className="row">
-          <span>
-            <strong>{info["source-language"]}</strong> {langs.slice(1).join(", ")}
-          </span>
-          <span className="spacer" />
-          <button className="btn btn-small" onClick={() => open("languages")}>
-            {t("course.manageLanguages")}
-          </button>
-        </div>
-      </Field>
-      <Field label={t("course.systemPrompt")} help={tip("courseInfo", "system-prompt")}>
-        {info["system-prompt"] === undefined ? (
-          <button className="btn btn-small" onClick={() => set((i) => (i["system-prompt"] = "Answer in the student's language."), "sp-add")}>
-            + {t("insp.add", { what: t("course.systemPrompt") })}
-          </button>
-        ) : (
-          <>
-            <AutoTextarea className="mono" minRows={4} value={info["system-prompt"]} onChange={(e) => set((i) => (i["system-prompt"] = e.target.value), "sp")} />
-            <button className="link danger" onClick={() => set((i) => delete i["system-prompt"], "sp-remove")}>
-              {t("insp.remove")}
+      <PanelHeader
+        kind={t("course.info")}
+        icon={<MapIcon size={17} />}
+        title={localize(info.title, lang).trim() || <span className="muted">{t("insp.untitled")}</span>}
+        langs={emptyLangs(course, null)}
+      />
+      <div className="insp-groups">
+        <Group title={t("insp.group.general")} help={describe("courseInfo")}>
+          <LocalizedField path="info/title" label={t("course.title")} help={tip("courseInfo", "title")} kind="plain" />
+          <LocalizedField path="info/description" label={t("course.description")} help={tip("courseInfo", "description")} kind="plain" optional minRows={2} />
+          <div className="grid-2">
+            <Field label={t("course.author")} help={tip("courseInfo", "author")}>
+              <TextInput value={info.author ?? ""} onChange={(v) => set((i) => (i.author = v), "author")} />
+            </Field>
+            <Field label={t("course.version")} help={tip("courseInfo", "version")}>
+              <TextInput value={info.version ?? ""} pattern={/^[0-9]+\.[0-9]+\.[0-9]+$/} onChange={(v) => set((i) => (i.version = v), "version")} />
+            </Field>
+            <Field label={t("course.date")} help={tip("courseInfo", "date")}>
+              <input className="input" type="date" value={info.date ?? ""} onChange={(e) => set((i) => (i.date = e.target.value), "date")} />
+            </Field>
+            <Field label={t("course.start")} help={tip("courseInfo", "start")}>
+              <select className="input" value={info.start ?? ""} onChange={(e) => set((i) => (i.start = e.target.value), "start")}>
+                {!course.nodes.some((n) => n.id === info.start) && <option value={info.start}>{info.start} (?)</option>}
+                {course.nodes
+                  .filter((n) => !isJudge(n.type))
+                  .map((n) => (
+                    <option key={n.id} value={n.id}>
+                      {n.id} — {localize(n.title, lang)}
+                    </option>
+                  ))}
+              </select>
+            </Field>
+          </div>
+        </Group>
+        <Group
+          title={t("course.languages")}
+          help={tip("courseInfo", "other-languages")}
+          count={langs.length}
+          actions={
+            <button className="btn btn-small" onClick={() => open("languages")}>
+              {t("course.manageLanguages")}
             </button>
-          </>
-        )}
-      </Field>
-      <Section title={<>{t("course.sections")} <Help text={tip("courseInfo", "sections")} /></>}>
-        {sections.map((s, i) => (
-          <div key={i} className="section-row">
-            <div className="row">
-              <label className="muted small">nº</label>
+          }
+        >
+          <div className="lang-chips">
+            {langs.map((l, k) => (
+              <span key={l} className={`lang-chip ${k === 0 ? "is-source" : ""}`} title={k === 0 ? t("lang.source") : undefined}>
+                {l}
+                {k === 0 && " ★"}
+              </span>
+            ))}
+          </div>
+        </Group>
+        <Group title={t("course.systemPrompt")} help={tip("courseInfo", "system-prompt")}>
+          {info["system-prompt"] === undefined ? (
+            <button className="btn btn-small" onClick={() => set((i) => (i["system-prompt"] = "Answer in the student's language."), "sp-add")}>
+              + {t("insp.add", { what: t("course.systemPrompt") })}
+            </button>
+          ) : (
+            <>
+              <AutoTextarea className="mono" minRows={4} value={info["system-prompt"]} onChange={(e) => set((i) => (i["system-prompt"] = e.target.value), "sp")} />
+              <button className="link danger" onClick={() => set((i) => delete i["system-prompt"], "sp-remove")}>
+                {t("insp.remove")}
+              </button>
+            </>
+          )}
+        </Group>
+        <Group title={t("course.sections")} help={tip("courseInfo", "sections")} count={sections.length}>
+          {sections.map((s, i) => (
+            <div key={i} className="section-row">
               <input
-                className="input input-number"
+                className="input input-section"
                 type="number"
                 min={1}
+                aria-label={t("course.sectionNumber")}
+                title={t("course.sectionNumber")}
                 value={s.number}
                 onChange={(e) => set((inf) => (inf.sections![i].number = Math.max(1, Math.round(Number(e.target.value) || 1))), `sec${i}-n`)}
               />
-              <span className="spacer" />
+              <div className="grow">
+                <LocalizedField path={`info/sections/${i}/title`} label="" kind="plain" />
+              </div>
               <RowTools
                 index={i}
                 count={sections.length}
@@ -109,32 +117,52 @@ export function CourseInfoForm() {
                 }
               />
             </div>
-            <LocalizedField path={`info/sections/${i}/title`} label={t("course.sectionTitle", { n: s.number })} kind="plain" />
-          </div>
-        ))}
-        <button
-          className="btn btn-small"
-          onClick={() =>
-            set((inf) => {
-              const list = inf.sections ?? [];
-              const used = new Set([...list.map((s) => s.number), ...course.nodes.map((n) => n.section ?? 1)]);
-              const next = list.length ? Math.max(...list.map((s) => s.number)) + 1 : Math.min(...[...used].filter((n) => !list.some((s) => s.number === n)), 1);
-              inf.sections = [...list, { number: next, title: emptyLoc(langs) }];
-            }, "sec-add")
-          }
-        >
-          + {t("course.addSection")}
-        </button>
-      </Section>
-      <Field label="$schema" help={tip("course", "$schema")}>
-        {course.$schema ? (
-          <code className="small">{course.$schema}</code>
-        ) : (
-          <button className="btn btn-small" onClick={() => update((c) => Object.assign(c, { $schema: SCHEMA_URL }), "schema")}>
-            + {SCHEMA_URL}
+          ))}
+          <button
+            className="btn btn-small"
+            onClick={() =>
+              set((inf) => {
+                const list = inf.sections ?? [];
+                const used = new Set([...list.map((s) => s.number), ...course.nodes.map((n) => n.section ?? 1)]);
+                const next = list.length ? Math.max(...list.map((s) => s.number)) + 1 : Math.min(...[...used].filter((n) => !list.some((s) => s.number === n)), 1);
+                inf.sections = [...list, { number: next, title: emptyLoc(langs) }];
+              }, "sec-add")
+            }
+          >
+            + {t("course.addSection")}
           </button>
-        )}
-      </Field>
+        </Group>
+        <Group title={t("insp.group.advanced")}>
+          <Field label="course-id" help={tip("courseInfo", "course-id")}>
+            <div className="row">
+              <TextInput className="mono grow" value={info["course-id"] ?? ""} onChange={(v) => set((i) => (i["course-id"] = v), "id")} />
+              <button className="btn btn-small" onClick={() => set((i) => (i["course-id"] = crypto.randomUUID()), "new-id")} title={t("course.newIdHint")}>
+                {t("course.newId")}
+              </button>
+            </div>
+          </Field>
+          <ExtrasField
+            owner="info"
+            value={info.extras}
+            help={tip("courseInfo", "extras")}
+            onChange={(v) =>
+              set((i) => {
+                if (v === undefined) delete i.extras;
+                else i.extras = v;
+              }, "extras")
+            }
+          />
+          <Field label="$schema" help={tip("course", "$schema")}>
+            {course.$schema ? (
+              <code className="small">{course.$schema}</code>
+            ) : (
+              <button className="btn btn-small" onClick={() => update((c) => Object.assign(c, { $schema: SCHEMA_URL }), "schema")}>
+                + {SCHEMA_URL}
+              </button>
+            )}
+          </Field>
+        </Group>
+      </div>
     </div>
   );
 }

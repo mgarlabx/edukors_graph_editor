@@ -1,7 +1,7 @@
 /**
- * The fields every node form is built from: a localized text with one tab per
- * course language (source first, empty ones marked), and a prompt box that
- * completes {{STORAGE: key}}. A node's content (Markdown or HTML) and a dynamic
+ * The fields every node form is built from: a localized text, shown and written
+ * in the language chosen at the inspector's head (the map's language), and a
+ * prompt box that completes {{STORAGE: key}}. A node's content (Markdown or HTML) and a dynamic
  * node's prompt are not typed here: the field shows them, and its ✎ opens the
  * full-screen editor (ContentEditor.tsx).
  */
@@ -14,7 +14,7 @@ import { getText, setText, type TextKind } from "../i18n/texts";
 import { withText } from "../course/localize";
 import { keysOfCourse, scaleLabel, type KeyInfo } from "../course/keys";
 import { openLink } from "../app/platform";
-import { AutoTextarea, Field, IconButton, Tabs } from "../ui/controls";
+import { AutoTextarea, Field, IconButton } from "../ui/controls";
 import { EditIcon } from "../ui/icons";
 import { storageQuery, storageRef, type StorageQuery } from "./markup";
 import { t } from "../i18n";
@@ -57,8 +57,8 @@ export function LocalizedField({ path, label, help, kind, optional, minRows, own
   const langs = courseLangs(course);
   const source = langs[0];
   const list = getText(course, path);
-  const [lang, setLang] = useState(source);
-  const active = langs.includes(lang) ? lang : source;
+  const shown = useEditor((s) => s.canvasLang);
+  const active = langs.includes(shown) ? shown : source;
 
   if (!list) {
     if (!optional) return null;
@@ -73,13 +73,6 @@ export function LocalizedField({ path, label, help, kind, optional, minRows, own
 
   const text = (l: string) => list.find((e) => e?.lang === l)?.text ?? "";
 
-  const tabs = langs.map((l) => ({
-    id: l,
-    label: l === source ? `${l} ★` : l,
-    title: l === source ? t("lang.source") : undefined,
-    mark: (kind === "prompt" ? undefined : text(l).trim() === "" ? "empty" : undefined) as "empty" | undefined,
-  }));
-
   const full = fullEditor && (kind === "markdown" || kind === "html" || kind === "prompt");
   const openEditor = () =>
     useUi.getState().openContent({
@@ -90,15 +83,35 @@ export function LocalizedField({ path, label, help, kind, optional, minRows, own
       node: path.startsWith("node:") ? path.slice(5).split("/")[0] : undefined,
     });
 
+  const value = text(active);
+  // which language the box holds, beside the label, when the course has more than one
+  const langMark = langs.length > 1 && label && (
+    <span className={`lang-mark ${active === source ? "" : "is-translation"}`} title={active === source ? t("lang.source") : undefined}>
+      {active}
+    </span>
+  );
+
   return (
     <Field
-      label={label}
+      label={
+        label && (
+          <>
+            {label} {langMark}
+          </>
+        )
+      }
       help={help}
       actions={
         full && (
-          <IconButton title={t("content.edit")} onClick={openEditor}>
-            <EditIcon size={15} />
-          </IconButton>
+          <>
+            <span className="peek-meta">
+              {kind === "html" ? "HTML" : "Markdown"}
+              {value.trim() && ` · ${t("insp.words", { n: words(value) })}`}
+            </span>
+            <IconButton title={t("content.edit")} onClick={openEditor}>
+              <EditIcon size={15} />
+            </IconButton>
+          </>
         )
       }
       hint={
@@ -109,15 +122,14 @@ export function LocalizedField({ path, label, help, kind, optional, minRows, own
         )
       }
     >
-      {langs.length > 1 && <Tabs tabs={tabs} value={active} onChange={setLang} className="tabs-small" />}
       {full ? (
-        <ContentPeek kind={kind} value={text(active)} onOpen={openEditor} />
+        <ContentPeek kind={kind} value={value} onOpen={openEditor} />
       ) : (
         <LangEditor
           key={active}
           sourceText={text(source)}
           isSource={active === source}
-          value={text(active)}
+          value={value}
           onChange={(v) => writeText(path, active, v)}
           kind={kind}
           minRows={minRows}
@@ -127,6 +139,9 @@ export function LocalizedField({ path, label, help, kind, optional, minRows, own
     </Field>
   );
 }
+
+/** The words of a text, markup aside: a count for the eye, not the student's. */
+const words = (text: string) => text.replace(/<[^>]*>|[#*_>`[\]()!|-]/g, " ").split(/\s+/).filter(Boolean).length;
 
 /**
  * A node's content or prompt as written, cut after a few lines; a click opens

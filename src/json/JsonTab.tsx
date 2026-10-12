@@ -9,31 +9,13 @@
  * screen, so it never lands in the course of another tab.
  */
 import { useEffect, useRef, useState } from "react";
-import Editor, { loader, type OnMount } from "@monaco-editor/react";
-import * as monaco from "monaco-editor";
-import EditorWorker from "monaco-editor/editor/editor.worker?worker";
-import JsonWorker from "monaco-editor/language/json/json.worker?worker";
-import schema from "../schema/schema.json";
+import Editor, { type OnMount } from "@monaco-editor/react";
+import { isDark as dark, type monaco } from "./monaco";
 import { useEditor } from "../store/editor";
 import { onLeave } from "../store/docs";
 import { stringify, syntaxErrorAt } from "../course/serialize";
 import { t } from "../i18n";
-import { jsonEditor } from "./ref";
-
-self.MonacoEnvironment = {
-  getWorker: (_: string, label: string) => (label === "json" ? new JsonWorker() : new EditorWorker()),
-};
-loader.config({ monaco });
-monaco.json.jsonDefaults.setDiagnosticsOptions({
-  validate: true,
-  allowComments: false,
-  enableSchemaRequest: false,
-  schemas: [{ uri: schema.$id, fileMatch: ["*"], schema }],
-});
-
-const dark = () =>
-  document.documentElement.getAttribute("data-theme") === "dark" ||
-  (!document.documentElement.getAttribute("data-theme") && window.matchMedia("(prefers-color-scheme: dark)").matches);
+import { jsonEditor, trackEditor } from "./ref";
 
 export default function JsonTab() {
   const course = useEditor((s) => s.course);
@@ -61,6 +43,7 @@ export default function JsonTab() {
   const onMount: OnMount = (editor) => {
     editorRef.current = editor;
     jsonEditor.current = editor;
+    editor.onDidDispose(trackEditor(editor));
   };
 
   /** What was typed, into the course; reads the store, not the render, as it may run on the way out. */

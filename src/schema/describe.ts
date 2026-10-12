@@ -16,8 +16,13 @@ const resolve = (d: Def | undefined): Def | undefined => {
   return { ...defs[name], ...d, $ref: undefined, description: d.description ?? defs[name]?.description };
 };
 
+/** desc.<path> of the locales, in the interface's language, when the schema's English has been translated. */
+const said = (path: string): string | undefined => (hasKey(`desc.${path}`) ? t(`desc.${path}`) : undefined);
+
 /** describe("quizQuestion", "key") — the description of a property, or of the definition itself. */
-export const describe = (def: string, prop?: string): string => {
+export const describe = (def: string, prop?: string): string => said(prop ? `${def}.${prop}` : def) ?? schemaDescription(def, prop);
+
+const schemaDescription = (def: string, prop?: string): string => {
   const d = def === "course" ? (schema as unknown as Def) : defs[def];
   if (!d) return "";
   if (!prop) return d.description ?? "";
@@ -35,6 +40,8 @@ export const tip = (def: string, prop?: string): string => {
 
 /** The x-enumDescriptions entry for a value: node types, field types, operators. */
 export const enumDescription = (def: string, prop: string | null, value: string): string => {
+  const translated = said(prop ? `${def}.${prop}.${value}` : `${def}.${value}`);
+  if (translated !== undefined) return translated;
   const d = prop ? resolve(defs[def]?.properties?.[prop]) : defs[def];
   return d?.["x-enumDescriptions"]?.[value] ?? "";
 };

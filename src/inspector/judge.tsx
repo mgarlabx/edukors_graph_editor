@@ -26,7 +26,7 @@ export function JudgeForm({ node }: { node: CourseNode }) {
   const open = useUi((s) => s.open);
   return (
     <>
-      <div className="row">
+      <div className="row insp-probe">
         <button className="btn btn-primary" onClick={() => open("probe", node.id)}>
           ⚗ {t("probe.open")}
         </button>

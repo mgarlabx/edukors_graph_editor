@@ -47,7 +47,7 @@ const select = (from, to) =>
 // The inspector: the content read-only, with ✎; no compare, preview, copy, cut or paste.
 await pick("sm1");
 const inspector = page.locator(".inspector");
-await inspector.locator(".content-peek").waitFor();
+await inspector.locator(".content-peek:not(.extras-peek)").waitFor();
 check((await inspector.getByText(/comparar idiomas|visualizar/).count()) === 0, "inspector: no compare languages, no preview");
 check((await inspector.getByRole("button", { name: /^(Copiar|Recortar|Colar) \(/ }).count()) === 0, "inspector: no copy, cut, paste");
 check((await inspector.locator("textarea").count()) === 0, "inspector: the content is not typed in a text box");
@@ -111,7 +111,7 @@ await editor.getByRole("combobox", { name: "Idioma do texto" }).selectOption("pt
 check((await editor.locator(".ce-text").inputValue()) === (await text("sm1", "pt")), "language selector: the Portuguese text");
 await page.keyboard.press("Escape");
 await editor.waitFor({ state: "detached" });
-check((await inspector.locator(".content-peek").innerText()).startsWith("- "), "Esc closes; the inspector shows the text as changed");
+check((await inspector.locator(".content-peek:not(.extras-peek)").innerText()).startsWith("- "), "Esc closes; the inspector shows the text as changed");
 
 // HTML: its own toolbar, and the View in a sandboxed frame.
 await pick("sh1");
@@ -126,7 +126,7 @@ await editor.getByRole("button", { name: "Concluir" }).click();
 const promptText = (id) => page.evaluate((id) => window.__editor.getState().course.nodes.find((n) => n.id === id).content.prompt.find((e) => e.lang === "en").text, id);
 const refs = (text) => text.split("{{STORAGE:").length - 1;
 await pick("dm1");
-await inspector.locator(".content-peek.mono").waitFor();
+await inspector.locator(".content-peek.mono:not(.extras-peek)").waitFor();
 check((await inspector.locator("textarea").count()) === 0, "prompt: read-only in the inspector");
 await inspector.getByRole("button", { name: "Editar em tela cheia" }).click();
 check((await editor.locator(".ce-kind").innerText()) === "Markdown", "prompt: the Markdown editor");

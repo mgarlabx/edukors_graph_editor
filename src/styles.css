@@ -1155,7 +1155,36 @@ kbd {
   font-size: 11px;
   font-weight: 700;
   color: #fff;
-  cursor: help;
+}
+
+/* A node's problems, in the bubble its card shows on hover. */
+.help-bubble.issue-bubble {
+  max-width: min(380px, calc(100vw - 16px));
+}
+
+.issue-bubble ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.issue-bubble li + li {
+  margin-top: 5px;
+}
+
+.issue-bubble .is-error {
+  color: var(--error);
+  font-weight: 700;
+}
+
+.issue-bubble .is-warning {
+  color: var(--warning);
+  font-weight: 700;
+}
+
+.issue-bubble code {
+  color: var(--muted);
+  font-size: 11px;
 }
 
 .node-badge-error {
@@ -1358,16 +1387,302 @@ kbd {
 }
 
 .inspector-body {
-  padding: 12px 14px 40px;
+  padding: 0 0 40px;
 }
 
-.node-header-top {
+/* The head, kept in view as the panel scrolls, drawn like a pane of the preferences:
+   a tile in the color of the node's type, the title, what it is and its id. */
+.insp-head {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 14px;
+}
+
+.insp-head-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.insp-head-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.insp-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.insp-head-sub {
   display: flex;
   align-items: center;
   gap: 6px;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.insp-head-actions {
+  display: inline-flex;
+  gap: 2px;
+  align-self: flex-start;
+  color: var(--muted);
+}
+
+.insp-head-actions .icon-btn:hover:not(:disabled) {
+  color: var(--accent);
+}
+
+.insp-tile {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--type-color, var(--accent)) 14%, transparent);
+  color: var(--type-color, var(--accent));
+  font-weight: 700;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.insp-tile.is-large {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  font-size: 15px;
+}
+
+.insp-tag {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* The language of the texts: a segmented control, as the theme's in the preferences. */
+.insp-langs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.insp-langs-label {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.insp-seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+  padding: 2px;
+  gap: 2px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.insp-seg button {
+  -webkit-appearance: none;
+  appearance: none;
+  padding: 2px 10px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.insp-seg button:hover:not(.is-active) {
+  background: var(--panel-2);
+}
+
+.insp-seg button.is-active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.insp-seg button.is-empty::after {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--warning);
+  margin-left: 5px;
+  vertical-align: middle;
+}
+
+.insp-groups {
+  padding: 10px 14px;
+}
+
+/* The two parts: what every node has, and what its type has. */
+.insp-part {
+  margin: 6px 0 18px;
+}
+
+.insp-part + .insp-part {
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.insp-part-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.insp-part-head h3 {
+  margin: 0 2px 0 0;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.insp-part-actions {
+  margin-left: auto;
+}
+
+.insp-part-desc {
+  margin: -4px 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* A card of fields, as in the preferences. */
+.insp-group {
+  padding: 2px 12px;
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-2);
+}
+
+.insp-group .input,
+.insp-group .content-peek,
+.insp-group .edge-item {
+  background: var(--panel);
+}
+
+.insp-group-head {
+  display: flex;
+  align-items: center;
+  min-height: 24px;
+  margin-top: 8px;
+}
+
+.insp-group-head h4 {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 650;
+  display: inline-flex;
+  align-items: center;
+}
+
+.insp-count {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.insp-group-actions {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.insp-group > .check {
+  margin-bottom: 10px;
+}
+
+.insp-group > .edge-list:last-child,
+.insp-group > .field-hint:last-child,
+.insp-group > p:last-child {
+  margin-bottom: 10px;
+}
+
+.insp-probe {
+  margin-bottom: 10px;
+}
+
+.insp-empty {
+  padding: 32px 18px;
+  text-align: center;
+}
+
+/* The language a localized box holds, beside its label; a translation in the accent color. */
+.lang-mark {
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.lang-mark.is-translation {
+  background: var(--accent-soft);
+  border-color: transparent;
+  color: var(--accent);
+}
+
+.lang-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.lang-chip {
+  padding: 1px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.lang-chip.is-source {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .type-pill {
+  display: inline-flex;
+  align-items: center;
   border-radius: 999px;
   padding: 2px 10px;
   font-weight: 700;
@@ -1379,16 +1694,12 @@ kbd {
 .type-description {
   color: var(--muted);
   font-size: 12px;
-  margin: 6px 0 4px;
+  line-height: 1.45;
+  margin: 2px 0 4px;
 }
 
-.issue-box {
-  margin: 8px 0;
-}
-
-.issue-box summary {
-  cursor: pointer;
-  font-weight: 600;
+.type-pill-icon {
+  margin-right: 5px;
 }
 
 .insp-section {
@@ -1408,6 +1719,29 @@ kbd {
 
 .insp-section.is-closed > header {
   border-radius: 8px;
+}
+
+/* In a part of the inspector, a question or a field is a card like the others. */
+.insp-part > .insp-section {
+  margin: 0 0 10px;
+  border-radius: 10px;
+  background: var(--panel-2);
+}
+
+.insp-part > .insp-section > header {
+  padding: 6px 8px 2px;
+  background: none;
+}
+
+.insp-part > .insp-section .input,
+.insp-part > .insp-section .content-peek,
+.insp-part > .insp-section .state-pre,
+.insp-part > .insp-section .md-preview {
+  background: var(--panel);
+}
+
+.insp-part > .btn {
+  margin-bottom: 10px;
 }
 
 .insp-toggle {
@@ -1528,8 +1862,15 @@ kbd {
 /* A node's content in the inspector: as written, cut after a few lines; ✎ or a click opens the editor. */
 .field-actions {
   display: inline-flex;
+  align-items: center;
   gap: 2px;
   margin-left: auto;
+}
+
+.peek-meta {
+  margin-right: 4px;
+  font-size: 11px;
+  font-weight: 500;
 }
 
 .field-actions .icon-btn {
@@ -1579,6 +1920,27 @@ kbd {
 .content-peek.is-blank {
   color: var(--muted);
   font-style: italic;
+}
+
+/* A part's extras: the JSON shown in its box, and the editor the ✎ opens. */
+.extras-peek .content-peek-text {
+  -webkit-line-clamp: 8;
+}
+
+.extras-editor {
+  height: min(60vh, 520px);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.extras-status {
+  align-self: center;
+  min-width: 0;
+}
+
+.extras-status.is-error {
+  color: var(--error);
 }
 
 .lang-editor .notice {
@@ -1652,26 +2014,67 @@ kbd {
 .edge-item {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px;
+  gap: 8px;
+  padding: 6px 6px 6px 8px;
+  margin-bottom: 4px;
   border-radius: 6px;
-  border: 1px solid transparent;
+  border: 1px solid var(--border);
 }
 
-.edge-item.has-error {
-  border-color: var(--error);
+.edge-item:hover {
+  border-color: var(--border-strong);
 }
 
-.edge-item.has-warning {
-  border-color: var(--warning);
+.edge-target {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.edge-target code {
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.edge-target-title {
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.edge-title code {
+  font-size: 14px;
+}
+
+.btn.edge-from {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-start;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: left;
 }
 
 .edge-summary {
   flex: 1;
   display: flex;
   flex-direction: column;
+  gap: 1px;
   min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  text-align: left;
   color: var(--text);
+  cursor: pointer;
+}
+
+.edge-summary:hover code {
+  color: var(--accent);
 }
 
 .edge-when {
@@ -1689,8 +2092,19 @@ kbd {
 }
 
 .section-row {
-  border-bottom: 1px dashed var(--border);
-  padding-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0;
+}
+
+.section-row .field {
+  margin: 0;
+}
+
+.input-section {
+  width: 56px;
+  font-family: var(--mono);
 }
 
 /* ---------------------------------------------------------- conditions -- */
@@ -3910,7 +4324,8 @@ div.agent-tool-head {
   .doc-tab:hover {
     background: var(--panel);
   }
-  .type-pill {
+  .type-pill,
+  .insp-tile {
     background: var(--bg);
   }
   .agent-notice-error {

@@ -12,6 +12,8 @@ import { errorText } from "../src/i18n/errors";
 import { RULE_CODES, ruleTemplate } from "../src/validate/rules";
 import { diagnose, issueText, issueWhere } from "../src/validate";
 import { schemaIssues } from "../src/schema/ajv";
+import schema from "../src/schema/schema.json";
+import { describe as describeSchema, typeDescription } from "../src/schema/describe";
 import { judgeModel, NotJudged, readAnswers } from "../src/judge/pipeline";
 import { syntaxErrorAt } from "../src/course/serialize";
 import { clone, loadSample, SAMPLES } from "./helpers";
@@ -36,6 +38,30 @@ describe("the locales", () => {
       expect(en[`rule.${code}` as keyof typeof en], code).toBe(ruleTemplate(code));
       for (const lang of ["pt", "es"]) expect(slots(tables[lang][`rule.${code}`] ?? ""), `${lang} ${code}`).toEqual(slots(ruleTemplate(code)));
     }
+  });
+
+  it("say the schema's descriptions in the three languages, the English being the schema's own", () => {
+    const defs = schema.$defs as unknown as Record<string, { description?: string; "x-enumDescriptions"?: Record<string, string> }>;
+    const keys = Object.keys(en).filter((k) => k.startsWith("desc."));
+    expect(keys.length).toBeGreaterThan(0);
+    for (const key of keys) {
+      const [def, value] = key.slice("desc.".length).split(".");
+      const original = value === undefined ? defs[def]?.description : defs[def]?.["x-enumDescriptions"]?.[value];
+      expect(en[key as keyof typeof en], key).toBe(original);
+      for (const lang of ["pt", "es"]) expect(tables[lang][key], `${lang} ${key}`).toBeTruthy();
+    }
+    for (const type of Object.keys(defs.nodeType["x-enumDescriptions"]!)) expect(keys, type).toContain(`desc.nodeType.${type}`);
+  });
+
+  it("show the inspector's descriptions in the interface's language", () => {
+    expect(describeSchema("courseInfo")).toBe(pt["desc.courseInfo"]);
+    expect(typeDescription("quiz")).toBe(pt["desc.nodeType.quiz"]);
+    setUiLang("es");
+    expect(describeSchema("edge")).toBe(es["desc.edge"]);
+    expect(typeDescription("score")).toBe(es["desc.nodeType.score"]);
+    setUiLang("pt");
+    // a description nobody translated is still the schema's
+    expect(describeSchema("quizOption", "correct")).toBe(schema.$defs.quizOption.properties.correct.description);
   });
 
   it("keep ai.php's words for the judgement in English", () => {

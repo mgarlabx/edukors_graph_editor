@@ -5,7 +5,7 @@ import { emptyLoc } from "../course/nodeTypes";
 import { courseLangs, useEditor } from "../store/editor";
 import { Field, NumberInput, Section, TextInput } from "../ui/controls";
 import { LocalizedField, RowTools, move } from "./fields";
-import { useNodeEdit } from "./common";
+import { Group, useNodeEdit } from "./common";
 import { t } from "../i18n";
 
 const NAME = /^[a-z][a-z0-9-]*$/;
@@ -139,7 +139,9 @@ export function FormForm({ node }: { node: CourseNode }) {
 
   return (
     <>
-      <LocalizedField path={`node:${node.id}/content/instructions`} label={t("insp.instructions")} help={tip("formContent", "instructions")} kind="markdown" optional minRows={5} />
+      <Group>
+        <LocalizedField path={`node:${node.id}/content/instructions`} label={t("insp.instructions")} help={tip("formContent", "instructions")} kind="markdown" optional minRows={5} />
+      </Group>
       {items.map((f, i) => {
         const type = String(f.type ?? "text-line");
         const options: Opt[] = Array.isArray(f.options) ? (f.options as Opt[]) : [];
