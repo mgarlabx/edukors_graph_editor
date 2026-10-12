@@ -1,0 +1,188 @@
+# The release: the Mac app (universal) and the Windows installer, built on
+# GitHub's machines, with what the updater needs (the .app.tar.gz, the
+# installer's signature, latest.json), in a draft release. Nothing reaches the
+# installed apps until the draft is published.
+#
+#   git tag v2.12.0 && git push origin v2.12.0
+#
+# The tag must match the version in package.json, src-tauri/tauri.conf.json and
+# src-tauri/Cargo.toml (scripts/bump-version.mjs), and CHANGELOG.md must have
+# its section (scripts/release-notes.mjs). Run by hand (Actions → Release → Run
+# workflow), it makes a draft of the version in package.json: for trying the
+# workflow out in a fork.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+
+jobs:
+  # One draft for both builds: each making its own could leave two.
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.create.outputs.result }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          CONF=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          CARGO=$(grep -m1 '^version' src-tauri/Cargo.toml | cut -d'"' -f2)
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${GITHUB_REF_NAME}" != "v${VERSION}" ]; then
+            echo "::error::the tag ${GITHUB_REF_NAME} is not the version in package.json (v${VERSION})"; exit 1
+          fi
+          if [ "${CONF}" != "${VERSION}" ] || [ "${CARGO}" != "${VERSION}" ]; then
+            echo "::error::package.json (${VERSION}), tauri.conf.json (${CONF}) and Cargo.toml (${CARGO}) differ: run scripts/bump-version.mjs"; exit 1
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      # The app checks each update against this key: a build without it could never be updated.
+      - run: |
+          node -e "const k = require('./src-tauri/tauri.conf.json').plugins.updater.pubkey; if (!k || k.startsWith('PENDENTE')) { console.error('::error::plugins.updater.pubkey in src-tauri/tauri.conf.json is not set'); process.exit(1) }"
+
+      - run: node scripts/release-notes.mjs ${{ steps.version.outputs.version }} > release-notes.md
+
+      - id: create
+        uses: actions/github-script@v7
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        with:
+          script: |
+            const body = require('fs').readFileSync('release-notes.md', 'utf8');
+            const { data } = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: `v${process.env.VERSION}`,
+              target_commitish: context.sha,
+              name: `v${process.env.VERSION}`,
+              body,
+              draft: true,
+            });
+            return data.id;
+
+  build:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: --target universal-apple-darwin
+          - platform: windows-latest
+            args: ''
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - run: npm ci
+
+      # Builds the interface, stages the agent (scripts/stage-agent.mjs: on the Mac
+      # both claude binaries, on Windows claude.exe), makes the app or the installer
+      # with its updater signature, and uploads them to the draft. latest.json is
+      # the last job's, written once both builds are in.
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          releaseId: ${{ needs.prepare.outputs.release_id }}
+          includeUpdaterJson: false
+          args: --config src-tauri/tauri.bundle.conf.json --config src-tauri/tauri.release.conf.json ${{ matrix.args }}
+
+      # The universal app must carry the agent for both kinds of Mac.
+      - if: matrix.platform == 'macos-latest'
+        run: |
+          SDK="src-tauri/target/universal-apple-darwin/release/bundle/macos/Edukors Graph Editor.app/Contents/Resources/agent/node_modules/@anthropic-ai"
+          for arch in arm64 x64; do
+            test -x "$SDK/claude-agent-sdk-darwin-$arch/claude" || { echo "::error::the app has no claude for darwin-$arch"; exit 1; }
+          done
+
+  # latest.json, from the signatures both builds uploaded: written once, here,
+  # since two builds updating the same file could each drop the other's platform.
+  updater-json:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: node scripts/release-notes.mjs ${{ needs.prepare.outputs.version }} > release-notes.md
+
+      - uses: actions/github-script@v7
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+          RELEASE_ID: ${{ needs.prepare.outputs.release_id }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const release_id = Number(process.env.RELEASE_ID);
+            const version = process.env.VERSION;
+            const assets = await github.paginate(github.rest.repos.listReleaseAssets, { owner, repo, release_id, per_page: 100 });
+            const named = (test) => {
+              const found = assets.filter((a) => test(a.name));
+              if (found.length !== 1) throw new Error(`expected one asset, found ${found.map((a) => a.name).join(', ') || 'none'}`);
+              return found[0];
+            };
+            const signature = async (asset) => {
+              const sig = named((n) => n === `${asset.name}.sig`);
+              const { data } = await github.rest.repos.getReleaseAsset({ owner, repo, asset_id: sig.id, headers: { accept: 'application/octet-stream' } });
+              return Buffer.from(data).toString('utf8').trim();
+            };
+            // A draft's own download links are temporary: these are the ones the tag will have once published.
+            const url = (asset) => `https://github.com/${owner}/${repo}/releases/download/v${version}/${encodeURIComponent(asset.name)}`;
+
+            const mac = named((n) => n.endsWith('.app.tar.gz'));
+            const win = named((n) => /-setup\.exe$/.test(n));
+            const macEntry = { url: url(mac), signature: await signature(mac) };
+            const winEntry = { url: url(win), signature: await signature(win) };
+            const latest = {
+              version,
+              notes: require('fs').readFileSync('release-notes.md', 'utf8').trim(),
+              pub_date: new Date().toISOString(),
+              platforms: {
+                'darwin-aarch64': macEntry,
+                'darwin-x86_64': macEntry,
+                'windows-x86_64': winEntry,
+              },
+            };
+            for (const old of assets.filter((a) => a.name === 'latest.json')) {
+              await github.rest.repos.deleteReleaseAsset({ owner, repo, asset_id: old.id });
+            }
+            await github.rest.repos.uploadReleaseAsset({
+              owner, repo, release_id,
+              name: 'latest.json',
+              data: JSON.stringify(latest, null, 2),
+              headers: { 'content-type': 'application/json' },
+            });
+            core.info(JSON.stringify(latest.platforms, null, 2));

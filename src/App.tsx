@@ -11,6 +11,8 @@ import { Toolbar } from "./app/Toolbar";
 import { DocTabs } from "./app/DocTabs";
 import { HelpModal } from "./app/HelpModal";
 import { AboutModal } from "./app/AboutModal";
+import { UpdateModal } from "./app/UpdateModal";
+import { autoCheck, checkForUpdate } from "./app/updates";
 import { TERMS_VERSION, TermsGate, termsAccepted } from "./app/TermsModal";
 import { Canvas } from "./canvas/Canvas";
 import { Inspector } from "./inspector/Inspector";
@@ -81,6 +83,9 @@ export function command(id: string) {
       return ui.open("prefs");
     case "help":
       return ui.openHelp();
+    case "check-updates":
+      // Not over a dialog that is open: the answer comes in a modal of its own.
+      return isTauri() && !asking() ? checkForUpdate() : undefined;
     case "agent":
       return store.course ? ui.toggleAgent() : undefined;
     case "sidebar":
@@ -131,6 +136,8 @@ export default function App() {
     // The opening, with the version: now, or once the terms are accepted (TermsGate).
     usePrefs.getState().load().then(() => {
       if (termsAccepted() && !useUi.getState().modal) useUi.getState().open("about");
+      // The quiet check: what it finds waits for the opening to be closed.
+      if (isTauri()) void autoCheck();
     });
     const cleanups: (() => void)[] = [watchMenu()];
     if (isTauri()) {
@@ -252,6 +259,7 @@ export default function App() {
       {modal === "prefs" && <PrefsDialog />}
       {modal === "help" && <HelpModal />}
       {modal === "about" && <AboutModal />}
+      {modal === "update" && <UpdateModal />}
       {docId && modal === "languages" && <LanguagesModal />}
       {docId && modal === "probe" && <ProbeDialog />}
       {docId && modal === "content" && <ContentEditor />}

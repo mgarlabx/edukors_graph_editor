@@ -65,10 +65,53 @@ O agente roda fora do `.app`: `src-tauri/src/agent.rs` inicia o Node com `agent/
 
 ## Windows
 
-O instalador do Windows (NSIS, `Edukors Graph Editor_<versão>_x64-setup.exe`) só pode ser gerado num Windows. Ele é feito no GitHub Actions: **Actions → Windows installer → Run workflow** (`.github/workflows/release-windows.yml`); quando a execução termina, o `.exe` fica nos *artifacts* dela. Numa máquina Windows com Rust (MSVC) e Node 22, o mesmo sai de `npm ci && npm run app:build:win`, em `src-tauri/target/release/bundle/nsis/`.
+O instalador do Windows (NSIS, `Edukors Graph Editor_<versão>_x64-setup.exe`) só pode ser gerado num Windows. Ele é feito no GitHub Actions, junto com o app do Mac, pelo fluxo de release (ver [Releases e atualização automática](#releases-e-atualização-automática)). Numa máquina Windows com Rust (MSVC) e Node 22, o mesmo sai de `npm ci && npm run app:build:win`, em `src-tauri/target/release/bundle/nsis/`.
 
 - `src-tauri/tauri.windows.conf.json`, que o Tauri lê só no Windows, troca `app`/`dmg` pelo NSIS, instala para o usuário (sem pedir administrador) e associa só `.egf` ao editor: no Windows não há o “Alternate” do Mac, e associar `.json` tomaria todos os `.json` do usuário.
 - O agente vai junto, como no Mac, com o `claude.exe` do pacote `@anthropic-ai/claude-agent-sdk-win32-x64` (≈ 250 MB): o instalador fica grande. O Node continua sendo do usuário; `agent.rs` o procura no PATH e onde o instalador oficial, nvm-windows, fnm, Volta e Scoop o põem.
 - A chave da OpenRouter fica no Gerenciador de Credenciais do Windows.
 - Um `.egf` aberto no Explorer com o editor já aberto vai para a janela que está aberta (`tauri-plugin-single-instance`).
 - Só x64. O instalador não é assinado: o SmartScreen avisa “O Windows protegeu o computador”, e a pessoa segue em **Mais informações → Executar assim mesmo**. Para tirar o aviso é preciso um certificado de assinatura de código (OV/EV ou Azure Trusted Signing), configurado em `bundle.windows.signCommand`.
+
+## Releases e atualização automática
+
+O app procura versões novas nos releases do GitHub (`tauri-plugin-updater`, configurado em `plugins.updater` do `src-tauri/tauri.conf.json`). Ao abrir, ele verifica em silêncio, no máximo uma vez por dia, e só se a caixa **Verificar atualizações automaticamente** estiver ligada nas Preferências. O item **Verificar atualizações…** fica no menu do app (Mac) ou no menu Ajuda (Windows) e sempre responde. Antes de baixar, o app pergunta sobre os cursos não salvos e encerra o agente. No Mac, o app novo substitui o antigo e o editor reinicia. No Windows, o app fecha, o instalador roda sem perguntas (modo `passive`, por usuário, sem pedir administrador) e abre o editor de novo. Código: `src/app/updates.ts` e `src/app/UpdateModal.tsx`.
+
+Cada atualização é verificada com uma chave própria do updater, independente dos certificados da Apple e do Windows. **Se a chave privada for perdida, os apps instalados não conseguem mais se atualizar** e todos teriam de reinstalar à mão.
+
+### Preparar a chave (uma vez)
+
+```sh
+npx tauri signer generate -w ~/.tauri/edukors-updater.key
+```
+
+1. Defina uma senha e guarde a chave e a senha num gerenciador de senhas.
+2. Copie o conteúdo de `~/.tauri/edukors-updater.key.pub` para `plugins.updater.pubkey` no `src-tauri/tauri.conf.json`. Enquanto o campo diz `PENDENTE`, o fluxo de release falha logo no início.
+3. Em **Settings → Secrets and variables → Actions** do repositório, crie `TAURI_SIGNING_PRIVATE_KEY` (o conteúdo de `~/.tauri/edukors-updater.key`) e `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
+
+### Lançar uma versão
+
+1. Escreva a seção da versão no `CHANGELOG.md` (`## 2.12.0`). Esse texto vai para a página do release e para o aviso dentro do app.
+2. `node scripts/bump-version.mjs 2.12.0`: atualiza a versão no `package.json`, no `package-lock.json`, no `tauri.conf.json`, no `Cargo.toml` e no `Cargo.lock`. Faça o commit e o push.
+3. `git tag v2.12.0 && git push origin v2.12.0`.
+4. O fluxo `.github/workflows/release.yml` confere a tag e as versões, cria um rascunho de release e gera, em paralelo, o app universal do Mac (`.dmg` e `.app.tar.gz`) e o instalador do Windows, cada um com sua assinatura `.sig`. Por fim, monta o `latest.json` com as três plataformas (`darwin-aarch64`, `darwin-x86_64`, `windows-x86_64`). Leva de 15 a 25 minutos.
+5. Revise o rascunho e clique em **Publish**. Só então o `latest.json` passa a valer em `releases/latest/download/`, e os apps instalados enxergam a versão nova.
+
+**Não edite as notas no rascunho**: o `latest.json` já foi gerado com o texto do `CHANGELOG.md`, e a mudança não chega ao app. Para corrigir, apague o rascunho e a tag, corrija o `CHANGELOG.md` e repita.
+
+Para gerar o app localmente sem a chave, nada muda: `npm run app:build` não cria os arquivos do updater. Eles só são criados quando o build recebe também `--config src-tauri/tauri.release.conf.json`, que exige `TAURI_SIGNING_PRIVATE_KEY` e `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` no ambiente.
+
+### Testar
+
+`releases/latest/download/` ignora rascunhos e pre-releases: um pre-release no repositório principal não é encontrado pelo app. Para testar de ponta a ponta, use um fork, com `plugins.updater.endpoints` apontando para os releases dele, e o fluxo disparado à mão (**Actions → Release → Run workflow**). Publique uma versão N, instale-a, publique a N+1 e confira:
+
+- o aviso aparece sozinho ao abrir, e **Verificar atualizações…** também o mostra;
+- com um curso não salvo, o app pergunta antes de baixar, e **Cancelar** interrompe a atualização;
+- no Windows, com o painel do agente aberto, a instalação termina e o app reabre;
+- depois de atualizar, **Sobre** mostra a versão N+1;
+- sem internet, a verificação automática não diz nada, e a manual explica o erro;
+- com um `.sig` alterado no release de teste, o app recusa a atualização.
+
+### Sem assinatura de código
+
+As atualizações funcionam sem os certificados. Mas, sem assinatura, cada build do Mac tem uma assinatura *ad hoc* diferente, e o macOS pode pedir a senha do usuário na primeira vez que a versão nova lê a chave da OpenRouter no Keychain. **Permitir sempre** resolve até a próxima versão. A primeira instalação, a partir do `.dmg` baixado no navegador, continua exigindo a liberação em **Ajustes → Privacidade e Segurança**. As versões seguintes, baixadas pelo próprio app, não passam por isso.

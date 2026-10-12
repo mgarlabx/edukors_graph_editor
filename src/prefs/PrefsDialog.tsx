@@ -45,6 +45,7 @@ export function PrefsDialog() {
     editorWrap: prefs.editorWrap,
     recent: prefs.recent,
     terms: prefs.terms,
+    updates: prefs.updates,
   });
 
   useEffect(() => {
@@ -62,7 +63,8 @@ export function PrefsDialog() {
   const save = async () => {
     // The agent panel keeps its own settings, and the content editor its line wrapping; they may have changed while this was open. The instructions, the MCP servers and the provider are this dialog's.
     const live = usePrefs.getState().agent;
-    await prefs.save({ ...draft, sidebar: usePrefs.getState().sidebar, editorWrap: usePrefs.getState().editorWrap, agent: { ...live, instructions: draft.agent.instructions, mcp: draft.agent.mcp } });
+    // The last check is the app's, and may have happened while this was open.
+    await prefs.save({ ...draft, sidebar: usePrefs.getState().sidebar, editorWrap: usePrefs.getState().editorWrap, updates: { ...usePrefs.getState().updates, auto: draft.updates.auto }, agent: { ...live, instructions: draft.agent.instructions, mcp: draft.agent.mcp } });
     // Changing the provider closes the conversation and opens one on the other side.
     if (draft.agent.provider !== live.provider) void useAgent.getState().setProvider(draft.agent.provider);
     close();
@@ -85,7 +87,7 @@ export function PrefsDialog() {
       wide
       actions={
         <>
-          <button className="btn" onClick={() => setDraft({ ...DEFAULT_PREFS, uiLang: draft.uiLang, theme: draft.theme, recent: draft.recent, agent: draft.agent, terms: draft.terms })}>
+          <button className="btn" onClick={() => setDraft({ ...DEFAULT_PREFS, uiLang: draft.uiLang, theme: draft.theme, recent: draft.recent, agent: draft.agent, terms: draft.terms, updates: draft.updates })}>
             {t("prefs.defaults")}
           </button>
           <span className="spacer" />
@@ -151,6 +153,10 @@ export function PrefsDialog() {
                   ))}
                 </div>
               </Field>
+              <label className="check">
+                <input type="checkbox" checked={draft.updates.auto} onChange={(e) => setDraft({ ...draft, updates: { ...draft.updates, auto: e.target.checked } })} />
+                {t("prefs.autoUpdates")}
+              </label>
             </div>
           )}
 

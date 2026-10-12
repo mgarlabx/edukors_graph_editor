@@ -4338,3 +4338,39 @@ div.agent-tool-head {
     background: var(--accent-soft);
   }
 }
+
+/* ---------------------------------------------------------- updates -- */
+
+.update {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.update p {
+  margin: 0;
+}
+
+.update-versions {
+  font-weight: 600;
+}
+
+.update-notes {
+  max-height: 260px;
+  overflow: auto;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.update-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.update-progress progress {
+  width: 100%;
+  accent-color: var(--accent);
+}

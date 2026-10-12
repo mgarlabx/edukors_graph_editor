@@ -8,6 +8,9 @@ const platform = typeof navigator === "undefined" ? "" : (navigator.platform ?? 
 const windows = /^Win/i.test(platform);
 const notMac = windows || /^Linux/i.test(platform);
 
+/** Windows, where an update closes the app and its installer opens it again (src/app/updates.ts). */
+export const isWindows = windows;
+
 const MODIFIERS: [string, string][] = [
   ["⌃", "Ctrl"],
   ["⌘", "Ctrl"],

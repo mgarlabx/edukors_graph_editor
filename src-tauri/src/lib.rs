@@ -187,14 +187,14 @@ async fn ai_models() -> Result<Value, String> {
 
 // ------------------------------------------------------------------ menu ----
 
-fn labels(lang: &str) -> [&'static str; 31] {
+fn labels(lang: &str) -> [&'static str; 32] {
     match lang {
         "en" => [
             "File", "New course", "Open…", "Save", "Save as…", "Clear history", "Export course…",
             "Edit", "Undo", "Redo", "View", "Fit graph", "Auto layout", "EGF", "Preview",
             "Preferences…", "Window", "Help", "User guide", "Duplicate", "Close tab", "Next tab",
             "Previous tab", "AI agent", "Map", "Minimize", "Recent", "Delete", "Problems", "Map language",
-            "Sidebar",
+            "Sidebar", "Check for updates…",
         ],
         "es" => [
             "Archivo", "Nuevo curso", "Abrir…", "Guardar", "Guardar como…", "Borrar historial",
@@ -202,7 +202,7 @@ fn labels(lang: &str) -> [&'static str; 31] {
             "Organizar automáticamente", "EGF", "Vista previa", "Preferencias…",
             "Ventana", "Ayuda", "Guía de uso", "Duplicar", "Cerrar pestaña", "Pestaña siguiente",
             "Pestaña anterior", "Agente de IA", "Mapa", "Minimizar", "Recientes", "Eliminar",
-            "Problemas", "Idioma del mapa", "Barra lateral",
+            "Problemas", "Idioma del mapa", "Barra lateral", "Buscar actualizaciones…",
         ],
         _ => [
             "Arquivo", "Novo curso", "Abrir…", "Salvar", "Salvar como…", "Limpar histórico",
@@ -210,7 +210,7 @@ fn labels(lang: &str) -> [&'static str; 31] {
             "Organizar automaticamente", "EGF", "Preview", "Preferências…", "Janela",
             "Ajuda", "Guia de uso", "Duplicar", "Fechar aba", "Próxima aba", "Aba anterior",
             "Agente de IA", "Mapa", "Minimizar", "Recentes", "Excluir", "Problemas", "Idioma do mapa",
-            "Barra lateral",
+            "Barra lateral", "Verificar atualizações…",
         ],
     }
 }
@@ -350,6 +350,7 @@ fn build_menu(app: &AppHandle, lang: &str, recent: &[String], map: &MapLangs, st
     #[cfg(target_os = "macos")]
     let app_menu = SubmenuBuilder::new(app, "Edukors Graph Editor")
         .item(&PredefinedMenuItem::about(app, Some(s[0]), None)?)
+        .item(&item("check-updates", l[31], None)?)
         .separator()
         .item(&item("prefs", l[15], Some("CmdOrCtrl+,"))?)
         .separator()
@@ -463,7 +464,10 @@ fn build_menu(app: &AppHandle, lang: &str, recent: &[String], map: &MapLangs, st
 
     let help = SubmenuBuilder::new(app, l[17]).item(&item("help", l[18], None)?);
     #[cfg(not(target_os = "macos"))]
-    let help = help.separator().item(&PredefinedMenuItem::about(app, Some(s[0]), None)?);
+    let help = help
+        .separator()
+        .item(&item("check-updates", l[31], None)?)
+        .item(&PredefinedMenuItem::about(app, Some(s[0]), None)?);
     let help = help.build()?;
 
     #[cfg(target_os = "macos")]
@@ -519,6 +523,9 @@ pub fn run() {
     let app = builder
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        // Updates from the GitHub releases (src/app/updates.ts), and the restart after one on the Mac.
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .manage(OpenedFiles::default())
         .manage(agent::Agent::default())
         .setup(|app| {
@@ -652,6 +659,7 @@ mod tests {
         assert_eq!(labels("en")[28], "Problems");
         assert_eq!(labels("es")[29], "Idioma del mapa");
         assert_eq!(labels("pt")[30], "Barra lateral");
+        assert_eq!(labels("en")[31], "Check for updates…");
         assert_eq!(labels("pt")[5], "Limpar histórico");
         assert_eq!(labels("pt")[6], "Exportar curso…");
         assert_eq!(labels("pt")[13], "EGF");

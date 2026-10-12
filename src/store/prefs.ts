@@ -38,6 +38,8 @@ export interface Prefs {
   recent: string[];
   /** the version of the terms of use the person accepted ("" before they do: see src/app/TermsModal.tsx) */
   terms: string;
+  /** whether the app looks for a new version on its own, once a day at most, and when it last did (ms; see src/app/updates.ts) */
+  updates: { auto: boolean; lastCheck: number };
 }
 
 export const DEFAULT_PREFS: Prefs = {
@@ -71,6 +73,7 @@ export const DEFAULT_PREFS: Prefs = {
   editorWrap: true,
   recent: [],
   terms: "",
+  updates: { auto: true, lastCheck: 0 },
 };
 
 interface PrefsState extends Prefs {
@@ -107,6 +110,10 @@ const merge = (raw: Record<string, unknown>): Prefs => {
     editorWrap: typeof r.editorWrap === "boolean" ? r.editorWrap : DEFAULT_PREFS.editorWrap,
     recent: Array.isArray(r.recent) ? r.recent.filter((p) => typeof p === "string") : [],
     terms: typeof r.terms === "string" ? r.terms : "",
+    updates: {
+      auto: typeof r.updates?.auto === "boolean" ? r.updates.auto : true,
+      lastCheck: typeof r.updates?.lastCheck === "number" ? r.updates.lastCheck : 0,
+    },
   };
 };
 
@@ -120,6 +127,7 @@ const persisted = (s: PrefsState): Prefs => ({
   editorWrap: s.editorWrap,
   recent: s.recent,
   terms: s.terms,
+  updates: s.updates,
 });
 
 export const applyTheme = (theme: Prefs["theme"]) => {

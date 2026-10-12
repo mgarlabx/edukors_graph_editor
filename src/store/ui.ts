@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type ModalId = "prefs" | "languages" | "probe" | "help" | "about" | "content" | null;
+export type ModalId = "prefs" | "languages" | "probe" | "help" | "about" | "content" | "update" | null;
 export type HelpTab = "quick" | "full" | "terms";
 export type BottomPanel = "problems" | null;
 

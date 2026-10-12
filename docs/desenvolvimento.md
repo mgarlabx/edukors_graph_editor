@@ -13,6 +13,8 @@ npm run app:build      # .app e .dmg em src-tauri/target/release/bundle/
 npm run dev            # só a interface, num navegador (sem Keychain nem diálogos nativos)
 ```
 
+Versões novas saem pelo GitHub Actions, a partir de uma tag, com o `CHANGELOG.md` e `scripts/bump-version.mjs`. O app instalado se atualiza sozinho. Ver [Releases e atualização automática](distribuicao.md#releases-e-atualização-automática).
+
 ## Agente de IA
 
 O ícone ✦ na ponta direita da barra (⇧⌘A, ou **Ver → Agente de IA**) abre o agente no lugar do inspetor. Ele é feito com o [Claude Agent SDK](https://code.claude.com/docs/en/agent-sdk/overview) e usa a conta do Claude com que o Claude Code está logado neste Mac: as chaves `ANTHROPIC_API_KEY` e `ANTHROPIC_AUTH_TOKEN` são retiradas do ambiente do processo para que a conta seja o que vale.
