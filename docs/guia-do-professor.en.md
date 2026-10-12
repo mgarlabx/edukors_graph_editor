@@ -163,7 +163,7 @@ Whatever is selected on the graph goes along with the message: it shows in the �
 - **Skills** are packages of instructions (a folder with a `SKILL.md` file, sometimes with scripts) that teach the agent to do a task in a certain way. Click **Open skills folder**, put the skill's folder there and click **Reload**: it shows up in the list.
 - **MCP servers** connect the agent to other programs and services (a folder of materials, a document base…). Paste into the **MCP servers** field the JSON the server's documentation gives (the `.mcp.json`). Servers that ask you to log in on the web don't work here.
 
-Both apply from the next session on (**New session**). The model menu, at the foot of the panel, shows the loaded skills and whether each server connected (✓) or failed (✗). If a skill needs to run a command on the computer, the agent asks for your approval **for every command**, showing the command, even in Auto mode. Not every agent takes skills and MCP servers; when the one you picked doesn't, the panel says so.
+Both apply from the next session on (**New session**). The model menu, at the foot of the panel, shows the loaded skills and whether each server connected (✓) or failed (✗). If a skill needs to run a command on the computer, the agent asks for your approval **for every command**, showing the command, even in Auto mode. MCP servers work with all three agents (Claude Code, Antigravity and Codex); skills, for now, only with Claude Code and Antigravity. When the agent you picked doesn't take something, the panel says so.
 
 **The three modes** (on the ✋ button in the field):
 
@@ -173,13 +173,13 @@ Both apply from the next session on (**New session**). The model menu, at the fo
 | **Auto edit** | The agent changes the course without asking. |
 | **Plan** | The agent studies the course and writes a plan, without changing anything. Approve the plan for it to carry out, or ask for changes. |
 
-In any mode, **each change the agent makes is one undo step**: ⌘Z undoes the last one. Reading a file from your Mac (attached with the 📎 clip) or opening a web page always asks for your permission. The agent does not save the course file: save it yourself, with ⌘S, when you are happy.
+In any mode, **each change the agent makes is one undo step**: ⌘Z undoes the last one. Reading a file from your Mac (attached with the 📎 clip, which shows it as a card above the text, with an × to take it off) or opening a web page always asks for your permission. The agent does not save the course file: save it yourself, with ⌘S, when you are happy.
 
 **The agent's questions.** When the request could go more than one way (the school year, the length, the languages), the agent asks in a card with options; pick one or write another answer.
 
-**Model and effort.** On the model button, at the foot of the panel, you choose among the models the agent offers and, when it allows it, the **effort**: more effort, more careful and slower answers. The default works for almost everything.
+**Model and effort.** On the model button, at the foot of the panel, you choose among the models the agent offers and, when it allows it, the **effort**, on a slider that goes from the default to the maximum: more effort, more careful and slower answers. The default works for almost everything. Which agent answers (Claude Code, Antigravity or Codex) is not chosen here: it is in **Preferences → AI agent**.
 
-**Account and usage.** The same menu shows the account in use and, when the agent reports it, the **account usage**: your subscription's limit windows, as the agent itself reports them (in English), each with a bar — the session one (*Current session*) and the weekly one (*Current week*), and each line says when the window resets. Usage is updated when the panel opens and after each answer (⟳ updates it right away), and it also shows at the start of each new conversation. The windows belong to your account, not to the editor: they also count what you use in that same service elsewhere. To use another account, log in with it in the agent's own program and start a new conversation in the panel.
+**Account and usage.** The same menu shows the account in use and, when the agent reports it, the **account usage**: your subscription's limit windows, each with a bar and the time it resets. Claude Code reports them itself — the session one (*Current session*) and the weekly one (*Current week*); Codex and Antigravity show the 5-hour and the weekly limit (in Antigravity, one pair for each group of models). Usage is updated when the panel opens and after each answer (⟳ updates it right away), and it also shows at the start of each new conversation. The windows belong to your account, not to the editor: they also count what you use in that same service elsewhere. To use another account, log in with it in the agent's own program and start a new conversation in the panel.
 
 **Sessions.** Each conversation is kept. The title at the top of the panel opens the list of past conversations (with search); click one to carry on from where it stopped. The ✎ icon starts a new conversation; each item's 🗑 deletes the conversation.
 

@@ -94,6 +94,32 @@ export interface Capabilities {
   ownQuestions: boolean;
 }
 
+/**
+ * One usage limit of the account: a window (five hours, a week) of a group of
+ * models, with the share of it used and when it resets.
+ */
+export interface UsageLimit {
+  /** the models that share it, in the provider's words ("Gemini Models"), when there is more than one group */
+  group?: string;
+  /** `5h`, `weekly`, or another length as the provider names it */
+  window: string;
+  /** the share used, 0–100 */
+  percent: number;
+  /** when it resets, in ms */
+  resetsAt?: number;
+}
+
+/**
+ * The account's usage as the provider reports it. Claude Code writes it as a
+ * report for people (its /usage), which the panel reads its windows from;
+ * Codex and Antigravity give the limits themselves, and the text only explains.
+ */
+export interface UsageReport {
+  text: string;
+  at: number;
+  limits?: UsageLimit[];
+}
+
 /** Whether a provider can be used on this machine, as the process reports at startup. */
 export interface ProviderState {
   id: ProviderId;

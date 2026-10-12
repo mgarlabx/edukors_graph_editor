@@ -6,7 +6,7 @@
  */
 import { useMemo } from "react";
 import type { CourseNode } from "../schema/types";
-import { describe } from "../schema/describe";
+import { describe, tip } from "../schema/describe";
 import { storageKeys, localize } from "../course/localize";
 import { useEditor } from "../store/editor";
 import { hashText } from "../store/layout";
@@ -46,10 +46,10 @@ export function JudgeForm({ node }: { node: CourseNode }) {
             />
           }
         >
-          <Field label={t("insp.key")} help={describe("judgeKey")}>
+          <Field label={t("insp.key")} help={tip("judgeKey")}>
             <TextInput value={String(item.key ?? "")} pattern={NAME} onChange={(v) => edit((n) => (n.content.items[i].key = v), `j${i}-key`)} />
           </Field>
-          <Field label={t("insp.judgeInstructions")} help={describe("judgeInstructions")}>
+          <Field label={t("insp.judgeInstructions")} help={tip("judgeInstructions")}>
             <StorageTextarea
               value={String(item.instructions ?? "")}
               minRows={3}
@@ -91,7 +91,7 @@ function StateEditor({ node }: { node: CourseNode }) {
     edit((n) => (n.content.state = Object.fromEntries(fn(Object.entries(n.content.state ?? {})))), label);
 
   return (
-    <Section title={<>{t("insp.state")} <Help text={describe("judgeState")} /></>}>
+    <Section title={<>{t("insp.state")} <Help text={tip("judgeState")} /></>}>
       {entries.map(([name, value], i) => (
         <div key={i} className="state-row">
           <div className="row">
@@ -169,7 +169,7 @@ function ChoiceCriteria({ node, index }: { node: CourseNode; index: number }) {
   const rewrite = (fn: (list: [string, string | null][]) => [string, string | null][], label: string) =>
     edit((n) => (n.content.items[index].criteria = Object.fromEntries(fn(Object.entries(n.content.items[index].criteria ?? {})))), label);
   return (
-    <Field label={t("insp.choiceOptions")} help={describe("choiceQuestion", "criteria")}>
+    <Field label={t("insp.choiceOptions")} help={tip("choiceQuestion", "criteria")}>
       <div className="option-list">
         {entries.map(([name, what], j) => (
           <div key={j} className="option-row">
@@ -219,7 +219,7 @@ function ScoreCriteria({ node, index }: { node: CourseNode; index: number }) {
   const points: number[] | undefined = Array.isArray(item.points) ? item.points : undefined;
   const set = (fn: (it: { criteria: string[]; points?: number[] }) => void, label: string) => edit((n) => fn(n.content.items[index]), label);
   return (
-    <Field label={t("insp.levels")} help={describe("scoreQuestion", "criteria")}>
+    <Field label={t("insp.levels")} help={tip("scoreQuestion", "criteria")}>
       <label className="check small" title={describe("scoreQuestion", "points")}>
         <input
           type="checkbox"
@@ -290,14 +290,14 @@ function NoulCriteria({ node, index }: { node: CourseNode; index: number }) {
   const criteria: { true?: string; false?: string } | undefined = node.content.items[index]?.criteria;
   if (!criteria)
     return (
-      <Field label={t("insp.noulCriteria")} help={describe("noulQuestion", "criteria")}>
+      <Field label={t("insp.noulCriteria")} help={tip("noulQuestion", "criteria")}>
         <button className="btn btn-small" onClick={() => edit((n) => (n.content.items[index].criteria = { true: "", false: "" }), "n-add")}>
           + {t("insp.add", { what: t("insp.noulCriteria") })}
         </button>
       </Field>
     );
   return (
-    <Field label={t("insp.noulCriteria")} help={describe("noulQuestion", "criteria")}>
+    <Field label={t("insp.noulCriteria")} help={tip("noulQuestion", "criteria")}>
       {(["true", "false"] as const).map((side) => (
         <div key={side} className="row">
           <code className="level-number">{side}</code>

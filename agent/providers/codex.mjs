@@ -9,8 +9,9 @@
  * the app's installer.
  *
  * What the editor sets up for it: a home of its own under the app's data
- * folder (CODEX_HOME), whose config.toml gives it one MCP server, the editor's
- * bridge (agent/mcpBridge.mjs), and a read-only sandbox in a workspace that
+ * folder (CODEX_HOME), whose config.toml gives it the editor's bridge
+ * (agent/mcpBridge.mjs) as its MCP servers -- the editor's own and each of the
+ * person's, served again there -- and a read-only sandbox in a workspace that
  * holds nothing. The course is edited only through the bridge, where the
  * editor's gate decides every call. Codex asks the editor before running a
  * command, which the panel puts to the person, and a change to a file is
@@ -23,11 +24,11 @@ import { join } from "node:path";
 import * as tools from "../tools.mjs";
 import { findCli, versionOf } from "../cli.mjs";
 import { attach } from "../jsonRpc.mjs";
-import { answersFrom, createMapper, historyEvents, mapQuestions } from "./codexEvents.mjs";
+import { answersFrom, codexUsage, createMapper, historyEvents, mapQuestions } from "./codexEvents.mjs";
 
 export const id = "codex";
 
-export const capabilities = { efforts: true, usage: false, bash: true, skills: false, mcp: false, login: "browser", ownQuestions: false };
+export const capabilities = { efforts: true, usage: true, bash: true, skills: false, mcp: true, login: "browser", ownQuestions: false };
 
 const BINARY = "codex";
 
@@ -75,9 +76,12 @@ export function create(host) {
   let turnOpen = false;
   /** @type {string[]} */
   let stderrTail = [];
+  /** The person's servers the running app server was given, by name, through the bridge. @type {string[]} */
+  let servers = [];
   host.onExit(() => child?.kill("SIGKILL"));
 
-  const ownsTool = (/** @type {string} */ name) => name.startsWith(`mcp__${tools.SERVER}__`) || tools.TOOLS.some((t) => t.name === name);
+  // Every MCP server Codex has is the bridge, which shows each call itself.
+  const ownsTool = (/** @type {string} */ name) => name.startsWith("mcp__") || tools.TOOLS.some((t) => t.name === name);
 
   /** @param {any} ev */
   function emit(ev) {
@@ -87,7 +91,7 @@ export function create(host) {
   }
 
   /**
-   * Codex's own home, with the editor's bridge as its only MCP server and
+   * Codex's own home, with the editor's bridge as its only MCP servers and
    * nothing it may write to. It is the editor's, not the person's, so that
    * their own Codex setup is never touched; only the sign-in is borrowed from
    * it, so that someone already signed in on this Mac is not asked again.
@@ -106,6 +110,13 @@ export function create(host) {
       `url = ${JSON.stringify(bridge.url)}`,
       'bearer_token_env_var = "EDUKORS_MCP_TOKEN"',
       "",
+      // The person's servers, each at its own address on the bridge, under its own name.
+      ...servers.flatMap((name) => [
+        `[mcp_servers.${JSON.stringify(name)}]`,
+        `url = ${JSON.stringify(`${bridge.url}/${encodeURIComponent(name)}`)}`,
+        'bearer_token_env_var = "EDUKORS_MCP_TOKEN"',
+        "",
+      ]),
     ].join("\n");
     writeFileSync(join(home, "config.toml"), config);
     // The person's own sign-in, copied once: Codex refreshes its own copy from here on.
@@ -131,9 +142,9 @@ export function create(host) {
       // Codex puts its own question to whoever drives it before letting an MCP
       // server be called. The editor's bridge is what really decides, by
       // asking the person about the call itself, so this one only says yes to
-      // the editor's own server.
+      // the servers the bridge serves.
       case "mcpServer/elicitation/request":
-        return { action: params?.serverName === tools.SERVER ? "accept" : "decline" };
+        return { action: params?.serverName === tools.SERVER || servers.includes(params?.serverName) ? "accept" : "decline" };
 
       // A command can do anything on the Mac, so each one is put to the person.
       case "item/commandExecution/requestApproval":
@@ -300,11 +311,20 @@ export function create(host) {
     /** @param {any} opts */
     async open(opts) {
       await this.close();
+      // The app server reads its MCP servers when it starts: another set of them starts it again.
+      const names = await host.personalServers(opts.mcp);
+      if (names.join("\n") !== servers.join("\n")) {
+        servers = names;
+        const running = child;
+        child = null;
+        rpc = null;
+        running?.kill();
+      }
       await ensureServer();
       const who = await account();
       if (!who.signedIn) {
         // Nothing to open until there is an account: the panel offers the sign-in.
-        return { sessionId: "", resumed: false, account: who, models: [], mcp: [], skills: [] };
+        return { sessionId: "", resumed: false, account: who, models: [], mcp: host.serverStates(), skills: [] };
       }
       mapper = createMapper({ ownsTool });
       const model = opts.model && opts.model !== "default" ? opts.model : undefined;
@@ -329,7 +349,7 @@ export function create(host) {
       const sid = String(thread?.thread?.id ?? thread?.threadId ?? thread?.id ?? "");
       if (!sid) throw new Error("Codex opened no thread");
       conv = { sid, model, effort, live: true };
-      return { sessionId: sid, resumed: Boolean(opts.resume), account: who, models: await models(), mcp: [], skills: [] };
+      return { sessionId: sid, resumed: Boolean(opts.resume), account: who, models: await models(), mcp: host.serverStates(), skills: [] };
     },
 
     /** @param {string} text */
@@ -397,6 +417,17 @@ export function create(host) {
       await ensureServer();
       if (conv?.sid === sid) await this.close();
       await /** @type {any} */ (rpc).request("thread/archive", { threadId: sid }, 30_000);
+    },
+
+    /**
+     * The account's usage limits as ChatGPT reports them to Codex: the share
+     * of the five-hour and the weekly window used, and when each resets. It is
+     * read from the account, so it costs no model call.
+     */
+    async usage() {
+      await ensureServer();
+      const read = await /** @type {any} */ (rpc).request("account/rateLimits/read", null, 30_000);
+      return { ...codexUsage(read), at: Date.now() };
     },
 
     /** The ChatGPT sign-in happens in the browser; the panel opens the page and waits for the notification. */

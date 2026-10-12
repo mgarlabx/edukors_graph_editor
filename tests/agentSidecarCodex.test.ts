@@ -33,12 +33,21 @@ describe("the agent's process, on Codex", () => {
     sid = opened.sessionId;
     expect(sid).toBe("thr_fake");
     expect(opened.account).toMatchObject({ provider: "codex", signedIn: true, email: "professora@exemplo.org", plan: "pro" });
-    expect(opened.capabilities).toMatchObject({ efforts: true, usage: false, bash: true, skills: false, ownQuestions: false });
+    expect(opened.capabilities).toMatchObject({ efforts: true, usage: true, bash: true, skills: false, ownQuestions: false });
     // The hidden model stays hidden, and the default stands for the one Codex recommends.
     expect(opened.models.map((m: any) => m.value)).toEqual(["default", "gpt-6.1-sol", "gpt-6.1-mini"]);
     expect(opened.models[0]).toMatchObject({ displayName: "GPT-6.1 Sol", resolved: "gpt-6.1-sol" });
     expect(opened.models[1].efforts).toEqual(["low", "medium", "high"]);
   }, 60_000);
+
+  it("reads the account's usage limits from Codex, without a turn", async () => {
+    const usage: any = await agent.request("usage", { provider: "codex" });
+    expect(usage.limits).toEqual([
+      { window: "5h", percent: 22, resetsAt: 1791823591000 },
+      { window: "weekly", percent: 4, resetsAt: 1792361763000 },
+    ]);
+    expect(usage.at).toBeGreaterThan(0);
+  });
 
   it("gives Codex a home of its own, with the editor's prompt and one MCP server", () => {
     const config = readFileSync(join(agent.cwd, "codex", "config.toml"), "utf8");
@@ -138,6 +147,30 @@ describe("Codex with nobody signed in", () => {
       expect(opened.account).toEqual({ provider: "codex", signedIn: false });
       expect(opened.sessionId).toBe("");
       expect(opened.models).toEqual([]);
+    } finally {
+      await other.stop();
+    }
+  }, 60_000);
+});
+
+describe("Codex with the person's own MCP servers", () => {
+  it("is given them through the bridge, behind the editor's gate", async () => {
+    const other = await startSidecar({ EDUKORS_CODEX: join(root, "tests", "fake-codex.mjs") });
+    try {
+      const mcp = { materiais: { command: process.execPath, args: [join(root, "tests", "fake-mcp-server.mjs")] } };
+      const opened: any = await other.request("open", { provider: "codex", model: "default", mode: "ask", effort: "auto", instructions: "", mcp });
+      expect(opened.capabilities.mcp).toBe(true);
+      expect(opened.mcp).toEqual([{ name: "materiais", status: "connected" }]);
+      const config = readFileSync(join(other.cwd, "codex", "config.toml"), "utf8");
+      expect(config).toMatch(/\[mcp_servers\."materiais"\]\nurl = "http:\/\/127\.0\.0\.1:\d+\/mcp\/materiais"/);
+      other.send({ t: "send", id: "m1", text: "Use os materiais", uuid: "u1" });
+      await other.waitForTurn(1);
+      expect(other.asked.map((a) => `${a.kind}:${a.tool}`)).toEqual(["permission:mcp__materiais__echo"]);
+      const t = fold(other.events(opened.sessionId));
+      const cards = t.items.filter((i) => i.kind === "tool");
+      // One card, the bridge's: Codex's own report of the call is not a second.
+      expect(cards).toHaveLength(1);
+      expect(cards[0]).toMatchObject({ name: "mcp__materiais__echo", result: "eco: oi" });
     } finally {
       await other.stop();
     }

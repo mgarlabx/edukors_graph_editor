@@ -183,6 +183,13 @@ describe("the guard before every tool call", () => {
     for (const name of ["finish", "wait", "ask_question"]) expect(allowed({ name, args: {} }, "edukors")).toBe(true);
   });
 
+  it("lets the person's own servers through, which the bridge serves behind the editor's gate", () => {
+    const servers = ["edukors", "materiais"];
+    expect(allowed({ name: "call_mcp_tool", args: { ServerName: "materiais", ToolName: "echo" } }, servers)).toBe(true);
+    expect(allowed({ name: "call_mcp_tool", args: { ServerName: "edukors", ToolName: "read_course" } }, servers)).toBe(true);
+    expect(allowed({ name: "call_mcp_tool", args: { ServerName: "filesystem", ToolName: "list_dir" } }, servers)).toBe(false);
+  });
+
   it("refuses a call it cannot read", () => {
     expect(allowed(null, "edukors")).toBe(false);
     expect(allowed({}, "edukors")).toBe(false);

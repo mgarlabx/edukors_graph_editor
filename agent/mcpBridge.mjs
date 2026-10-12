@@ -13,10 +13,15 @@
  * (sidecar.mjs) and, when it needs approval, through the panel's cards. The
  * conversation's tool card is also born here, so what the panel shows does not
  * depend on how a CLI words its stream.
+ *
+ * The person's own MCP servers are served here too, each at `/mcp/<name>`
+ * (agent/mcpProxy.mjs), with the same gate and the same cards.
  */
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { SERVER, qualified } from "./tools.mjs";
@@ -28,6 +33,15 @@ const cut = (/** @type {string} */ text) => (text.length > DISPLAY_LIMIT ? text.
 
 /** @param {import("./tools.mjs").ToolResult} result */
 const textOf = (result) => result.content.map((c) => c.text).join("\n");
+
+/** A piece of a path, decoded; one that cannot be is no name. */
+const safeDecode = (/** @type {string} */ part) => {
+  try {
+    return decodeURIComponent(part);
+  } catch {
+    return "";
+  }
+};
 
 /** An answer for the model, in the shape MCP returns. */
 const answer = (/** @type {string} */ text, /** @type {boolean} */ isError) => ({ content: [{ type: /** @type {const} */ ("text"), text }], isError });
@@ -41,6 +55,7 @@ const answer = (/** @type {string} */ text, /** @type {boolean} */ isError) => (
  *   askPlan: (input: Record<string, unknown>) => Promise<{ allow: true; text: string } | { allow: false; message: string }>;
  *   emit: (ev: any) => void;
  *   log: (...args: unknown[]) => void;
+ *   proxy?: ReturnType<typeof import("./mcpProxy.mjs").createProxy>;
  * }} BridgeOptions
  */
 
@@ -99,14 +114,53 @@ export async function startBridge(opts) {
   }
 
   /**
+   * One of the person's servers, as the CLI sees it: its tools as it lists
+   * them, each call shown in the conversation and put through the gate under
+   * the name Claude Code would give it, then passed on.
+   * @param {string} name
+   * @param {NonNullable<BridgeOptions["proxy"]>} proxy
+   */
+  function makeExternal(name, proxy) {
+    const server = new Server({ name, version: "1.0.0" }, { capabilities: { tools: {} } });
+    server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: (await proxy.tools(name)) ?? [] }));
+    server.setRequestHandler(CallToolRequestSchema, async (request) => {
+      const tool = request.params.name;
+      const input = /** @type {Record<string, unknown>} */ (request.params.arguments ?? {});
+      const id = randomUUID();
+      const shown = `mcp__${name}__${tool}`;
+      opts.emit({ ev: "assistant", uuid: id, blocks: [{ type: "tool_use", index: 0, id, name: shown, input }] });
+      const done = (/** @type {string} */ text, /** @type {boolean} */ isError) => opts.emit({ ev: "tool_result", toolUseId: id, text: cut(text), ...(isError ? { isError: true } : {}) });
+      try {
+        const verdict = await opts.gate(shown, input, { toolUseId: id });
+        if (!verdict.allow) {
+          done(verdict.message, true);
+          return answer(verdict.message, true);
+        }
+        const result = /** @type {any} */ (await proxy.call(name, tool, input));
+        const parts = Array.isArray(result?.content) ? result.content : [];
+        const text = parts.map((/** @type {any} */ c) => (c?.type === "text" ? c.text : `[${c?.type ?? "?"}]`)).join("\n");
+        done(text || (result?.structuredContent ? JSON.stringify(result.structuredContent) : ""), Boolean(result?.isError));
+        return result;
+      } catch (e) {
+        const message = `The MCP server "${name}" could not run this tool: ${String(/** @type {Error} */ (e)?.message ?? e)}`;
+        opts.log("tool", shown, "failed:", message);
+        done(message, true);
+        return answer(message, true);
+      }
+    });
+    return server;
+  }
+
+  /**
    * Stateless: a server and a transport per request, which is how the SDK
    * serves a client that keeps no session, and all a CLI needs here.
    * @param {import("node:http").IncomingMessage} req
    * @param {import("node:http").ServerResponse} res
    * @param {unknown} parsed
+   * @param {() => McpServer | Server} [make]
    */
-  async function serveOnce(req, res, parsed) {
-    const server = makeServer();
+  async function serveOnce(req, res, parsed, make = makeServer) {
+    const server = make();
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
     res.on("close", () => {
       transport.close().catch(() => undefined);
@@ -127,7 +181,14 @@ export async function startBridge(opts) {
       res.writeHead(401, { "content-type": "application/json" }).end(JSON.stringify({ error: "unauthorized" }));
       return;
     }
-    if (path === "/mcp") {
+    /** The person's server this address is for, if it is one of theirs. */
+    const external = path.startsWith("/mcp/") ? safeDecode(path.slice("/mcp/".length)) : null;
+    if (external !== null && !opts.proxy?.names().includes(external)) {
+      res.writeHead(404).end();
+      return;
+    }
+    if (path === "/mcp" || external !== null) {
+      const make = external !== null && opts.proxy ? () => makeExternal(external, /** @type {NonNullable<BridgeOptions["proxy"]>} */ (opts.proxy)) : makeServer;
       let body = "";
       req.on("data", (c) => (body += c));
       req.on("end", () => {
@@ -138,7 +199,7 @@ export async function startBridge(opts) {
           res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ error: "not JSON" }));
           return;
         }
-        serveOnce(req, res, parsed).catch((e) => {
+        serveOnce(req, res, parsed, make).catch((e) => {
           opts.log("bridge:", e);
           if (!res.headersSent) res.writeHead(500).end();
         });

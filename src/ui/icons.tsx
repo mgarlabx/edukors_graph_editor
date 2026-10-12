@@ -124,6 +124,13 @@ export const SettingsIcon = (p: P) => (
   </Svg>
 );
 
+export const KeyIcon = (p: P) => (
+  <Svg {...p}>
+    <circle cx="8" cy="15" r="4.5" />
+    <path d="m11.2 11.8 8.8-8.8M16.5 6.5l2.5 2.5M14 9l2 2" />
+  </Svg>
+);
+
 export const HelpIcon = (p: P) => (
   <Svg {...p}>
     <circle cx="12" cy="12" r="9" />

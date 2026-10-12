@@ -56,7 +56,7 @@ const editor = () =>
   });
 const agent = () => page.evaluate(() => {
   const s = window.__agent.getState();
-  return { busy: s.busy, asks: s.asks.length, items: s.items.map((i) => i.kind), mode: s.mode, model: s.model, sessionId: s.sessionId, connection: s.connection, provider: s.provider, capabilities: s.capabilities };
+  return { busy: s.busy, asks: s.asks.length, items: s.items.map((i) => i.kind), mode: s.mode, model: s.model, effort: s.effort, sessionId: s.sessionId, connection: s.connection, provider: s.provider, capabilities: s.capabilities };
 });
 
 // ------------------------------------------------- the process, scripted ----
@@ -77,8 +77,8 @@ function scriptedTransport() {
   };
   const CAPS = {
     claude: { efforts: true, usage: true, bash: true, skills: true, mcp: true, login: "external", ownQuestions: true },
-    antigravity: { efforts: false, usage: false, bash: false, skills: true, mcp: false, login: "external", ownQuestions: false },
-    codex: { efforts: true, usage: false, bash: true, skills: false, mcp: false, login: "browser", ownQuestions: false },
+    antigravity: { efforts: false, usage: true, bash: false, skills: true, mcp: false, login: "external", ownQuestions: false },
+    codex: { efforts: true, usage: true, bash: true, skills: false, mcp: false, login: "browser", ownQuestions: false },
   };
   const MODELS = {
     claude: [
@@ -143,6 +143,16 @@ function scriptedTransport() {
         case "list":
           return reply(msg.id, SESSIONS[msg.provider ?? provider] ?? []);
         case "usage":
+          if ((msg.provider ?? provider) === "antigravity")
+            return reply(msg.id, {
+              at: Date.now(),
+              text: "Within each group, models share a weekly limit and a 5-hour limit.",
+              limits: [
+                { group: "Gemini Models", window: "weekly", percent: 10, resetsAt: Date.now() + 3 * 86400_000 },
+                { group: "Gemini Models", window: "5h", percent: 40, resetsAt: Date.now() + 2 * 3600_000 },
+                { group: "Claude and GPT models", window: "5h", percent: 0, resetsAt: Date.now() + 4 * 3600_000 },
+              ],
+            });
           return reply(msg.id, {
             at: Date.now(),
             text: "You are currently using your subscription to power your Claude Code usage\n\nCurrent session: 22% used · resets Oct 2 at 1:39pm (America/Sao_Paulo)\nCurrent week (all models): 4% used · resets Oct 8 at 6:59am (America/Sao_Paulo)\n\nWhat's contributing to your limits usage?\nLast 24h · 751 requests · 23 sessions",
@@ -395,13 +405,37 @@ if (!live) {
     expect((await lines.first().innerText()).startsWith("Current session: 22% used"), "the line was changed");
     const width = await page.locator(".agent-menu .agent-usage-bar > span").first().evaluate((el) => el.style.width);
     expect(width === "22%", `bar at ${width}`);
-    expect((await page.locator(".agent-menu .agent-usage-more pre").textContent()).includes("751 requests"), "the details are missing");
+    expect((await page.locator(".agent-menu .agent-usage-more, .agent-menu .agent-usage-text").count()) === 0, "the rest of the report is shown");
     const before = await page.evaluate(() => window.__agentSent.filter((m) => m.t === "usage").length);
     await page.getByRole("button", { name: "Atualizar o uso" }).click();
     await page.waitForFunction((n) => window.__agentSent.filter((m) => m.t === "usage").length > n, before);
     await shot("a04b-usage");
     await page.keyboard.press("Escape");
     expect((await page.locator(".agent-usage.is-compact").count()) === 0, "no compact usage once the conversation has started");
+  });
+
+  await step("the effort is a slider, and the agent is told what it is set to", async () => {
+    await page.locator(".agent-model > .agent-chip").click();
+    const range = page.locator(".agent-menu .agent-effort-range");
+    await range.waitFor();
+    expect((await page.locator(".agent-menu .agent-effort button").count()) === 0, "the effort is still buttons");
+    expect((await range.getAttribute("max")) === "5", "expected the default and five levels");
+    await range.focus();
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("ArrowRight");
+    expect((await agent()).effort === "high", `effort ${(await agent()).effort}`);
+    expect((await page.locator(".agent-menu .agent-effort-value").innerText()) === "Alto", "the level is not named over the slider");
+    const sets = await page.evaluate(() => window.__agentSent.filter((m) => m.t === "set" && m.effort));
+    expect(sets.at(-1)?.effort === "high", "the process was not told");
+    expect((await page.locator(".agent-model > .agent-chip").innerText()).includes("Alto"), "the chip does not show the effort");
+    await shot("a04c-effort");
+    await page.keyboard.press("Home");
+    expect((await agent()).effort === "auto", "Home should go back to the default");
+    // Which provider runs the agent is a preference, not a choice in this menu.
+    expect((await page.locator(".agent-menu").getByText("Provedor").count()) === 0, "the menu still offers the provider");
+    expect((await page.getByRole("menuitemradio", { name: /Antigravity|Codex/ }).count()) === 0, "the menu still lists providers");
+    await page.keyboard.press("Escape");
   });
 
   await step("the mode and the model change from the composer", async () => {
@@ -454,9 +488,9 @@ if (!live) {
     expect((await page.locator(".agent-user").count()) > 0, "the conversation did not survive closing the panel");
   });
 
-  await step("the provider changes from the model menu, with its own models and sessions", async () => {
-    await page.locator(".agent-model > .agent-chip").click();
-    await page.getByRole("menuitemradio", { name: /Antigravity/ }).click();
+  await step("the provider changes from the preferences, with its own models, sessions and usage", async () => {
+    // What the preferences do when they are saved with another provider.
+    await page.evaluate(() => window.__agent.getState().setProvider("antigravity"));
     // The provider changes at once; the conversation on the other side takes a round trip.
     await page.waitForFunction(() => window.__agent.getState().sessionId === "antigravity-new");
     const opened = await page.evaluate(() => window.__agentSent.filter((m) => m.t === "open").at(-1));
@@ -470,26 +504,23 @@ if (!live) {
     expect(listed.provider === "antigravity", "the session list did not follow the provider");
     await page.keyboard.press("Escape");
     await page.locator(".agent-sessions").waitFor({ state: "detached" });
-    // Antigravity takes no effort level and reports no usage, so neither shows.
+    // Antigravity takes no effort level, and its quotas show by group of models, the five hours first.
     await page.locator(".agent-model > .agent-chip").click();
     expect((await page.locator(".agent-menu .agent-effort").count()) === 0, "the effort levels should not show");
-    expect((await page.locator(".agent-menu .agent-usage").count()) === 0, "the usage should not show");
+    const lines = page.locator(".agent-menu .agent-usage-line");
+    await lines.first().waitFor();
+    expect((await lines.count()) === 3, `expected three limits, got ${await lines.count()}`);
+    expect((await lines.first().innerText()).startsWith("Limite de 5 horas: 40% usado · renova"), `the line reads ${await lines.first().innerText()}`);
+    expect((await lines.nth(1).innerText()).startsWith("Limite semanal: 10% usado"), "the weekly limit should come second");
+    expect((await page.locator(".agent-menu .agent-usage-group-name").allInnerTexts()).join() === "Gemini Models,Claude and GPT models", "the groups are not named");
+    expect((await page.locator(".agent-menu .agent-usage-bar > span").first().evaluate((el) => el.style.width)) === "40%", "the bar is wrong");
+    expect((await page.locator(".agent-menu .agent-usage-when").innerText()).includes("Antigravity"), "the source is not named");
     expect((await page.getByText("Conta Google: professora@gmail.com").count()) === 1, "the Google account is not shown");
     await shot("a07-provider");
     await page.keyboard.press("Escape");
     // Back to Claude Code, with its own conversation.
-    await page.locator(".agent-model > .agent-chip").click();
-    await page.getByRole("menuitemradio", { name: /Claude Code/ }).click();
+    await page.evaluate(() => window.__agent.getState().setProvider("claude"));
     await page.waitForFunction(() => window.__agent.getState().sessionId === "s-new" && window.__agent.getState().models.length === 3);
-    await page.keyboard.press("Escape");
-  });
-
-  await step("a provider that is not installed is offered but marked", async () => {
-    await page.locator(".agent-model > .agent-chip").click();
-    const codex = page.getByRole("menuitemradio", { name: /Codex/ });
-    expect((await codex.count()) === 1, "Codex is not in the menu");
-    expect((await codex.innerText()).includes("não instalado"), "Codex is not marked as missing");
-    await page.keyboard.press("Escape");
   });
 
   await step("past sessions are listed and reopened with their history", async () => {
@@ -507,6 +538,35 @@ if (!live) {
     await page.getByRole("button", { name: "Nova sessão" }).click();
     await page.locator(".agent-hello").waitFor();
     expect((await agent()).items.length === 0, "not empty");
+  });
+
+  await step("attached files are cards over the text, with a shortened name and an ×", async () => {
+    // The app's file dialog, played for this step only: each pick gives the next path.
+    await page.evaluate(() => {
+      const picks = ["/Users/ana/Documents/relatorio-final-do-semestre-de-2026.pdf", "/Users/ana/notas.txt"];
+      window.__TAURI_INTERNALS__ = { invoke: async (cmd) => (cmd === "plugin:dialog|open" ? picks.shift() ?? null : null), transformCallback: () => 0 };
+    });
+    await page.locator(".agent-input").fill("Resuma ");
+    const clip = page.getByRole("button", { name: /Anexar arquivo/ });
+    await clip.click();
+    await page.locator(".agent-composer .agent-attachment").waitFor();
+    await clip.click();
+    await page.locator(".agent-composer .agent-attachment").nth(1).waitFor();
+    const names = await page.locator(".agent-composer .agent-attachment-name").allInnerTexts();
+    expect(names.join("|") === "relatorio-final-do-….pdf|notas.txt", `the cards read ${names.join("|")}`);
+    expect((await page.locator(".agent-input").inputValue()) === "Resuma ", "the path went into the text");
+    await shot("a08-attachments");
+    await page.getByRole("button", { name: "Remover notas.txt" }).click();
+    expect((await page.locator(".agent-composer .agent-attachment").count()) === 1, "the × did not take the file off");
+    await page.keyboard.press("Enter");
+    await page.locator(".agent-user .agent-attachment").waitFor();
+    const sent = await page.evaluate(() => window.__agentSent.filter((m) => m.t === "send").at(-1).text);
+    expect(sent.endsWith("Resuma\n\n<attached-files>\n/Users/ana/Documents/relatorio-final-do-semestre-de-2026.pdf\n</attached-files>"), "the path did not go along");
+    expect((await page.locator(".agent-composer .agent-attachment").count()) === 0, "the cards stayed after sending");
+    expect((await page.locator(".agent-user").last().innerText()).includes("relatorio-final-do-….pdf"), "the bubble does not show the file");
+    await page.getByText("Feito.").last().waitFor().catch(() => undefined);
+    await shot("a09-attachment-sent");
+    await page.evaluate(() => delete window.__TAURI_INTERNALS__);
   });
 
   await step("in a plain browser the panel says the agent needs the app", async () => {

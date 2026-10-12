@@ -218,3 +218,40 @@ export function answersFrom(params, answers) {
   }
   return { answers: out };
 }
+
+/** A window's length as the panel names it: the five-hour one, the weekly one, or its minutes. */
+const windowOf = (/** @type {number | null | undefined} */ mins) => (mins === 300 ? "5h" : mins === 10080 ? "weekly" : mins ? `${mins}min` : "");
+
+/**
+ * The account's usage limits, from `account/rateLimits/read`: each bucket's
+ * windows (five hours, a week) with the share used and when it resets, as the
+ * panel's usage limits (src/agent/events.ts).
+ * @param {any} read
+ * @returns {{ text: string; limits: { group?: string; window: string; percent: number; resetsAt?: number }[] }}
+ */
+export function codexUsage(read) {
+  const byId = read?.rateLimitsByLimitId && typeof read.rateLimitsByLimitId === "object" ? Object.values(read.rateLimitsByLimitId) : [];
+  /** @type {any[]} */
+  const snapshots = byId.length ? byId : read?.rateLimits ? [read.rateLimits] : [];
+  const named = snapshots.length > 1;
+  /** @type {{ group?: string; window: string; percent: number; resetsAt?: number }[]} */
+  const limits = [];
+  /** @type {string[]} */
+  const notes = [];
+  for (const snap of snapshots) {
+    const group = snap?.limitName || (named ? snap?.limitId : "") || "";
+    for (const w of [snap?.primary, snap?.secondary]) {
+      if (!w || typeof w.usedPercent !== "number") continue;
+      limits.push({
+        ...(group ? { group: String(group) } : {}),
+        window: windowOf(w.windowDurationMins),
+        percent: Math.max(0, Math.min(100, w.usedPercent)),
+        ...(typeof w.resetsAt === "number" ? { resetsAt: w.resetsAt * 1000 } : {}),
+      });
+    }
+    const credits = snap?.credits;
+    if (credits?.unlimited) notes.push("Credits: unlimited");
+    else if (credits?.hasCredits && credits.balance) notes.push(`Credits: ${credits.balance}`);
+  }
+  return { text: [...new Set(notes)].join("\n"), limits };
+}

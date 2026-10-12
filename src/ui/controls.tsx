@@ -1,12 +1,93 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
-/** A help mark whose tooltip is a description from the schema. */
-export const Help = ({ text }: { text?: string }) =>
-  text ? (
-    <span className="help" title={text} aria-label={text} tabIndex={0} role="note">
-      ?
+/**
+ * A help mark whose text shows in a bubble: on hover, on focus, and pinned by
+ * a click. The app's webview shows no `title` tooltips, so the bubble is drawn
+ * here, over the page so that no panel clips it.
+ */
+export function Help({ text }: { text?: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [hover, setHover] = useState(false);
+  const [pinned, setPinned] = useState(false);
+  const open = hover || pinned;
+
+  useEffect(() => {
+    if (!open) return;
+    const hide = () => {
+      setHover(false);
+      setPinned(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && hide();
+    const onDown = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && hide();
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("pointerdown", onDown);
+    window.addEventListener("scroll", hide, true);
+    window.addEventListener("resize", hide);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("scroll", hide, true);
+      window.removeEventListener("resize", hide);
+    };
+  }, [open]);
+
+  if (!text) return null;
+  return (
+    <span
+      ref={ref}
+      className={`help ${open ? "is-open" : ""}`}
+      aria-label={text}
+      tabIndex={0}
+      role="button"
+      aria-expanded={open}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      onFocus={() => setHover(true)}
+      onBlur={() => {
+        setHover(false);
+        setPinned(false);
+      }}
+      onClick={(e) => {
+        // A "?" inside a label must not reach the label's control.
+        e.preventDefault();
+        e.stopPropagation();
+        setPinned((p) => !p);
+      }}
+      onKeyDown={(e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        setPinned((p) => !p);
+      }}
+    >
+      ?{open && ref.current && <HelpBubble anchor={ref.current} text={text} />}
     </span>
-  ) : null;
+  );
+}
+
+/** The bubble under its mark, or over it when there is no room below, kept inside the window. */
+function HelpBubble({ anchor, text }: { anchor: HTMLElement; text: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const a = anchor.getBoundingClientRect();
+    const { width, height } = el.getBoundingClientRect();
+    const gap = 6;
+    const margin = 8;
+    const left = Math.min(Math.max(margin, a.left + a.width / 2 - width / 2), window.innerWidth - width - margin);
+    const below = a.bottom + gap + height <= window.innerHeight - margin || a.top - gap - height < margin;
+    el.style.left = `${left}px`;
+    el.style.top = `${below ? a.bottom + gap : a.top - gap - height}px`;
+    el.style.visibility = "visible";
+  }, [anchor, text]);
+  return createPortal(
+    <div ref={ref} className="help-bubble" role="tooltip">
+      {text}
+    </div>,
+    document.body,
+  );
+}
 
 export const Field = ({
   label,

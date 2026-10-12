@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { courseLangs, useEditor } from "../store/editor";
 import type { Course, CourseNode } from "../schema/types";
-import { describe, typeDescription } from "../schema/describe";
+import { describe, typeDescription, tip } from "../schema/describe";
 import { isJudge, PREFIX, TYPE_STYLE } from "../course/nodeTypes";
 import { renameNode } from "../course/ops";
 import { localize } from "../course/localize";
@@ -40,7 +40,7 @@ export function NodeHeader({ node }: { node: CourseNode }) {
       </div>
       <p className="type-description">{typeDescription(node.type)}</p>
       <div className="grid-2">
-        <Field label="id" help={describe("node", "id")} error={!idOk && newId !== node.id ? t("insp.idInvalid", { prefix: PREFIX[node.type] }) : undefined}>
+        <Field label="id" help={tip("node", "id")} error={!idOk && newId !== node.id ? t("insp.idInvalid", { prefix: PREFIX[node.type] }) : undefined}>
           <div className="row">
             <TextInput value={newId} onChange={setNewId} pattern={/^[a-z]+[0-9]+$/} />
             {newId !== node.id && (
@@ -57,7 +57,7 @@ export function NodeHeader({ node }: { node: CourseNode }) {
             )}
           </div>
         </Field>
-        <Field label={t("insp.section")} help={describe("node", "section")}>
+        <Field label={t("insp.section")} help={tip("node", "section")}>
           {sections.length ? (
             <select
               className="input"
@@ -92,7 +92,7 @@ export function NodeHeader({ node }: { node: CourseNode }) {
           )}
         </Field>
       </div>
-      <LocalizedField path={`node:${node.id}/title`} label={t("insp.title")} help={describe("node", "title")} kind="plain" />
+      <LocalizedField path={`node:${node.id}/title`} label={t("insp.title")} help={tip("node", "title")} kind="plain" />
       <label className={`check ${isJudge(node.type) ? "is-disabled" : ""}`} title={describe("courseInfo", "start")}>
         <input
           type="checkbox"

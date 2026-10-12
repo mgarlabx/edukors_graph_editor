@@ -9,9 +9,10 @@
  * history read back from disk. Changing provider closes what is open and
  * starts a conversation on the other one, with its own models and sessions.
  */
+import { fileName, splitFiles, withFiles } from "./attachments";
 import { create } from "zustand";
 import { AgentError, connect, notify, onIncoming, providers, request, type AskKind, type Incoming, type McpState, type SkillInfo } from "./client";
-import type { AccountInfo, AgentEvent, Capabilities, ModelInfo, ProviderId, ProviderState, SessionInfo } from "./events";
+import type { AccountInfo, AgentEvent, Capabilities, ModelInfo, ProviderId, ProviderState, SessionInfo, UsageReport } from "./events";
 import { parseMcpConfig } from "./mcpConfig";
 import { applyEvent, emptyTranscript, fold, notice, settle, splitContext, type Transcript } from "./transcript";
 import { messageContext, selectionLabel } from "./context";
@@ -82,8 +83,8 @@ export interface AgentState extends Transcript {
   mode: Mode;
   effort: Effort;
   withSelection: boolean;
-  /** the account's usage windows, as the provider last reported them (Claude Code's /usage) */
-  usage: { text: string; at: number } | null;
+  /** the account's usage windows, as the provider last reported them */
+  usage: UsageReport | null;
   usageState: "idle" | "loading" | "error";
   /** a sign-in was opened and the panel is waiting for it */
   signingIn: boolean;
@@ -92,7 +93,8 @@ export interface AgentState extends Transcript {
   ensure(): Promise<void>;
   newSession(): Promise<void>;
   resume(sessionId: string): Promise<void>;
-  send(text: string): Promise<void>;
+  /** `files`: the paths of the files attached to the message. */
+  send(text: string, files?: string[]): Promise<void>;
   interrupt(): void;
   answer(id: string, answer: Answer): void;
   setProvider(provider: ProviderId): Promise<void>;
@@ -120,7 +122,7 @@ const firstLine = (text: string) => {
 };
 
 /** A session's name in the list: its title, or the start of the first message. */
-export const sessionTitle = (s: SessionInfo) => s.title || (s.firstPrompt ? firstLine(splitContext(s.firstPrompt).text) : "") || s.id.slice(0, 8);
+export const sessionTitle = (s: SessionInfo) => s.title || (s.firstPrompt ? firstLine(splitFiles(splitContext(s.firstPrompt).text).text) : "") || s.id.slice(0, 8);
 
 const errorOf = (e: unknown) =>
   e instanceof AgentError ? { code: e.code, detail: e.message !== e.code ? e.message : undefined } : { code: "failed", detail: e instanceof Error ? e.message : String(e) };
@@ -313,22 +315,22 @@ export const useAgent = create<AgentState>()((set, get) => {
       }
     },
 
-    async send(text) {
+    async send(text, files = []) {
       const body = text.trim();
-      if (!body) return;
+      if (!body && !files.length) return;
       const context = messageContext(get().withSelection, get().mode);
       const chip = get().withSelection ? selectionLabel() : null;
       const uuid = crypto.randomUUID();
       set((s) => ({
-        items: [...s.items, { kind: "user", key: uuid, text: body, ...(chip ? { context: chip } : {}) }],
+        items: [...s.items, { kind: "user", key: uuid, text: body, ...(chip ? { context: chip } : {}), ...(files.length ? { files } : {}) }],
         busy: true,
         planTurn: s.mode === "plan",
         docId: context.docId ?? s.docId,
-        title: s.title ?? firstLine(body),
+        title: s.title ?? firstLine(body || files.map(fileName).join(", ")),
       }));
       try {
         await get().ensure();
-        await request("send", { text: `${context.block}\n\n${body}`, uuid });
+        await request("send", { text: `${context.block}\n\n${withFiles(body, files)}`, uuid });
         lastSession = get().sessionId;
       } catch (e) {
         const item = e instanceof AgentError ? notice("error", e.message !== e.code ? e.message : "", `err.${e.code}`) : notice("error", e instanceof Error ? e.message : String(e), "send");
@@ -438,7 +440,7 @@ export const useAgent = create<AgentState>()((set, get) => {
       if ((fresh && !force) || get().connection !== "ready") return;
       if (!usageLoading) {
         set({ usageState: "loading" });
-        usageLoading = request<{ text: string; at: number }>("usage", { provider: get().provider }, 45_000)
+        usageLoading = request<UsageReport>("usage", { provider: get().provider }, 45_000)
           .then((usage) => set({ usage, usageState: "idle" }))
           .catch(() => set({ usageState: "error" }))
           .finally(() => (usageLoading = null));

@@ -11,12 +11,13 @@
  * Which provider is behind the agent makes no difference here: the events are
  * the same for all of them (src/agent/events.ts).
  */
+import { splitFiles } from "./attachments";
 import type { AgentEvent, Block } from "./events";
 
 export type ToolStatus = "running" | "done" | "error";
 
 export type Item =
-  | { kind: "user"; key: string; text: string; context?: string }
+  | { kind: "user"; key: string; text: string; context?: string; files?: string[] }
   | { kind: "text"; key: string; text: string }
   | { kind: "thinking"; key: string; text: string }
   | { kind: "tool"; key: string; id: string; name: string; input: Record<string, unknown>; status: ToolStatus; result?: string }
@@ -124,8 +125,9 @@ export function applyEvent(t: Transcript, ev: AgentEvent): Transcript {
         items: t.items.map((it) => (it.kind === "tool" && it.id === ev.toolUseId ? { ...it, status: ev.isError ? "error" : "done", result: ev.text } : it)),
       };
     case "user": {
-      const { text, context } = splitContext(ev.text);
-      return { ...t, items: [...t.items, { kind: "user", key: ev.key, text, ...(context ? { context } : {}) }] };
+      const { text: said, context } = splitContext(ev.text);
+      const { text, files } = splitFiles(said);
+      return { ...t, items: [...t.items, { kind: "user", key: ev.key, text, ...(context ? { context } : {}), ...(files ? { files } : {}) }] };
     }
     case "interrupted":
       return interrupted(freeze(t));

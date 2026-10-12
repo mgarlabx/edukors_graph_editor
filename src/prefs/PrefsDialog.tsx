@@ -4,7 +4,7 @@
  * (the judge always holds to the exact slug, at the decisions endpoint: see
  * judgeSettings); the agent's instructions, MCP servers and skills.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { native } from "../app/platform";
 import { usePrefs, DEFAULT_PREFS, type Prefs } from "../store/prefs";
 import { useUi } from "../store/ui";
@@ -15,8 +15,11 @@ import { UI_LANGS, t, type UiLang } from "../i18n";
 import { errorText } from "../i18n/errors";
 import { parseMcpConfig } from "../agent/mcpConfig";
 import { useAgent } from "../agent/store";
-import { PROVIDER_IDS, type ProviderId } from "../agent/events";
+import { PROVIDER_IDS } from "../agent/events";
 import { AgentSkills } from "./AgentSkills";
+import { AiIcon, BoltIcon, CheckCircleIcon, KeyIcon, SettingsIcon, TargetIcon, WarningIcon } from "../ui/icons";
+
+type SectionId = "app" | "key" | "generation" | "judge" | "agent";
 
 const MCP_EXAMPLE = `{
   "mcpServers": {
@@ -31,6 +34,7 @@ export function PrefsDialog() {
   const [key, setKey] = useState("");
   const [keyMessage, setKeyMessage] = useState("");
   const [models, setModels] = useState<string[]>([]);
+  const [section, setSection] = useState<SectionId>("app");
   const [draft, setDraft] = useState<Prefs>({
     uiLang: prefs.uiLang,
     theme: prefs.theme,
@@ -55,7 +59,6 @@ export function PrefsDialog() {
   }
   const mcpProblem = parseMcpConfig(draft.agent.mcp).problem;
 
-
   const save = async () => {
     // The agent panel keeps its own settings, and the content editor its line wrapping; they may have changed while this was open. The instructions, the MCP servers and the provider are this dialog's.
     const live = usePrefs.getState().agent;
@@ -64,6 +67,16 @@ export function PrefsDialog() {
     if (draft.agent.provider !== live.provider) void useAgent.getState().setProvider(draft.agent.provider);
     close();
   };
+
+  const sections: { id: SectionId; label: string; icon: ReactNode; alert?: "warning" | "error" }[] = [
+    { id: "app", label: t("prefs.app"), icon: <SettingsIcon /> },
+    { id: "key", label: t("prefs.key"), icon: <KeyIcon />, alert: prefs.hasKey ? undefined : "warning" },
+    { id: "generation", label: t("prefs.generation"), icon: <BoltIcon /> },
+    { id: "judge", label: t("prefs.judge"), icon: <TargetIcon />, alert: judgeProblem ? "error" : undefined },
+    { id: "agent", label: t("prefs.agent"), icon: <AiIcon />, alert: mcpProblem ? "error" : undefined },
+  ];
+  const current = sections.find((s) => s.id === section)!;
+  const tags = section === "generation" ? ["dynamic-md", "dynamic-html"] : section === "judge" ? ["choice", "score", "noul"] : [];
 
   return (
     <Modal
@@ -90,118 +103,178 @@ export function PrefsDialog() {
           <option key={m} value={m} />
         ))}
       </datalist>
-      <h3>{t("prefs.app")}</h3>
-      <div className="grid-3">
-        <Field label={t("prefs.uiLang")}>
-          <select className="input" value={draft.uiLang} onChange={(e) => setDraft({ ...draft, uiLang: e.target.value as UiLang })}>
-            {UI_LANGS.map((l) => (
-              <option key={l} value={l}>
-                {t(`ui.${l}`)}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label={t("prefs.theme")}>
-          <select className="input" value={draft.theme} onChange={(e) => setDraft({ ...draft, theme: e.target.value as Prefs["theme"] })}>
-            <option value="system">{t("prefs.themeSystem")}</option>
-            <option value="light">{t("prefs.themeLight")}</option>
-            <option value="dark">{t("prefs.themeDark")}</option>
-          </select>
-        </Field>
-      </div>
-
-      <h3>{t("prefs.key")}</h3>
-      <p className="small muted">{t("prefs.keyHint")}</p>
-      <div className="row">
-        <span className={`pill ${prefs.hasKey ? "pill-ok" : "pill-warning"}`}>{prefs.hasKey ? t("prefs.keySet") : t("prefs.keyMissing")}</span>
-        <input className="input grow" type="password" autoComplete="off" placeholder="sk-or-v1-…" value={key} onChange={(e) => setKey(e.target.value)} />
-        <button
-          className="btn"
-          disabled={!key.trim()}
-          onClick={async () => {
-            try {
-              await native.keySet(key.trim());
-              setKey("");
-              setKeyMessage(t("prefs.keySaved"));
-              await prefs.refreshKey();
-            } catch (e) {
-              setKeyMessage(errorText(e));
-            }
-          }}
-        >
-          {t("prefs.keySave")}
-        </button>
-        {prefs.hasKey && (
-          <button
-            className="btn btn-danger"
-            onClick={async () => {
-              await native.keyDelete();
-              await prefs.refreshKey();
-              setKeyMessage(t("prefs.keyDeleted"));
-            }}
-          >
-            {t("prefs.keyDelete")}
-          </button>
-        )}
-      </div>
-      {keyMessage && <p className="small">{keyMessage}</p>}
-
-      <h3>{t("prefs.generation")}</h3>
-      <div className="grid-3">
-        <Field label={t("prefs.model")} hint="ai.model">
-          <input className="input" list="models" value={draft.ai.model} onChange={(e) => setDraft({ ...draft, ai: { ...draft.ai, model: e.target.value } })} />
-        </Field>
-        <Field label={t("prefs.temperature")} hint="ai.temperature">
-          <NumberInput value={draft.ai.temperature} min={0} max={2} step={0.1} onChange={(v) => setDraft({ ...draft, ai: { ...draft.ai, temperature: v ?? 0.7 } })} />
-        </Field>
-        <Field label={t("prefs.maxTokens")} hint="ai.max_tokens">
-          <NumberInput value={draft.ai.maxTokens} min={64} step={1} onChange={(v) => setDraft({ ...draft, ai: { ...draft.ai, maxTokens: Math.round(v ?? 1200) } })} />
-        </Field>
-      </div>
-
-      <h3>{t("prefs.judge")}</h3>
-      <p className="small muted">{t("prefs.judgeHint")}</p>
-      <div className="grid-3">
-        <Field label={t("prefs.judgeModel")} hint="judge.model" error={judgeProblem}>
-          <input className="input" list="models" value={draft.judge.model} onChange={(e) => setDraft({ ...draft, judge: { ...draft.judge, model: e.target.value } })} />
-        </Field>
-        <Field label={t("prefs.minConfidence")} hint="judge.min_confidence">
-          <NumberInput value={draft.judge.minConfidence} min={0} max={1} step={0.05} onChange={(v) => setDraft({ ...draft, judge: { ...draft.judge, minConfidence: v ?? 0 } })} />
-        </Field>
-      </div>
-
-      <h3>{t("prefs.agent")}</h3>
-      <Field label={t("prefs.agentProvider")} hint={t("prefs.agentProviderHint")}>
-        <select className="input" value={draft.agent.provider} onChange={(e) => setDraft({ ...draft, agent: { ...draft.agent, provider: e.target.value as ProviderId } })}>
-          {PROVIDER_IDS.map((id) => (
-            <option key={id} value={id}>
-              {t(`agent.provider.${id}`)}
-            </option>
+      <div className="prefs">
+        <nav className="prefs-nav">
+          {sections.map((s) => (
+            <button key={s.id} className={`prefs-nav-item ${s.id === section ? "is-active" : ""}`} onClick={() => setSection(s.id)}>
+              {s.icon}
+              <span className="grow">{s.label}</span>
+              {s.alert && <span className={`prefs-dot prefs-dot-${s.alert}`} />}
+            </button>
           ))}
-        </select>
-      </Field>
-      <p className="small muted">{t("prefs.agentHint")}</p>
-      <Field label={t("prefs.agentInstructions")}>
-        <AutoTextarea
-          minRows={6}
-          value={draft.agent.instructions}
-          placeholder={t("prefs.agentPlaceholder")}
-          onChange={(e) => setDraft({ ...draft, agent: { ...draft.agent, instructions: e.target.value } })}
-        />
-      </Field>
-      <Field label={t("prefs.agentMcp")} hint={t("prefs.agentMcpHint")} error={mcpProblem && t(mcpProblem.key, mcpProblem.params)}>
-        <AutoTextarea
-          className="mono"
-          minRows={4}
-          spellCheck={false}
-          value={draft.agent.mcp}
-          placeholder={MCP_EXAMPLE}
-          onChange={(e) => setDraft({ ...draft, agent: { ...draft.agent, mcp: e.target.value } })}
-        />
-      </Field>
-      <Field label={t("prefs.agentSkills")} hint={t("prefs.agentSkillsHint")}>
-        <AgentSkills />
-      </Field>
+        </nav>
+
+        <div className="prefs-pane">
+          <div className="prefs-pane-head">
+            <span className="prefs-pane-icon">{current.icon}</span>
+            <h3>{current.label}</h3>
+            {tags.map((tag) => (
+              <code key={tag} className="prefs-tag">
+                {tag}
+              </code>
+            ))}
+          </div>
+
+          {section === "app" && (
+            <div className="prefs-card">
+              <Field label={t("prefs.uiLang")}>
+                <select className="input" value={draft.uiLang} onChange={(e) => setDraft({ ...draft, uiLang: e.target.value as UiLang })}>
+                  {UI_LANGS.map((l) => (
+                    <option key={l} value={l}>
+                      {t(`ui.${l}`)}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label={t("prefs.theme")}>
+                <div className="prefs-segmented" role="radiogroup">
+                  {(["system", "light", "dark"] as const).map((theme) => (
+                    <button
+                      key={theme}
+                      role="radio"
+                      aria-checked={draft.theme === theme}
+                      className={draft.theme === theme ? "is-active" : ""}
+                      onClick={() => setDraft({ ...draft, theme })}
+                    >
+                      {t(`prefs.theme${theme[0].toUpperCase()}${theme.slice(1)}`)}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+            </div>
+          )}
+
+          {section === "key" && (
+            <div className="prefs-card">
+              <div className={`prefs-status ${prefs.hasKey ? "is-ok" : "is-warning"}`}>
+                {prefs.hasKey ? <CheckCircleIcon /> : <WarningIcon />}
+                {prefs.hasKey ? t("prefs.keySet") : t("prefs.keyMissing")}
+              </div>
+              <div className="row">
+                <input className="input grow" type="password" autoComplete="off" placeholder="sk-or-v1-…" value={key} onChange={(e) => setKey(e.target.value)} />
+                <button
+                  className="btn btn-primary"
+                  disabled={!key.trim()}
+                  onClick={async () => {
+                    try {
+                      await native.keySet(key.trim());
+                      setKey("");
+                      setKeyMessage(t("prefs.keySaved"));
+                      await prefs.refreshKey();
+                    } catch (e) {
+                      setKeyMessage(errorText(e));
+                    }
+                  }}
+                >
+                  {t("prefs.keySave")}
+                </button>
+                {prefs.hasKey && (
+                  <button
+                    className="btn btn-danger"
+                    onClick={async () => {
+                      await native.keyDelete();
+                      await prefs.refreshKey();
+                      setKeyMessage(t("prefs.keyDeleted"));
+                    }}
+                  >
+                    {t("prefs.keyDelete")}
+                  </button>
+                )}
+              </div>
+              {keyMessage && <p className="small muted">{keyMessage}</p>}
+            </div>
+          )}
+
+          {section === "generation" && (
+            <div className="prefs-card">
+              <Field label={t("prefs.model")} hint={<code>ai.model</code>}>
+                <input className="input" list="models" value={draft.ai.model} onChange={(e) => setDraft({ ...draft, ai: { ...draft.ai, model: e.target.value } })} />
+              </Field>
+              <div className="grid-2">
+                <Field label={t("prefs.temperature")} hint={<code>ai.temperature</code>}>
+                  <NumberInput value={draft.ai.temperature} min={0} max={2} step={0.1} onChange={(v) => setDraft({ ...draft, ai: { ...draft.ai, temperature: v ?? 0.7 } })} />
+                </Field>
+                <Field label={t("prefs.maxTokens")} hint={<code>ai.max_tokens</code>}>
+                  <NumberInput value={draft.ai.maxTokens} min={64} step={1} onChange={(v) => setDraft({ ...draft, ai: { ...draft.ai, maxTokens: Math.round(v ?? 1200) } })} />
+                </Field>
+              </div>
+            </div>
+          )}
+
+          {section === "judge" && (
+            <div className="prefs-card">
+              <Field label={t("prefs.judgeModel")} hint={<code>judge.model</code>} error={judgeProblem}>
+                <input className="input" list="models" value={draft.judge.model} onChange={(e) => setDraft({ ...draft, judge: { ...draft.judge, model: e.target.value } })} />
+              </Field>
+              <div className="grid-2">
+                <Field label={t("prefs.minConfidence")} hint={<code>judge.min_confidence</code>}>
+                  <NumberInput value={draft.judge.minConfidence} min={0} max={1} step={0.05} onChange={(v) => setDraft({ ...draft, judge: { ...draft.judge, minConfidence: v ?? 0 } })} />
+                </Field>
+              </div>
+            </div>
+          )}
+
+          {section === "agent" && (
+            <>
+              <div className="prefs-card">
+                <Field label={t("prefs.agentProvider")}>
+                  <div className="prefs-choices" role="radiogroup">
+                    {PROVIDER_IDS.map((id) => (
+                      <button
+                        key={id}
+                        role="radio"
+                        aria-checked={draft.agent.provider === id}
+                        className={`prefs-choice ${draft.agent.provider === id ? "is-active" : ""}`}
+                        onClick={() => setDraft({ ...draft, agent: { ...draft.agent, provider: id } })}
+                      >
+                        <span className="prefs-radio" />
+                        {t(`agent.provider.${id}`)}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+              </div>
+              <div className="prefs-card">
+                <Field label={t("prefs.agentInstructions")}>
+                  <AutoTextarea
+                    minRows={6}
+                    value={draft.agent.instructions}
+                    placeholder={t("prefs.agentPlaceholder")}
+                    onChange={(e) => setDraft({ ...draft, agent: { ...draft.agent, instructions: e.target.value } })}
+                  />
+                </Field>
+              </div>
+              <div className="prefs-card">
+                <Field label={t("prefs.agentMcp")} error={mcpProblem && t(mcpProblem.key, mcpProblem.params)}>
+                  <AutoTextarea
+                    className="mono"
+                    minRows={4}
+                    spellCheck={false}
+                    value={draft.agent.mcp}
+                    placeholder={MCP_EXAMPLE}
+                    onChange={(e) => setDraft({ ...draft, agent: { ...draft.agent, mcp: e.target.value } })}
+                  />
+                </Field>
+              </div>
+              <div className="prefs-card">
+                <Field label={t("prefs.agentSkills")}>
+                  <AgentSkills />
+                </Field>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
     </Modal>
   );
 }

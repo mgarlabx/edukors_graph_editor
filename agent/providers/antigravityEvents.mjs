@@ -160,3 +160,42 @@ export function parseModels(text) {
 /** Whether what the CLI said on its way out means nobody is signed in. */
 export const authFailure = (/** @type {string} */ text) =>
   /sign ?in|signed in|log ?in|logged in|not authenticated|unauthenticated|unauthorized|credential|oauth|keyring|re-?auth/i.test(String(text ?? ""));
+
+/**
+ * The account's quotas, from `agy -p /usage --output-format json`: groups of
+ * models that share a five-hour and a weekly limit, each bucket with the share
+ * left and when it refills, as the panel's usage limits (src/agent/events.ts).
+ * The CLI's own explanation of the quotas goes along as the text.
+ * @param {string} stdout
+ * @returns {{ text: string; limits: { group?: string; window: string; percent: number; resetsAt?: number }[] } | null}
+ */
+export function agyUsage(stdout) {
+  /** @type {any} */
+  let json = null;
+  for (const line of String(stdout ?? "").replace(ANSI, "").split("\n").reverse()) {
+    try {
+      json = JSON.parse(line);
+      if (json?.command?.data) break;
+    } catch {
+      /* the next line */
+    }
+  }
+  const data = json?.command?.data;
+  if (!data || !Array.isArray(data.groups)) return null;
+  /** @type {{ group?: string; window: string; percent: number; resetsAt?: number }[]} */
+  const limits = [];
+  for (const group of data.groups) {
+    for (const bucket of Array.isArray(group?.buckets) ? group.buckets : []) {
+      if (typeof bucket?.remaining_fraction !== "number") continue;
+      const resets = Date.parse(String(bucket.reset_time ?? ""));
+      limits.push({
+        ...(group.name ? { group: String(group.name) } : {}),
+        window: String(bucket.window ?? bucket.name ?? ""),
+        percent: Math.round(Math.max(0, Math.min(1, 1 - bucket.remaining_fraction)) * 1000) / 10,
+        ...(Number.isFinite(resets) ? { resetsAt: resets } : {}),
+      });
+    }
+  }
+  const text = [data.description, ...data.groups.map((/** @type {any} */ g) => (g?.name && g?.description ? `${g.name}: ${g.description}` : ""))].filter(Boolean).join("\n\n");
+  return { text: String(text), limits };
+}

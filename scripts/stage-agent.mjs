@@ -35,7 +35,16 @@ const SDK = "@anthropic-ai/claude-agent-sdk";
 /** What agent/*.mjs import from outside Node. */
 const ENTRIES = [SDK, "zod", "@modelcontextprotocol/sdk"];
 /** What must be where the bundle looks for it once staged. */
-const CHECKS = ["@modelcontextprotocol/sdk/server/mcp.js", "@modelcontextprotocol/sdk/server/streamableHttp.js", "@modelcontextprotocol/sdk/server/sse.js"];
+const CHECKS = [
+  "@modelcontextprotocol/sdk/server/mcp.js",
+  "@modelcontextprotocol/sdk/server/streamableHttp.js",
+  "@modelcontextprotocol/sdk/server/sse.js",
+  // The person's own servers, reached by the bridge as a client (agent/mcpProxy.mjs).
+  "@modelcontextprotocol/sdk/client/index.js",
+  "@modelcontextprotocol/sdk/client/stdio.js",
+  "@modelcontextprotocol/sdk/client/streamableHttp.js",
+  "@modelcontextprotocol/sdk/client/sse.js",
+];
 const WINDOWS = process.platform === "win32";
 const PLATFORMS = WINDOWS ? ["win32-x64"] : ["darwin-arm64", "darwin-x64"];
 const binary = (platform) => (platform.startsWith("win32") ? "claude.exe" : "claude");

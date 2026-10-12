@@ -4,6 +4,7 @@
  * when the schema does, with nothing to keep in sync by hand.
  */
 import schema from "./schema.json";
+import { hasKey, t } from "../i18n";
 
 type Def = { description?: string; properties?: Record<string, Def>; $ref?: string; "x-enumDescriptions"?: Record<string, string> };
 
@@ -21,6 +22,15 @@ export const describe = (def: string, prop?: string): string => {
   if (!d) return "";
   if (!prop) return d.description ?? "";
   return resolve(d.properties?.[prop])?.description ?? "";
+};
+
+/**
+ * The inspector's "?" tooltip: a short line in the interface's language
+ * (tip.<def>.<prop> in the locales), or the schema's description when there is none.
+ */
+export const tip = (def: string, prop?: string): string => {
+  const key = prop ? `tip.${def}.${prop}` : `tip.${def}`;
+  return hasKey(key) ? t(key) : describe(def, prop);
 };
 
 /** The x-enumDescriptions entry for a value: node types, field types, operators. */

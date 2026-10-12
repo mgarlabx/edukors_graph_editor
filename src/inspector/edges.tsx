@@ -4,7 +4,7 @@
  */
 import type { Condition, CourseNode } from "../schema/types";
 import { useEditor } from "../store/editor";
-import { describe } from "../schema/describe";
+import { describe, tip } from "../schema/describe";
 import { summarize } from "../course/condition";
 import { localize } from "../course/localize";
 import { deleteEdges, outgoingIndexes, reorderEdge } from "../course/ops";
@@ -23,7 +23,7 @@ export function OutgoingEdges({ node }: { node: CourseNode }) {
   const lang = useEditor((s) => s.canvasLang);
   const indexes = outgoingIndexes(course, node.id);
   return (
-    <Section title={<>{t("edges.outgoing")} <Help text={describe("course", "edges")} /></>}>
+    <Section title={<>{t("edges.outgoing")} <Help text={tip("course", "edges")} /></>}>
       {!indexes.length && <p className="muted">{t("edges.none")}</p>}
       <ol className="edge-list">
         {indexes.map((index, position) => {
@@ -89,12 +89,12 @@ export function EdgeInspector({ index }: { index: number }) {
         </div>
       ))}
       <div className="grid-2">
-        <Field label={t("edges.from")} help={describe("edge", "from")}>
+        <Field label={t("edges.from")} help={tip("edge", "from")}>
           <button className="btn wide" onClick={() => select({ nodes: [edge.from], edge: null })}>
             {edge.from} — {source ? localize(source.title, lang) : "?"}
           </button>
         </Field>
-        <Field label={t("edges.to")} help={describe("edge", "to")}>
+        <Field label={t("edges.to")} help={tip("edge", "to")}>
           <select className="input" value={edge.to} onChange={(e) => set((x) => (x.to = e.target.value), "to")}>
             {!course.nodes.some((n) => n.id === edge.to) && <option value={edge.to}>{edge.to} (?)</option>}
             {course.nodes.map((n) => (
@@ -113,7 +113,7 @@ export function EdgeInspector({ index }: { index: number }) {
           <RowTools index={position} count={siblings.length} onMove={(to) => update((c) => reorderEdge(c, edge.from, position, to), "reorder")} />
         </div>
       </Field>
-      <Field label={t("edges.condition")} help={describe("edge", "when")}>
+      <Field label={t("edges.condition")} help={tip("edge", "when")}>
         {edge.when ? (
           <>
             <ConditionEditor value={edge.when} onChange={(c) => set((x) => (x.when = c), "when")} />

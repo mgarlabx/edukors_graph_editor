@@ -1,4 +1,5 @@
 /** The conversation: the person's messages, the agent's answers, thoughts and tool calls. */
+import { AttachmentCard } from "./Composer";
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useAgent } from "./store";
 import type { Item, LiveBlock } from "./transcript";
@@ -208,7 +209,14 @@ function ItemView({ item }: { item: Item }) {
     case "user":
       return (
         <div className="agent-user">
-          <div className="agent-user-text">{item.text}</div>
+          {item.files && (
+            <div className="agent-attachments">
+              {item.files.map((path) => (
+                <AttachmentCard key={path} path={path} />
+              ))}
+            </div>
+          )}
+          {item.text && <div className="agent-user-text">{item.text}</div>}
           {item.context && (
             <div className="agent-user-context">
               <TargetIcon size={12} />

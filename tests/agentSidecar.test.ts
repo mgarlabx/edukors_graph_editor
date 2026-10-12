@@ -39,10 +39,19 @@ describe("the agent's process, with a CLI provider", () => {
     sid = opened.sessionId;
     expect(sid).toBeTruthy();
     expect(opened.provider).toBe("antigravity");
-    expect(opened.capabilities).toMatchObject({ efforts: false, usage: false, mcp: false, ownQuestions: false });
+    expect(opened.capabilities).toMatchObject({ efforts: false, usage: true, mcp: true, ownQuestions: false });
     expect(opened.account).toMatchObject({ provider: "antigravity", signedIn: true });
     expect(opened.models.map((m: any) => m.value)).toContain("gemini-3.8-flash-high");
   }, 60_000);
+
+  it("reads the account's quotas from the CLI's /usage, by group of models", async () => {
+    const usage: any = await agent.request("usage", { provider: "antigravity" });
+    expect(usage.limits).toEqual([
+      { group: "Gemini Models", window: "weekly", percent: 10, resetsAt: Date.parse("2026-10-15T18:13:08Z") },
+      { group: "Gemini Models", window: "5h", percent: 40, resetsAt: Date.parse("2026-10-12T16:46:25Z") },
+    ]);
+    expect(usage.text).toContain("weekly and a 5-hour limit");
+  });
 
   it("writes the CLI a workspace with the editor's prompt, its tools and the person's instructions", () => {
     const prompt = readFileSync(join(agent.cwd, "antigravity", ".agents", "agents", "edukors", "agent.md"), "utf8");
@@ -170,5 +179,30 @@ describe("the agent's process, with a CLI provider", () => {
     await agent.request("delete", { provider: "antigravity", sessionId: sid });
     expect(await agent.request("list", { provider: "antigravity" })).toEqual([]);
     expect(existsSync(join(agent.cwd, "antigravity", "transcripts", `${sid}.ndjson`))).toBe(false);
+  }, 60_000);
+});
+
+describe("the person's own MCP servers, on a CLI provider", () => {
+  it("serves them to the CLI through the bridge, behind the editor's gate", async () => {
+    const other = await startSidecar({ EDUKORS_AGY: join(root, "tests", "fake-agy.mjs") });
+    try {
+      const mcp = { materiais: { command: process.execPath, args: [join(root, "tests", "fake-mcp-server.mjs")] } };
+      const opened: any = await other.request("open", { provider: "antigravity", model: "default", mode: "ask", effort: "auto", instructions: "", mcp });
+      expect(opened.mcp).toEqual([{ name: "materiais", status: "connected" }]);
+      const agents = join(other.cwd, "antigravity", ".agents");
+      const config = JSON.parse(readFileSync(join(agents, "mcp_config.json"), "utf8"));
+      expect(config.mcpServers.materiais.serverUrl).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/mcp\/materiais$/);
+      // The guard lets the CLI reach the person's server too, and nothing else.
+      const hooks = readFileSync(join(agents, "hooks.json"), "utf8");
+      expect(hooks).toMatch(/ edukors materiais"/);
+      other.send({ t: "send", id: "m1", text: "Use os materiais", uuid: "u1" });
+      await other.waitForTurn(1);
+      expect(other.asked.map((a) => `${a.kind}:${a.tool}`)).toEqual(["permission:mcp__materiais__echo"]);
+      const t = fold(other.events(opened.sessionId));
+      expect(t.items[0]).toMatchObject({ kind: "tool", name: "mcp__materiais__echo", result: "eco: oi" });
+      expect(t.items.filter((i) => i.kind === "tool")).toHaveLength(1);
+    } finally {
+      await other.stop();
+    }
   }, 60_000);
 });

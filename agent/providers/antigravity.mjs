@@ -11,19 +11,20 @@
  * How a turn runs. The CLI is spawned in headless streaming mode, one JSON
  * object per line each way, in a workspace of its own under the app's data
  * folder. It is given no tools of its own: a custom agent with `tools: []`,
- * whose instructions are the editor's system prompt, and one MCP server, the
- * editor's bridge (agent/mcpBridge.mjs). In headless mode the CLI asks the
+ * whose instructions are the editor's system prompt, and the editor's bridge
+ * (agent/mcpBridge.mjs) as its MCP servers: the editor's own and each of the
+ * person's, served again there. In headless mode the CLI asks the
  * person nothing and auto-denies whatever would have been asked, so it is run
  * with its own permission prompts off and every call is decided by the
  * editor's gate instead. What keeps that honest is a guard the CLI runs before
- * each tool call (antigravityGuard.mjs): a call that is not to the editor's
- * server is refused there, whatever the CLI makes of its configuration.
+ * each tool call (antigravityGuard.mjs): a call that is not to one of the
+ * bridge's servers is refused there, whatever the CLI makes of its configuration.
  *
  * What the CLI keeps of a conversation is its own; the editor writes its own
  * journal (agent/journal.mjs) so the panel can list and reopen them, and keeps
  * the CLI's conversation id to carry on where it left off.
  */
-import { spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { createInterface } from "node:readline";
 import { randomUUID } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
@@ -35,11 +36,11 @@ import * as tools from "../tools.mjs";
 import * as ext from "../extensions.mjs";
 import { journal } from "../journal.mjs";
 import { openTerminal } from "../terminal.mjs";
-import { authFailure, createMapper, parseModels } from "./antigravityEvents.mjs";
+import { agyUsage, authFailure, createMapper, parseModels } from "./antigravityEvents.mjs";
 
 export const id = "antigravity";
 
-export const capabilities = { efforts: false, usage: false, bash: false, skills: true, mcp: false, login: "external", ownQuestions: false };
+export const capabilities = { efforts: false, usage: true, bash: false, skills: true, mcp: true, login: "external", ownQuestions: false };
 
 /** The agent the CLI is run as, written into the workspace at every open. */
 const AGENT = "edukors";
@@ -85,6 +86,17 @@ async function models(/** @type {string} */ path) {
   return parsed;
 }
 
+/** The environment the CLI runs in: the account it is signed in with, never a key that would stand in for it. */
+function agyEnv() {
+  const env = { ...process.env };
+  delete env.GEMINI_API_KEY;
+  delete env.GOOGLE_API_KEY;
+  delete env.GOOGLE_GENAI_API_KEY;
+  delete env.ANTHROPIC_API_KEY;
+  delete env.OPENAI_API_KEY;
+  return env;
+}
+
 /**
  * @param {import("../host").Host} host
  */
@@ -107,11 +119,14 @@ export function create(host) {
   let stderrTail = [];
   /** @type {(() => void) | null} */
   let waitingForInit = null;
+  /** The person's servers, by name, as the bridge serves them. @type {string[]} */
+  let servers = [];
 
   host.onExit(() => child?.kill("SIGKILL"));
 
   /**
-   * Whether a tool call in the CLI's stream is one the editor already shows.
+   * Whether a tool call in the CLI's stream is one the editor already shows:
+   * any call to the bridge, the editor's tools and the person's servers alike.
    * The CLI does not offer an MCP tool by name: it has one tool of its own
    * that calls any of them, so the server it names is what tells.
    * @param {string} name
@@ -120,8 +135,9 @@ export function create(host) {
   const ownsTool = (name, parameters = {}) => {
     const plain = name.replace(/^mcp__/, "").replace(new RegExp(`^${tools.SERVER}__`), "").replace(new RegExp(`^${tools.SERVER}[./]`), "");
     if (tools.TOOLS.some((t) => t.name === plain || name === tools.qualified(t.name))) return true;
+    if (servers.some((s) => name.startsWith(`mcp__${s}__`))) return true;
     const server = parameters.ServerName ?? parameters.server_name ?? parameters.serverName ?? parameters.server;
-    return typeof server === "string" && server === tools.SERVER;
+    return typeof server === "string" && (server === tools.SERVER || servers.includes(server));
   };
 
   /** The person's instructions and the mode, as the agent the CLI runs as. */
@@ -130,13 +146,17 @@ export function create(host) {
     const prompt = `${host.systemPrompt(id, opts.instructions)}\n\n${host.mode() === "plan" ? host.planInstructions(id) : ""}`.trimEnd();
     const front = ["---", `name: ${AGENT}`, "description: The course-authoring assistant of the Edukors Graph Editor.", "tools: []", "excludeDefaultComponents: true", "---", ""].join("\n");
     writeFileSync(join(agents, "agents", AGENT, "agent.md"), `${front}\n${prompt}\n`);
+    // The editor's server and each of the person's, all on the bridge.
+    const auth = { Authorization: `Bearer ${bridge.token}` };
+    const serve = (/** @type {string} */ name) => ({ serverUrl: name === tools.SERVER ? bridge.url : `${bridge.url}/${encodeURIComponent(name)}`, headers: auth });
     writeFileSync(
       join(agents, "mcp_config.json"),
-      JSON.stringify({ mcpServers: { [tools.SERVER]: { serverUrl: bridge.url, headers: { Authorization: `Bearer ${bridge.token}` } } } }, null, 2) + "\n",
+      JSON.stringify({ mcpServers: Object.fromEntries([tools.SERVER, ...servers].map((name) => [name, serve(name)])) }, null, 2) + "\n",
     );
     // The guard, before every tool call: the CLI runs with its own prompts off,
-    // so this is what says no to anything that is not the editor's own tool.
-    const guard = { type: "command", command: `"${process.execPath}" "${GUARD}" ${tools.SERVER}`, timeout: 15 };
+    // so this is what says no to anything that does not go through the bridge.
+    // The servers' names are plain (extensions.mjs's sanitizeServers), safe on a command line.
+    const guard = { type: "command", command: `"${process.execPath}" "${GUARD}" ${[tools.SERVER, ...servers].join(" ")}`, timeout: 15 };
     writeFileSync(join(agents, "hooks.json"), JSON.stringify({ [`${tools.SERVER}-guard`]: { PreToolUse: [{ matcher: ".*", hooks: [guard] }] } }, null, 2) + "\n");
     // The person's skills, copied in as the CLI's own, so it finds them where it looks.
     const from = join(host.pluginDir, "skills");
@@ -218,12 +238,7 @@ export function create(host) {
     if (conv?.model && conv.model !== "default" && takes("--model")) args.push("--model", conv.model);
     if (conv?.agyId && takes("--conversation")) args.push("--conversation", conv.agyId);
 
-    const env = { ...process.env };
-    delete env.GEMINI_API_KEY;
-    delete env.GOOGLE_API_KEY;
-    delete env.GOOGLE_GENAI_API_KEY;
-    delete env.ANTHROPIC_API_KEY;
-    delete env.OPENAI_API_KEY;
+    const env = agyEnv();
 
     mapper = createMapper({ ownsTool });
     stderrTail = [];
@@ -312,6 +327,7 @@ export function create(host) {
         /** @type {any} */ (error).code = "agy-missing";
         throw error;
       }
+      servers = await host.personalServers(opts.mcp);
       const sid = opts.resume ?? randomUUID();
       const meta = opts.resume ? jrn.meta(sid) : {};
       conv = { sid, agyId: typeof meta.conversation === "string" ? meta.conversation : null, model: opts.model, instructions: opts.instructions, live: true };
@@ -329,7 +345,7 @@ export function create(host) {
           resumed: Boolean(opts.resume),
           account: { provider: id, signedIn: false },
           models: await list,
-          mcp: [],
+          mcp: host.serverStates(),
           skills: ext.listSkills(host.pluginDir, host.log),
         };
       }
@@ -345,7 +361,7 @@ export function create(host) {
         resumed: Boolean(opts.resume),
         account: { provider: id, signedIn: mapper?.tools ? true : "unknown" },
         models: await list,
-        mcp: [],
+        mcp: host.serverStates(),
         skills: ext.listSkills(host.pluginDir, host.log),
       };
     },
@@ -417,6 +433,27 @@ export function create(host) {
     async remove(sid) {
       if (conv?.sid === sid) await this.close();
       jrn.remove(sid);
+    },
+
+    /**
+     * The account's quotas as the CLI's /usage reports them: each group of
+     * models with its five-hour and weekly limit. The CLI answers the command
+     * itself, without a model, in a run of its own that stays out of the
+     * conversation.
+     * @returns {Promise<{ text: string; limits: any[]; at: number }>}
+     */
+    async usage() {
+      const path = await findAgy();
+      if (!path) throw Object.assign(new Error("the Antigravity CLI was not found"), { code: "agy-missing" });
+      mkdirSync(workspace, { recursive: true });
+      const { stdout, stderr } = await new Promise((resolve) =>
+        execFile(path, ["-p", "/usage", "--output-format", "json"], { cwd: workspace, env: agyEnv(), timeout: 30_000, windowsHide: true, maxBuffer: 4 << 20 }, (_error, out, err) =>
+          resolve({ stdout: String(out ?? ""), stderr: String(err ?? "") }),
+        ),
+      );
+      const report = agyUsage(stdout);
+      if (!report) throw new Error(stderr.trim().slice(-500) || "the Antigravity CLI gave no usage report");
+      return { ...report, at: Date.now() };
     },
 
     /** The person signs in to the CLI itself, in a terminal: it opens the browser from there. */

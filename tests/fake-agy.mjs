@@ -6,7 +6,8 @@
 //
 // What it does with a message: reads the course, then asks to edit it, then
 // answers in two chunks. A message containing "pergunte" makes it ask the
-// person instead, and one containing "planeje" makes it present a plan.
+// person instead, one containing "planeje" makes it present a plan, and one
+// containing "materiais" calls the person's own server of that name.
 import { createInterface } from "node:readline";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -34,6 +35,15 @@ if (args.includes("--help")) {
 }
 if (args.includes("--version")) {
   console.log("agy 1.2.2 (fake)");
+  process.exit(0);
+}
+// The quotas, as `agy -p /usage --output-format json` reports them.
+if ((args.includes("-p") || args.includes("--print")) && args.includes("/usage")) {
+  const buckets = [
+    { id: "gemini-weekly", name: "Weekly Limit Remaining", window: "weekly", remaining_fraction: 0.9, reset_time: "2026-10-15T18:13:08Z" },
+    { id: "gemini-5h", name: "Five Hour Limit Remaining", window: "5h", remaining_fraction: 0.6, reset_time: "2026-10-12T16:46:25Z" },
+  ];
+  console.log(JSON.stringify({ conversation_id: "", status: "SUCCESS", response: "", command: { name: "usage", data: { description: "Models share a weekly and a 5-hour limit.", groups: [{ name: "Gemini Models", buckets }] } } }));
   process.exit(0);
 }
 if (args[0] === "models") {
@@ -72,12 +82,12 @@ const text = async (body) => {
   }
   out({ event: "step_update", step_update: { conversation_id: conversation, step_index: index, state: "DONE", step_type: "agent_response" } });
 };
-const call = async (name, args) => {
+const call = async (name, args, serverName = "edukors", through = client) => {
   const index = step++;
-  const parameters = { ServerName: "edukors", ToolName: name, Arguments: args };
+  const parameters = { ServerName: serverName, ToolName: name, Arguments: args };
   const step_update = { conversation_id: conversation, step_index: index, step_type: "tool", tool_name: "call_mcp_tool" };
   out({ event: "step_update", step_update: { ...step_update, state: "ACTIVE", tool_info: { name: "call_mcp_tool", parameters } } });
-  const result = await client.callTool({ name, arguments: args });
+  const result = await through.callTool({ name, arguments: args });
   const output = (result.content ?? []).map((c) => c.text ?? "").join("\n");
   out({ event: "step_update", step_update: { ...step_update, state: "DONE", tool_info: { name: "call_mcp_tool", parameters, output } } });
   return { output, isError: Boolean(result.isError) };
@@ -97,6 +107,13 @@ createInterface({ input: process.stdin }).on("line", async (line) => {
     if (/pergunte/i.test(asked)) {
       const answer = await call("ask_user", { questions: [{ question: "Para qual ano?", header: "Ano", options: [{ label: "6º ano" }, { label: "9º ano" }] }] });
       await text(`A pessoa disse: ${answer.output}`);
+    } else if (/materiais/i.test(asked)) {
+      const theirs = config.mcpServers.materiais;
+      const other = new Client({ name: "fake-agy", version: "1.2.2" });
+      await other.connect(new StreamableHTTPClientTransport(new URL(theirs.serverUrl), { requestInit: { headers: theirs.headers } }));
+      const echoed = await call("echo", { text: "oi" }, "materiais", other);
+      await other.close();
+      await text(`O servidor disse: ${echoed.output}`);
     } else if (/planeje/i.test(asked)) {
       await text("## Plano\n1. Ler o curso.");
       const approved = await call("plan_ready", { plan: "1. Ler o curso." });

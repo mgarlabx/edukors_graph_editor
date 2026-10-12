@@ -75,7 +75,10 @@ export function fitLanguages(nodes: CourseNode[], from: string[], to: string[]):
   return holder.nodes;
 }
 
-/** ISO 639-1 names, for the search box. Any valid code can still be typed. */
+/** The languages the "add language" panel offers, in this order. */
+export const OFFERED_LANGS = ["pt", "ar", "de", "en", "es", "fr", "hi", "it", "ru", "zh"];
+
+/** ISO 639-1 names, to name a course's languages. */
 export const ISO_639_1: Record<string, string> = {
   af: "Afrikaans", am: "Amharic", ar: "العربية", az: "Azərbaycan", be: "Беларуская", bg: "Български", bn: "বাংলা", bs: "Bosanski",
   ca: "Català", cs: "Čeština", cy: "Cymraeg", da: "Dansk", de: "Deutsch", el: "Ελληνικά", en: "English", eo: "Esperanto",

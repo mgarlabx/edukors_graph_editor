@@ -1,7 +1,7 @@
 /** What the inspector shows with nothing selected: the course's `info`. */
 import { courseLangs, useEditor } from "../store/editor";
 import { useUi } from "../store/ui";
-import { describe } from "../schema/describe";
+import { describe, tip } from "../schema/describe";
 import { emptyLoc, isJudge, SCHEMA_URL } from "../course/nodeTypes";
 import { localize } from "../course/localize";
 import { AutoTextarea, Field, Help, Section, TextInput } from "../ui/controls";
@@ -26,19 +26,19 @@ export function CourseInfoForm() {
         </div>
         <p className="type-description">{describe("courseInfo")}</p>
       </div>
-      <LocalizedField path="info/title" label={t("course.title")} help={describe("courseInfo", "title")} kind="plain" />
-      <LocalizedField path="info/description" label={t("course.description")} help={describe("courseInfo", "description")} kind="plain" optional minRows={2} />
+      <LocalizedField path="info/title" label={t("course.title")} help={tip("courseInfo", "title")} kind="plain" />
+      <LocalizedField path="info/description" label={t("course.description")} help={tip("courseInfo", "description")} kind="plain" optional minRows={2} />
       <div className="grid-2">
-        <Field label={t("course.author")} help={describe("courseInfo", "author")}>
+        <Field label={t("course.author")} help={tip("courseInfo", "author")}>
           <TextInput value={info.author ?? ""} onChange={(v) => set((i) => (i.author = v), "author")} />
         </Field>
-        <Field label={t("course.version")} help={describe("courseInfo", "version")}>
+        <Field label={t("course.version")} help={tip("courseInfo", "version")}>
           <TextInput value={info.version ?? ""} pattern={/^[0-9]+\.[0-9]+\.[0-9]+$/} onChange={(v) => set((i) => (i.version = v), "version")} />
         </Field>
-        <Field label={t("course.date")} help={describe("courseInfo", "date")}>
+        <Field label={t("course.date")} help={tip("courseInfo", "date")}>
           <input className="input" type="date" value={info.date ?? ""} onChange={(e) => set((i) => (i.date = e.target.value), "date")} />
         </Field>
-        <Field label={t("course.start")} help={describe("courseInfo", "start")}>
+        <Field label={t("course.start")} help={tip("courseInfo", "start")}>
           <select className="input" value={info.start ?? ""} onChange={(e) => set((i) => (i.start = e.target.value), "start")}>
             {!course.nodes.some((n) => n.id === info.start) && <option value={info.start}>{info.start} (?)</option>}
             {course.nodes
@@ -51,7 +51,7 @@ export function CourseInfoForm() {
           </select>
         </Field>
       </div>
-      <Field label="course-id" help={describe("courseInfo", "course-id")}>
+      <Field label="course-id" help={tip("courseInfo", "course-id")}>
         <div className="row">
           <TextInput className="mono grow" value={info["course-id"] ?? ""} onChange={(v) => set((i) => (i["course-id"] = v), "id")} />
           <button className="btn btn-small" onClick={() => set((i) => (i["course-id"] = crypto.randomUUID()), "new-id")} title={t("course.newIdHint")}>
@@ -59,7 +59,7 @@ export function CourseInfoForm() {
           </button>
         </div>
       </Field>
-      <Field label={t("course.languages")} help={describe("courseInfo", "other-languages")}>
+      <Field label={t("course.languages")} help={tip("courseInfo", "other-languages")}>
         <div className="row">
           <span>
             <strong>{info["source-language"]}</strong> {langs.slice(1).join(", ")}
@@ -70,7 +70,7 @@ export function CourseInfoForm() {
           </button>
         </div>
       </Field>
-      <Field label={t("course.systemPrompt")} help={describe("courseInfo", "system-prompt")}>
+      <Field label={t("course.systemPrompt")} help={tip("courseInfo", "system-prompt")}>
         {info["system-prompt"] === undefined ? (
           <button className="btn btn-small" onClick={() => set((i) => (i["system-prompt"] = "Answer in the student's language."), "sp-add")}>
             + {t("insp.add", { what: t("course.systemPrompt") })}
@@ -84,7 +84,7 @@ export function CourseInfoForm() {
           </>
         )}
       </Field>
-      <Section title={<>{t("course.sections")} <Help text={describe("courseInfo", "sections")} /></>}>
+      <Section title={<>{t("course.sections")} <Help text={tip("courseInfo", "sections")} /></>}>
         {sections.map((s, i) => (
           <div key={i} className="section-row">
             <div className="row">
@@ -126,7 +126,7 @@ export function CourseInfoForm() {
           + {t("course.addSection")}
         </button>
       </Section>
-      <Field label="$schema" help={describe("course", "$schema")}>
+      <Field label="$schema" help={tip("course", "$schema")}>
         {course.$schema ? (
           <code className="small">{course.$schema}</code>
         ) : (

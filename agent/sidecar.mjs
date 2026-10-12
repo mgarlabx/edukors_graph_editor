@@ -22,6 +22,7 @@ import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 import * as ext from "./extensions.mjs";
 import * as tools from "./tools.mjs";
+import { createProxy } from "./mcpProxy.mjs";
 import { detectAll, PROVIDER_IDS, provider } from "./providers/index.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -126,7 +127,7 @@ function sessionTools(caps) {
       "- The person may have installed skills. Use one when its description fits the request. Even when a skill describes another way to write a course (a JSON file, a script), the course on screen changes only through the `edukors` tools.",
     );
   if (caps?.mcp)
-    lines.push("- The person may have MCP servers of their own (tools named `mcp__<server>__<tool>`, other than `edukors`). Use one when the person asks for what it reaches.");
+    lines.push("- The person may have MCP servers of their own (any server other than `edukors`). Use one when the person asks for what it reaches.");
   return `# The tools of this session\n\n${lines.join("\n")}\n`;
 }
 
@@ -308,6 +309,27 @@ function setMode(mode) {
 let bridgeRun = null;
 
 /**
+ * The person's MCP servers, for the providers that reach them through the
+ * bridge (agent/mcpProxy.mjs). Their state goes to the panel as it changes.
+ */
+const proxy = createProxy({
+  log,
+  onChange: (servers) => current?.sid && out({ t: "mcp", sid: current.sid, servers }),
+});
+
+/**
+ * Connects the person's servers from the preferences, for a conversation
+ * about to open, and gives the names the bridge serves them under.
+ * @param {unknown} raw
+ */
+async function personalServers(raw) {
+  const { servers, dropped } = ext.sanitizeServers(raw, tools.SERVER);
+  if (dropped.length) log("MCP servers left out:", dropped.join(", "));
+  await proxy.sync(servers);
+  return proxy.names();
+}
+
+/**
  * The editor's tools over a local MCP server, for the providers that run as a
  * CLI of their own. It is started the first time one of them opens a
  * conversation, and lives as long as this process.
@@ -323,6 +345,7 @@ function bridge() {
       askPlan,
       emit: (/** @type {any} */ ev) => current && out({ t: "ev", sid: current.sid, ev }),
       log,
+      proxy,
     });
   })();
   return bridgeRun;
@@ -343,6 +366,8 @@ const host = {
   askQuestions,
   askPlan,
   bridge,
+  personalServers,
+  serverStates: () => proxy.states(),
   mode: () => current?.mode ?? "ask",
   setMode,
   /** @param {string} _providerId @param {unknown} instructions */
@@ -410,6 +435,8 @@ async function openConversation(req) {
   const instance = await instanceOf(id);
   if (current && current.instance !== instance) await closeCurrent();
   const conv = { provider: id, instance, capabilities: mod.capabilities, sid: "", mode: req.mode ?? "ask", allowed: new Set() };
+  // Claude Code connects to the person's servers itself; what the bridge had of them for another provider goes.
+  if (id === "claude") proxy.sync({}, 0).catch((e) => log("MCP servers:", e));
   current = conv;
   const result = await instance.open({
     resume: req.resume,
@@ -541,6 +568,7 @@ lines.on("line", (line) => {
 // The app closed the pipe: it quit or restarted the agent.
 lines.on("close", async () => {
   await closeCurrent().catch(() => undefined);
+  proxy.close();
   process.exit(0);
 });
 process.on("exit", () => {

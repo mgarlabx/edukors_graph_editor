@@ -16,6 +16,8 @@
  *   askQuestions: (input: Record<string, unknown>) => Promise<{ allow: true; text: string } | { allow: false; message: string }>;
  *   askPlan: (input: Record<string, unknown>) => Promise<{ allow: true; text: string } | { allow: false; message: string }>;
  *   bridge: () => Promise<{ url: string; sseUrl: string; token: string; close: () => void }>;
+ *   personalServers: (raw: unknown) => Promise<string[]>;
+ *   serverStates: () => { name: string; status: string; error?: string }[];
  *   mode: () => "ask" | "auto" | "plan";
  *   setMode: (mode: "ask" | "auto" | "plan") => void;
  *   systemPrompt: (provider: string, instructions: unknown) => string;

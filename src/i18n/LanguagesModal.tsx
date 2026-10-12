@@ -1,11 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { courseLangs, useEditor } from "../store/editor";
 import { useUi } from "../store/ui";
 import { Modal } from "../ui/controls";
 import { confirm, prompt } from "../ui/dialogs";
-import { addLanguage, ISO_639_1, LANG_RE, makeSource, removeLanguage, renameLanguage } from "./languages";
+import { addLanguage, ISO_639_1, LANG_RE, makeSource, OFFERED_LANGS, removeLanguage, renameLanguage } from "./languages";
 import { coverage } from "./texts";
-import { describe } from "../schema/describe";
 import { t } from "../i18n";
 
 export function LanguagesModal() {
@@ -13,19 +12,12 @@ export function LanguagesModal() {
   const course = useEditor((s) => s.course)!;
   const update = useEditor((s) => s.update);
   const langs = courseLangs(course);
-  const [query, setQuery] = useState("");
-  const [region, setRegion] = useState("");
   const report = useMemo(() => coverage(course, langs), [course]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const matches = Object.entries(ISO_639_1)
-    .filter(([code, name]) => !query || code.startsWith(query.toLowerCase()) || name.toLowerCase().includes(query.toLowerCase()))
-    .slice(0, 24);
-  const typed = region ? `${query.toLowerCase()}-${region.toUpperCase()}` : query.toLowerCase();
   const canAdd = (code: string) => LANG_RE.test(code) && !langs.includes(code);
 
   return (
     <Modal title={t("lang.title")} onClose={close} wide>
-      <p className="muted small">{describe("courseInfo", "other-languages")}</p>
       <table className="table">
         <thead>
           <tr>
@@ -79,24 +71,13 @@ export function LanguagesModal() {
         </tbody>
       </table>
       <h3>{t("lang.add")}</h3>
-      <div className="row">
-        <input className="input" placeholder={t("lang.search")} value={query} onChange={(e) => setQuery(e.target.value)} autoFocus />
-        <input className="input input-small" placeholder={t("lang.region")} value={region} maxLength={2} onChange={(e) => setRegion(e.target.value.replace(/[^a-zA-Z]/g, ""))} />
-        <button className="btn btn-primary" disabled={!canAdd(typed)} onClick={() => update((c) => addLanguage(c, typed), "lang-add")}>
-          + {typed || "—"}
-        </button>
-      </div>
       <div className="chips">
-        {matches.map(([code, name]) => {
-          const full = region ? `${code}-${region.toUpperCase()}` : code;
-          return (
-            <button key={code} className="chip" disabled={!canAdd(full)} onClick={() => update((c) => addLanguage(c, full), "lang-add")}>
-              <strong>{full}</strong> {name}
-            </button>
-          );
-        })}
+        {OFFERED_LANGS.map((code) => (
+          <button key={code} className="chip" disabled={!canAdd(code)} onClick={() => update((c) => addLanguage(c, code), "lang-add")}>
+            <strong>{code}</strong> {ISO_639_1[code]}
+          </button>
+        ))}
       </div>
-      <p className="field-hint">{t("lang.addHint")}</p>
     </Modal>
   );
 }

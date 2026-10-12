@@ -1,6 +1,6 @@
 /** The forms of quiz and form nodes: lists of questions and fields, each with its options. */
 import type { CourseNode } from "../schema/types";
-import { describe, enumDescription } from "../schema/describe";
+import { describe, enumDescription, tip } from "../schema/describe";
 import { emptyLoc } from "../course/nodeTypes";
 import { courseLangs, useEditor } from "../store/editor";
 import { Field, NumberInput, Section, TextInput } from "../ui/controls";
@@ -38,7 +38,7 @@ export function QuizForm({ node }: { node: CourseNode }) {
               />
             }
           >
-            <Field label={t("insp.key")} help={describe("quizQuestion", "key")}>
+            <Field label={t("insp.key")} help={tip("quizQuestion", "key")}>
               <TextInput
                 value={String(q.key ?? "")}
                 pattern={NAME}
@@ -51,8 +51,8 @@ export function QuizForm({ node }: { node: CourseNode }) {
                 }
               />
             </Field>
-            <LocalizedField path={`${base}/${i}/question`} label={t("insp.question")} help={describe("quizQuestion", "question")} kind="markdown" minRows={2} />
-            <Field label={t("insp.options")} help={describe("quizQuestion", "options")}>
+            <LocalizedField path={`${base}/${i}/question`} label={t("insp.question")} help={tip("quizQuestion", "question")} kind="markdown" minRows={2} />
+            <Field label={t("insp.options")} help={tip("quizQuestion", "options")}>
               <div className="option-list">
                 {options.map((o, j) => (
                   <div key={j} className={`option-row ${o.correct ? "is-correct" : ""}`}>
@@ -101,7 +101,7 @@ export function QuizForm({ node }: { node: CourseNode }) {
                 </button>
               </div>
             </Field>
-            <LocalizedField path={`${base}/${i}/feedback`} label={t("insp.feedback")} help={describe("quizQuestion", "feedback")} kind="markdown" optional minRows={2} />
+            <LocalizedField path={`${base}/${i}/feedback`} label={t("insp.feedback")} help={tip("quizQuestion", "feedback")} kind="markdown" optional minRows={2} />
           </Section>
         );
       })}
@@ -139,7 +139,7 @@ export function FormForm({ node }: { node: CourseNode }) {
 
   return (
     <>
-      <LocalizedField path={`node:${node.id}/content/instructions`} label={t("insp.instructions")} help={describe("formContent", "instructions")} kind="markdown" optional minRows={5} />
+      <LocalizedField path={`node:${node.id}/content/instructions`} label={t("insp.instructions")} help={tip("formContent", "instructions")} kind="markdown" optional minRows={5} />
       {items.map((f, i) => {
         const type = String(f.type ?? "text-line");
         const options: Opt[] = Array.isArray(f.options) ? (f.options as Opt[]) : [];
@@ -157,10 +157,10 @@ export function FormForm({ node }: { node: CourseNode }) {
             }
           >
             <div className="grid-2">
-              <Field label={t("insp.key")} help={describe("formField", "key")}>
+              <Field label={t("insp.key")} help={tip("formField", "key")}>
                 <TextInput value={String(f.key ?? "")} pattern={NAME} onChange={(v) => edit((n) => (n.content.items[i].key = v), `f${i}-key`)} />
               </Field>
-              <Field label={t("insp.fieldType")} help={enumDescription("formField", "type", type) || describe("formField", "type")}>
+              <Field label={t("insp.fieldType")} help={tip("formField", "type")}>
                 <select
                   className="input"
                   value={type}
@@ -188,7 +188,7 @@ export function FormForm({ node }: { node: CourseNode }) {
                 </select>
               </Field>
             </div>
-            <LocalizedField path={`${base}/${i}/label`} label={t("insp.label")} help={describe("formField", "label")} kind="inline" />
+            <LocalizedField path={`${base}/${i}/label`} label={t("insp.label")} help={tip("formField", "label")} kind="inline" />
             <label className="check" title={describe("formField", "required")}>
               <input
                 type="checkbox"
@@ -203,7 +203,7 @@ export function FormForm({ node }: { node: CourseNode }) {
               {t("insp.required")}
             </label>
             {CHOICE.includes(type) ? (
-              <Field label={t("insp.options")} help={describe("formField", "options")}>
+              <Field label={t("insp.options")} help={tip("formField", "options")}>
                 <div className="option-list">
                   {options.map((o, j) => (
                     <div key={j} className="option-row">
@@ -238,7 +238,7 @@ export function FormForm({ node }: { node: CourseNode }) {
             ) : (
               <div className="grid-2">
                 {(["min-words", "max-words"] as const).map((bound) => (
-                  <Field key={bound} label={t(`insp.${bound}`)} help={describe("formField", bound)}>
+                  <Field key={bound} label={t(`insp.${bound}`)} help={tip("formField", bound)}>
                     <NumberInput
                       value={f[bound] as number | undefined}
                       min={1}

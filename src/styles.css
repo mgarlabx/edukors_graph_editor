@@ -676,8 +676,40 @@ select.input {
   border: 1px solid var(--border-strong);
   color: var(--muted);
   font-size: 10px;
+  font-weight: 600;
   cursor: help;
   margin-left: 5px;
+  user-select: none;
+}
+
+.help:hover,
+.help:focus-visible,
+.help.is-open {
+  border-color: var(--accent);
+  color: var(--accent);
+  outline: none;
+}
+
+.help-bubble {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  visibility: hidden;
+  max-width: min(340px, calc(100vw - 16px));
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.45;
+  text-align: left;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  pointer-events: none;
 }
 
 .field {
@@ -3337,27 +3369,174 @@ div.agent-tool-head {
   padding: 6px 8px;
 }
 
+/* The effort, as a slider from the default to the most the model takes. The
+   ticks sit under the thumb's stops: inset by its radius, spread evenly. */
 .agent-effort {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 3px;
-  padding: 0 8px;
+  --thumb: 14px;
+  padding: 0 8px 4px;
 }
 
-.agent-effort button {
-  padding: 3px 7px;
-  border: 1px solid var(--border-strong);
-  border-radius: 6px;
-  background: var(--panel);
+.agent-effort-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0 -8px;
+}
+
+.agent-effort-value {
+  padding: 8px 8px 4px;
+  color: var(--accent);
   font-size: 12px;
+  font-weight: 600;
+}
+
+.agent-effort-range {
+  display: block;
+  width: 100%;
+  height: var(--thumb);
+  margin: 4px 0 0;
+  background: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.agent-effort-range:focus {
+  outline: none;
+}
+
+.agent-effort-range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--accent) var(--fill), var(--border-strong) var(--fill));
+}
+
+.agent-effort-range::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--accent) var(--fill), var(--border-strong) var(--fill));
+}
+
+.agent-effort-range::-webkit-slider-thumb {
+  width: var(--thumb);
+  height: var(--thumb);
+  margin-top: calc((4px - var(--thumb)) / 2);
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.agent-effort-range::-moz-range-thumb {
+  width: var(--thumb);
+  height: var(--thumb);
+  box-sizing: border-box;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  background: var(--panel);
+}
+
+.agent-effort-range:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.agent-effort-ticks {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 calc(var(--thumb) / 2 - 2px);
+  margin-top: 3px;
+}
+
+.agent-effort-ticks > span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--border-strong);
+}
+
+.agent-effort-ticks > span.is-on {
+  background: var(--accent);
+}
+
+.agent-effort-ends {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 10.5px;
+}
+
+/* The files attached to a message, as cards: over the text in the composer,
+   and over the message in the conversation. */
+.agent-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 8px 10px 0;
+}
+
+.agent-user .agent-attachments {
+  padding: 0 0 6px;
+}
+
+.agent-user .agent-attachment {
+  background: var(--panel);
+}
+
+.agent-user .agent-attachments:last-child {
+  padding-bottom: 0;
+}
+
+.agent-attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  height: 26px;
+  padding: 0 4px 0 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.agent-attachment.is-static {
+  padding-right: 8px;
+}
+
+.agent-attachment > .icon {
+  flex: none;
+  color: var(--muted);
+}
+
+.agent-attachment-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-attachment-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--muted);
   cursor: pointer;
 }
 
-.agent-effort button.is-on {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-weight: 600;
+.agent-attachment-x:hover {
+  background: var(--border);
+  color: var(--text);
 }
 
 .agent-menu-account {
@@ -3402,6 +3581,17 @@ div.agent-tool-head {
   height: 22px;
 }
 
+.agent-usage-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.agent-usage-group-name {
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
 .agent-usage-line {
   font-size: 11.5px;
   line-height: 1.4;
@@ -3430,13 +3620,6 @@ div.agent-tool-head {
   background: var(--error);
 }
 
-.agent-usage-more summary {
-  color: var(--muted);
-  font-size: 11.5px;
-  cursor: pointer;
-}
-
-.agent-usage-more pre,
 .agent-usage-text {
   max-height: 180px;
   margin: 4px 0 0;
@@ -3465,12 +3648,256 @@ div.agent-tool-head {
 
 /* The agent's skills, in the preferences */
 .agent-skills-list {
-  margin: 0 0 8px;
-  padding-left: 18px;
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
 }
 
 .agent-skills-list li {
-  margin: 2px 0;
+  padding: 7px 10px;
+}
+
+.agent-skills-list li + li {
+  border-top: 1px solid var(--border);
+}
+
+.agent-skills > p {
+  margin: 0 0 10px;
+}
+
+/* ----------------------------------------------------------- preferences -- */
+
+/* A list of sections at the left, the chosen one at the right; it fills the modal's body. */
+.prefs {
+  display: grid;
+  grid-template-columns: 236px minmax(0, 1fr);
+  margin: -12px -16px -16px;
+  height: min(580px, calc(100vh - 150px));
+}
+
+.prefs-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 10px;
+  background: var(--panel-2);
+  border-right: 1px solid var(--border);
+  overflow: auto;
+}
+
+.prefs-nav-item,
+.prefs-choice,
+.prefs-segmented button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.prefs-nav-item {
+  display: flex;
+  white-space: nowrap;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.prefs-nav-item .icon {
+  color: var(--muted);
+  flex: none;
+}
+
+.prefs-nav-item:hover {
+  background: var(--border);
+}
+
+.prefs-nav-item.is-active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.prefs-nav-item.is-active .icon {
+  color: #fff;
+}
+
+.prefs-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.prefs-dot-warning {
+  background: var(--warning);
+}
+
+.prefs-dot-error {
+  background: var(--error);
+}
+
+.prefs-nav-item.is-active .prefs-dot {
+  box-shadow: 0 0 0 2px #fff;
+}
+
+.prefs-pane {
+  padding: 18px 22px 22px;
+  overflow: auto;
+}
+
+.prefs-pane-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.modal-body .prefs-pane-head h3 {
+  margin: 0 4px 0 0;
+  font-size: 17px;
+}
+
+.prefs-pane-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.prefs-tag {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.prefs-card {
+  padding: 4px 16px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-2);
+}
+
+.prefs-card .field {
+  margin: 12px 0;
+}
+
+.prefs-card .field-hint code {
+  font-size: 11px;
+}
+
+.prefs-card .input {
+  background: var(--panel);
+}
+
+.prefs-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 14px 0 12px;
+  padding: 4px 12px 4px 8px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 12.5px;
+}
+
+.prefs-status.is-ok {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.prefs-status.is-warning {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.prefs-card > .row:last-child,
+.prefs-card > p:last-child {
+  margin-bottom: 14px;
+}
+
+.prefs-segmented {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.prefs-segmented button {
+  padding: 5px 16px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.prefs-segmented button:hover:not(.is-active) {
+  background: var(--panel-2);
+}
+
+.prefs-segmented button.is-active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.prefs-choices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.prefs-choice {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.prefs-choice:hover:not(.is-active) {
+  border-color: var(--muted);
+}
+
+.prefs-choice.is-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 1px var(--accent);
+  font-weight: 600;
+}
+
+.prefs-radio {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-strong);
+  background: var(--panel);
+  flex: none;
+}
+
+.prefs-choice.is-active .prefs-radio {
+  border: 4px solid var(--accent);
 }
 
 /* Safari before 16.2 (the WebKit of macOS 12 and earlier) drops color-mix(). The

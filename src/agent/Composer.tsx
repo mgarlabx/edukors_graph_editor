@@ -1,18 +1,20 @@
 /**
  * Where the person writes, and the settings of the conversation below it:
- * whether the selection goes along, a file to attach, the mode, the model
- * and its effort (with the account and its usage), send or stop.
+ * whether the selection goes along, the files attached (as cards over the
+ * text), the mode, the model and its effort (with the account and its usage),
+ * send or stop. Which provider runs the agent is chosen in the preferences.
  */
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useAgent, type Effort, type Mode } from "./store";
-import { PROVIDER_IDS, type ModelInfo, type ProviderId } from "./events";
+import type { ModelInfo } from "./events";
+import { fileName, shortName } from "./attachments";
 import { selectionLabel } from "./context";
 import { Usage } from "./Usage";
 import { useEditor } from "../store/editor";
 import { usePrefs } from "../store/prefs";
 import { isTauri, pickOpen } from "../app/platform";
 import { t } from "../i18n";
-import { BoltIcon, CheckIcon, ChevronDownIcon, HandIcon, PaperclipIcon, PlanIcon, SendIcon, StopIcon, TargetIcon } from "../ui/icons";
+import { BoltIcon, CheckIcon, ChevronDownIcon, CloseIcon, HandIcon, PaperclipIcon, PlanIcon, SendIcon, StopIcon, TargetIcon } from "../ui/icons";
 
 const MODES: { id: Mode; Icon: typeof HandIcon }[] = [
   { id: "ask", Icon: HandIcon },
@@ -111,37 +113,43 @@ function ModeMenu() {
   );
 }
 
-/** Which provider runs the agent: the first thing in the model menu, since it decides the models. */
-function ProviderGroup() {
-  const provider = useAgent((s) => s.provider);
-  const available = useAgent((s) => s.available);
-  const setProvider = useAgent((s) => s.setProvider);
-  const state = (id: ProviderId) => available.find((p) => p.id === id);
+/**
+ * The effort as a slider: from the default to the most the model takes. The
+ * level chosen is named over it.
+ */
+function EffortSlider({ levels, effort, onChange }: { levels: string[]; effort: Effort; onChange: (e: Effort) => void }) {
+  const stops = EFFORTS.filter((e) => e === "auto" || levels.includes(e));
+  const at = Math.max(0, stops.indexOf(effort));
+  const last = stops.length - 1;
+  const name = t(`agent.effort.${effort}`);
   return (
-    <>
-      <div className="agent-menu-label">{t("agent.provider")}</div>
-      {PROVIDER_IDS.map((id) => {
-        const here = state(id);
-        // Before the process has answered, nothing is known to be missing.
-        const missing = here ? !here.available : false;
-        return (
-          <button
-            key={id}
-            type="button"
-            role="menuitemradio"
-            aria-checked={id === provider}
-            className={`agent-menu-item ${id === provider ? "is-on" : ""} ${missing ? "is-missing" : ""}`}
-            onClick={() => void setProvider(id)}
-          >
-            <span className="agent-menu-text">
-              <span>{t(`agent.provider.${id}`)}</span>
-              {missing && <span className="agent-menu-hint">{t("agent.provider.missing")}</span>}
-            </span>
-            {id === provider && <CheckIcon size={14} />}
-          </button>
-        );
-      })}
-    </>
+    <div className="agent-effort">
+      <div className="agent-effort-head">
+        <span className="agent-menu-label">{t("agent.effort")}</span>
+        <span className="agent-effort-value">{name}</span>
+      </div>
+      <input
+        type="range"
+        className="agent-effort-range"
+        min={0}
+        max={last}
+        step={1}
+        value={at}
+        aria-label={t("agent.effort")}
+        aria-valuetext={name}
+        style={{ "--fill": `${last ? (at / last) * 100 : 0}%` } as CSSProperties}
+        onChange={(e) => onChange(stops[Number(e.target.value)])}
+      />
+      <div className="agent-effort-ticks" aria-hidden="true">
+        {stops.map((s, i) => (
+          <span key={s} className={i <= at ? "is-on" : ""} />
+        ))}
+      </div>
+      <div className="agent-effort-ends" aria-hidden="true">
+        <span>{t(`agent.effort.${stops[0]}`)}</span>
+        <span>{t(`agent.effort.${stops[last]}`)}</span>
+      </div>
+    </div>
   );
 }
 
@@ -169,7 +177,6 @@ function ModelMenu() {
     >
       {() => (
         <>
-          <ProviderGroup />
           <div className="agent-menu-label">{t("agent.model")}</div>
           <div className="agent-menu-scroll">
             {(models.length ? models : [{ value: "default", displayName: "" } as ModelInfo]).map((m) => (
@@ -181,21 +188,7 @@ function ModelMenu() {
               </button>
             ))}
           </div>
-          {levels?.length ? (
-            <>
-              <div className="agent-menu-label" title={t("agent.effortHint")}>
-                {t("agent.effort")}
-              </div>
-              <div className="agent-effort" role="radiogroup" aria-label={t("agent.effort")}>
-                {EFFORTS.filter((e) => e === "auto" || levels.includes(e)).map((e) => (
-                  <button key={e} type="button" role="radio" aria-checked={e === effort} className={e === effort ? "is-on" : ""} onClick={() => setEffort(e)}>
-                    {t(`agent.effort.${e}`)}
-                  </button>
-                ))}
-              </div>
-              <div className="agent-menu-hint agent-menu-pad">{t("agent.effortHint")}</div>
-            </>
-          ) : null}
+          {levels?.length ? <EffortSlider levels={levels} effort={effort} onChange={setEffort} /> : null}
           {account?.email && (
             <div className="agent-menu-account">
               {t("agent.signedIn", { email: account.email })}
@@ -259,12 +252,30 @@ function SelectionChip() {
   );
 }
 
+/** A file attached to the message: its name, shortened, and an × that takes it off. */
+export function AttachmentCard({ path, onRemove }: { path: string; onRemove?: () => void }) {
+  const name = fileName(path);
+  return (
+    <span className={`agent-attachment ${onRemove ? "" : "is-static"}`} title={path}>
+      <PaperclipIcon size={12} />
+      <span className="agent-attachment-name">{shortName(name)}</span>
+      {onRemove && (
+        <button type="button" className="agent-attachment-x" onClick={onRemove} title={t("agent.attachRemove", { name })} aria-label={t("agent.attachRemove", { name })}>
+          <CloseIcon size={11} />
+        </button>
+      )}
+    </span>
+  );
+}
+
 export function Composer({ focusKey }: { focusKey: number }) {
   const busy = useAgent((s) => s.busy);
   const send = useAgent((s) => s.send);
   const interrupt = useAgent((s) => s.interrupt);
   const [text, setText] = useState("");
+  const [files, setFiles] = useState<string[]>([]);
   const area = useRef<HTMLTextAreaElement>(null);
+  const ready = !!text.trim() || files.length > 0;
 
   // 0: the panel came on screen without asking for the focus (ContentEditor.tsx).
   useEffect(() => {
@@ -290,20 +301,32 @@ export function Composer({ focusKey }: { focusKey: number }) {
   }, []);
 
   const submit = () => {
-    if (!text.trim()) return;
-    void send(text);
+    if (!ready) return;
+    void send(text, files);
     setText("");
+    setFiles([]);
   };
 
   const attach = async () => {
     const path = await pickOpen([]);
-    if (!path) return;
-    setText((v) => `${v}${v && !/\s$/.test(v) ? " " : ""}${path} `);
+    if (path) setFiles((list) => (list.includes(path) ? list : [...list, path]));
+    area.current?.focus();
+  };
+
+  const detach = (path: string) => {
+    setFiles((list) => list.filter((p) => p !== path));
     area.current?.focus();
   };
 
   return (
     <div className="agent-composer">
+      {files.length > 0 && (
+        <div className="agent-attachments">
+          {files.map((path) => (
+            <AttachmentCard key={path} path={path} onRemove={() => detach(path)} />
+          ))}
+        </div>
+      )}
       <textarea
         ref={area}
         className="agent-input"
@@ -332,12 +355,12 @@ export function Composer({ focusKey }: { focusKey: number }) {
         <span className="spacer" />
         <ModeMenu />
         <ModelMenu />
-        {busy && !text.trim() ? (
+        {busy && !ready ? (
           <button type="button" className="agent-send is-stop" onClick={interrupt} title={t("agent.stop")} aria-label={t("agent.stop")}>
             <StopIcon size={16} />
           </button>
         ) : (
-          <button type="button" className="agent-send" onClick={submit} disabled={!text.trim()} title={t("agent.send")} aria-label={t("agent.send")}>
+          <button type="button" className="agent-send" onClick={submit} disabled={!ready} title={t("agent.send")} aria-label={t("agent.send")}>
             <SendIcon size={16} />
           </button>
         )}

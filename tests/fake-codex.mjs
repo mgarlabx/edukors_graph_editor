@@ -6,7 +6,8 @@
 //
 // What it does with a turn: reads the course and asks to edit it, then
 // answers. A message with "comando" makes it ask to run one, "pergunte" makes
-// it ask the person, and "devagar" makes it take its time, so a test can
+// it ask the person, "materiais" makes it call the person's own server of
+// that name, and "devagar" makes it take its time, so a test can
 // interrupt it. FAKE_CODEX_SIGNED_OUT=1 plays an account nobody has signed in to.
 import { createInterface } from "node:readline";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -76,6 +77,22 @@ async function runTurn(threadId, text) {
     notify("item/completed", { item: done });
     items.push(done);
     said = allowed ? "Rodei o comando." : "Não rodei o comando.";
+  } else if (/materiais/i.test(text)) {
+    const id = nextItem();
+    const allowed = await askEditor("mcpServer/elicitation/request", { serverName: "materiais", threadId, turnId, message: "Allow materiais to run echo?", mode: "form", requestedSchema: { type: "object", properties: {} } });
+    const theirs = /^\[mcp_servers\."materiais"\]\nurl = "(.+)"$/m.exec(config)?.[1];
+    if (allowed?.action === "accept" && theirs) {
+      notify("item/started", { item: { id, type: "mcpToolCall", server: "materiais", tool: "echo", arguments: { text: "oi" } } });
+      const other = new Client({ name: "fake-codex", version: "0.161.0" });
+      await other.connect(new StreamableHTTPClientTransport(new URL(theirs), { requestInit: { headers: { Authorization: `Bearer ${token}` } } }));
+      const result = await other.callTool({ name: "echo", arguments: { text: "oi" } });
+      await other.close();
+      const output = (result.content ?? []).map((c) => c.text ?? "").join("\n");
+      const done = { id, type: "mcpToolCall", server: "materiais", tool: "echo", status: "completed", output };
+      notify("item/completed", { item: done });
+      items.push(done);
+      said = `O servidor disse: ${output}`;
+    } else said = "Não pude usar os materiais.";
   } else if (/pergunte/i.test(text)) {
     const id = nextItem();
     const answer = await askEditor("item/tool/requestUserInput", {
@@ -133,6 +150,10 @@ const handlers = {
     process.env.FAKE_CODEX_SIGNED_OUT
       ? { account: null, requiresOpenaiAuth: true }
       : { account: { type: "chatgpt", email: "professora@exemplo.org", planType: "pro" }, requiresOpenaiAuth: false },
+  "account/rateLimits/read": () => ({
+    rateLimits: { limitId: "codex", primary: { usedPercent: 22, windowDurationMins: 300, resetsAt: 1791823591 }, secondary: { usedPercent: 4, windowDurationMins: 10080, resetsAt: 1792361763 }, planType: "pro" },
+    rateLimitsByLimitId: null,
+  }),
   "account/login/start": () => {
     setTimeout(() => notify("account/login/completed", { loginId: "l1", success: true }), 50);
     return { authUrl: "https://auth.example/device", loginId: "l1" };

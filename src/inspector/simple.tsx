@@ -1,7 +1,7 @@
 /** The forms of static-md, static-html, dynamic-md, dynamic-html and bool nodes. */
 import { useEditor } from "../store/editor";
 import type { CourseNode } from "../schema/types";
-import { describe } from "../schema/describe";
+import { tip } from "../schema/describe";
 import { isJudge } from "../course/nodeTypes";
 import { localize } from "../course/localize";
 import { Field } from "../ui/controls";
@@ -15,7 +15,7 @@ export function StaticForm({ node }: { node: CourseNode }) {
     <LocalizedField
       path={`node:${node.id}/content/item`}
       label={t("insp.content")}
-      help={describe(html ? "staticHtmlContent" : "staticMdContent", "item")}
+      help={tip(html ? "staticHtmlContent" : "staticMdContent", "item")}
       kind={html ? "html" : "markdown"}
       fullEditor
     />
@@ -30,8 +30,8 @@ export function DynamicForm({ node }: { node: CourseNode }) {
   const judges = course.nodes.filter((n) => isJudge(n.type));
   return (
     <>
-      <LocalizedField path={`node:${node.id}/content/prompt`} label={t("insp.prompt")} help={describe(def, "prompt")} kind="prompt" owner={node.id} fullEditor />
-      <Field label={t("insp.from")} help={describe("feedbackFrom")}>
+      <LocalizedField path={`node:${node.id}/content/prompt`} label={t("insp.prompt")} help={tip(def, "prompt")} kind="prompt" owner={node.id} fullEditor />
+      <Field label={t("insp.from")} help={tip("feedbackFrom")}>
         <select
           className="input"
           value={node.content?.from ?? ""}
@@ -61,12 +61,12 @@ export function BoolForm({ node }: { node: CourseNode }) {
   const value = node.content?.default;
   return (
     <>
-      <LocalizedField path={`node:${node.id}/content/question`} label={t("insp.question")} help={describe("boolContent", "question")} kind="markdown" />
+      <LocalizedField path={`node:${node.id}/content/question`} label={t("insp.question")} help={tip("boolContent", "question")} kind="markdown" />
       <div className="grid-2">
-        <LocalizedField path={`node:${node.id}/content/yes-label`} label={t("insp.yesLabel")} help={describe("boolContent", "yes-label")} kind="plain" optional />
-        <LocalizedField path={`node:${node.id}/content/no-label`} label={t("insp.noLabel")} help={describe("boolContent", "no-label")} kind="plain" optional />
+        <LocalizedField path={`node:${node.id}/content/yes-label`} label={t("insp.yesLabel")} help={tip("boolContent", "yes-label")} kind="plain" optional />
+        <LocalizedField path={`node:${node.id}/content/no-label`} label={t("insp.noLabel")} help={tip("boolContent", "no-label")} kind="plain" optional />
       </div>
-      <Field label={t("insp.default")} help={describe("boolContent", "default")}>
+      <Field label={t("insp.default")} help={tip("boolContent", "default")}>
         <select
           className="input"
           value={value === undefined ? "" : String(value)}
