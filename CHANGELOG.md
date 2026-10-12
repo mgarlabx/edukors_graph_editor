@@ -1,7 +1,7 @@
-# Novidades
+# Changelog
 
-Cada versão tem sua seção, escrita antes da tag: o texto dela vai para a página do release no GitHub e para o aviso de atualização dentro do app (`scripts/release-notes.mjs`). Uma seção alterada depois do build não chega ao app.
+Each version has its own section, written before the tag, **always in English**: its text goes to the release page on GitHub and to the update notice inside the app (`scripts/release-notes.mjs`). A section changed after the build does not reach the app.
 
 ## 2.12.0
 
-- O editor agora se atualiza sozinho: ao abrir, ele verifica se há versão nova (uma vez por dia) e pergunta antes de instalar. Também dá para verificar pelo menu, em **Verificar atualizações…**, e desligar a verificação automática nas Preferências.
+- The editor now updates itself: upon opening, it checks for new versions (once a day) and asks before installing. You can also check via the menu, under **Check for updates…**, and disable automatic checking in Preferences.

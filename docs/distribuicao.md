@@ -91,7 +91,7 @@ npx tauri signer generate -w ~/.tauri/edukors-updater.key
 
 ### Lançar uma versão
 
-1. Escreva a seção da versão no `CHANGELOG.md` (`## 2.12.0`). Esse texto vai para a página do release e para o aviso dentro do app.
+1. Escreva a seção da versão no `CHANGELOG.md` (`## 2.12.0`), **sempre em inglês**. Esse texto vai para a página do release e para o aviso dentro do app, igual para todos os idiomas da interface.
 2. `node scripts/bump-version.mjs 2.12.0`: atualiza a versão no `package.json`, no `package-lock.json`, no `tauri.conf.json`, no `Cargo.toml` e no `Cargo.lock`. Faça o commit e o push.
 3. `git tag v2.12.0 && git push origin v2.12.0`.
 4. O fluxo `.github/workflows/release.yml` confere a tag e as versões, cria um rascunho de release e gera, em paralelo, o app universal do Mac (`.dmg` e `.app.tar.gz`) e o instalador do Windows, cada um com sua assinatura `.sig`. Por fim, monta o `latest.json` com as três plataformas (`darwin-aarch64`, `darwin-x86_64`, `windows-x86_64`). Leva de 15 a 25 minutos.
