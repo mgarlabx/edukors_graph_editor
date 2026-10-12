@@ -94,12 +94,21 @@ npx tauri signer generate -w ~/.tauri/edukors-updater.key
 1. Escreva a seção da versão no `CHANGELOG.md` (`## 2.12.0`), **sempre em inglês**. Esse texto vai para a página do release e para o aviso dentro do app, igual para todos os idiomas da interface.
 2. `node scripts/bump-version.mjs 2.12.0`: atualiza a versão no `package.json`, no `package-lock.json`, no `tauri.conf.json`, no `Cargo.toml` e no `Cargo.lock`. Faça o commit e o push.
 3. `git tag v2.12.0 && git push origin v2.12.0`.
-4. O fluxo `.github/workflows/release.yml` confere a tag e as versões, cria um rascunho de release e gera, em paralelo, o app universal do Mac (`.dmg` e `.app.tar.gz`) e o instalador do Windows, cada um com sua assinatura `.sig`. Por fim, monta o `latest.json` com as três plataformas (`darwin-aarch64`, `darwin-x86_64`, `windows-x86_64`). Leva de 15 a 25 minutos.
+4. O fluxo `.github/workflows/release.yml` confere a tag e as versões, cria um rascunho de release e gera, em paralelo, o app universal do Mac (`.dmg` e `.app.tar.gz`) e o instalador do Windows, cada um com sua assinatura `.sig`. Cada instalador também sobe uma segunda vez, com nome fixo, para os links de download (abaixo). Por fim, monta o `latest.json` com as três plataformas (`darwin-aarch64`, `darwin-x86_64`, `windows-x86_64`). Leva de 15 a 25 minutos.
 5. Revise o rascunho e clique em **Publish**. Só então o `latest.json` passa a valer em `releases/latest/download/`, e os apps instalados enxergam a versão nova.
 
 **Não edite as notas no rascunho**: o `latest.json` já foi gerado com o texto do `CHANGELOG.md`, e a mudança não chega ao app. Para corrigir, apague o rascunho e a tag, corrija o `CHANGELOG.md` e repita.
 
 Para gerar o app localmente sem a chave, nada muda: `npm run app:build` não cria os arquivos do updater. Eles só são criados quando o build recebe também `--config src-tauri/tauri.release.conf.json`, que exige `TAURI_SIGNING_PRIVATE_KEY` e `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` no ambiente.
+
+### Links de download
+
+Para um site ou e-mail, estes links baixam sempre o instalador da versão publicada mais recente:
+
+- Mac (Apple Silicon e Intel): `https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-mac.dmg`
+- Windows (x64): `https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-windows.exe`
+
+São cópias, com nome sem versão, do `.dmg` e do `.exe` de cada release. A v2.12.0 saiu antes delas e não as tem: os links valem a partir da versão seguinte. A página com todos os arquivos é `https://github.com/mgarlabx/edukors_graph_editor/releases/latest`.
 
 ### Testar
 

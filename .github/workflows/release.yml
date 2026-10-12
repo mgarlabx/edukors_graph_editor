@@ -82,8 +82,12 @@ jobs:
         include:
           - platform: macos-latest
             args: --target universal-apple-darwin
+            installer: src-tauri/target/universal-apple-darwin/release/bundle/dmg/*_{version}_universal.dmg
+            download: Edukors-Graph-Editor-mac.dmg
           - platform: windows-latest
             args: ''
+            installer: src-tauri/target/release/bundle/nsis/*_{version}_x64-setup.exe
+            download: Edukors-Graph-Editor-windows.exe
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
@@ -116,6 +120,27 @@ jobs:
           releaseId: ${{ needs.prepare.outputs.release_id }}
           includeUpdaterJson: false
           args: --config src-tauri/tauri.bundle.conf.json --config src-tauri/tauri.release.conf.json ${{ matrix.args }}
+
+      # The installer once more, under a name without the version, for links that
+      # always give the latest: releases/latest/download/Edukors-Graph-Editor-mac.dmg
+      # and …-windows.exe (docs/distribuicao.md).
+      - shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          # This version's only: the build cache may hold an older one.
+          pattern='${{ matrix.installer }}'
+          pattern="${pattern//\{version\}/$VERSION}"
+          files=( $pattern )
+          if [ "${#files[@]}" -ne 1 ] || [ ! -f "${files[0]}" ]; then
+            echo "::error::expected one installer at $pattern, found: ${files[*]}"; exit 1
+          fi
+          curl --fail-with-body -sS -X POST \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary "@${files[0]}" \
+            "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ needs.prepare.outputs.release_id }}/assets?name=${{ matrix.download }}" > /dev/null
 
       # The universal app must carry the agent for both kinds of Mac.
       - if: matrix.platform == 'macos-latest'
