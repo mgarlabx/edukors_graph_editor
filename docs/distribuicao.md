@@ -112,7 +112,7 @@ O instalador do Windows (NSIS, `Edukors Graph Editor_<versão>_x64-setup.exe`) s
 - O agente vai junto, como no Mac, com o `claude.exe` do pacote `@anthropic-ai/claude-agent-sdk-win32-x64` (≈ 250 MB): o instalador fica grande. O Node continua sendo do usuário; `agent.rs` o procura no PATH e onde o instalador oficial, nvm-windows, fnm, Volta e Scoop o põem.
 - A chave da OpenRouter fica no Gerenciador de Credenciais do Windows.
 - Um `.egf` aberto no Explorer com o editor já aberto vai para a janela que está aberta (`tauri-plugin-single-instance`).
-- Só x64. O instalador não é assinado: o SmartScreen avisa “O Windows protegeu o computador”, e a pessoa segue em **Mais informações → Executar assim mesmo**. Para tirar o aviso é preciso um certificado de assinatura de código (OV, com a chave num serviço de assinatura em nuvem), configurado em `bundle.windows.signCommand`. O Azure Artifact Signing (antigo Trusted Signing) não emite certificados para organizações brasileiras.
+- Só x64. O instalador não é assinado: o SmartScreen avisa “O Windows protegeu o computador”, e a pessoa segue em **Mais informações → Executar assim mesmo** (o roteiro para os professores está no guia, seção 2, nos três idiomas). Para tirar o aviso é preciso um certificado de assinatura de código (OV, com a chave num serviço de assinatura em nuvem), configurado em `bundle.windows.signCommand`. O Azure Artifact Signing (antigo Trusted Signing) não emite certificados para organizações brasileiras.
 
 ## Releases e atualização automática
 

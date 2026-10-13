@@ -8,9 +8,20 @@ A course is a **graph**. Each **node** is a step the student sees or does (a tex
 
 ## 2. Install and open
 
-1. Open the file `Edukors Graph Editor.dmg` and drag the app into the **Applications** folder.
-2. The first time, if macOS warns that the app could not be verified, right-click the app and choose **Open**. Then the editor shows the **Terms of use** (the MIT license, explained): you must accept them to go on. They stay available under **Help → Terms of use**. Each time it opens, the editor shows its version, which also appears at the top of **Help**.
-3. On the start screen you can create a **New course**, **Open** an `.egf` file or open one of the **Samples** (*World Cats*), which are a great way to see how a course is put together.
+**On a Mac** (Apple Silicon or Intel, macOS 11 or later):
+
+1. Download [`Edukors-Graph-Editor-mac.dmg`](https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-mac.dmg), open it and drag the app into the **Applications** folder.
+2. Open the app. The first time, macOS asks whether you want to open an app downloaded from the Internet: click **Open**.
+
+**On Windows** (10 or 11, 64-bit):
+
+1. Download [`Edukors-Graph-Editor-windows.exe`](https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-windows.exe). If the browser says the file isn't commonly downloaded, open the **…** menu next to it and choose **Keep** (in Edge, also **Show more → Keep anyway**).
+2. Open the downloaded file. The installer has no digital signature yet, so Windows shows **Windows protected your PC**. Click **More info** and then **Run anyway**. The warning appears only on this first installation: new versions come through the editor itself.
+3. The installer doesn't ask for an administrator password; then the editor opens, and it stays in the Start menu.
+
+If Windows says it **blocked** the app, with no *Run anyway* button, the computer has **Smart App Control** turned on, or a school policy that only allows signed programs. In that case, talk to whoever looks after the computer.
+
+**On both systems**, the first time, the editor shows the **Terms of use** (the MIT license, explained): you must accept them to go on. They stay available under **Help → Terms of use**. Each time it opens, the editor shows its version, which also appears at the top of **Help**. On the start screen you can create a **New course**, **Open** an `.egf` file or open one of the **Samples** (*World Cats*), which are a great way to see how a course is put together.
 
 Tip: once installed, an `.egf` course opens in the editor with a double click. An older `.json` course becomes `.egf` by changing the file's extension (the content is the same).
 

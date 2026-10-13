@@ -8,9 +8,20 @@ Um curso é um **grafo**. Cada **nó** é um passo que o estudante vê ou faz (u
 
 ## 2. Instalar e abrir
 
-1. Abra o arquivo `Edukors Graph Editor.dmg` e arraste o app para a pasta **Aplicativos**.
-2. Na primeira vez, se o macOS avisar que o app não foi verificado, clique com o botão direito no app e escolha **Abrir**. Em seguida o editor mostra os **Termos de uso** (a licença MIT, explicada): é preciso aceitá-los para continuar. Eles ficam depois em **Ajuda → Termos de uso**. A cada abertura, o editor mostra a sua versão, que também aparece no alto da **Ajuda**.
-3. Na tela inicial você pode criar um **Novo curso**, **Abrir** um arquivo `.egf` ou abrir um dos **Exemplos** (*World Cats*), que são uma ótima forma de ver como um curso é montado.
+**No Mac** (Apple Silicon ou Intel, macOS 11 ou mais recente):
+
+1. Baixe o [`Edukors-Graph-Editor-mac.dmg`](https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-mac.dmg), abra-o e arraste o app para a pasta **Aplicativos**.
+2. Abra o app. Na primeira vez, o macOS pergunta se deseja abrir um app baixado da Internet: clique em **Abrir**.
+
+**No Windows** (10 ou 11, 64 bits):
+
+1. Baixe o [`Edukors-Graph-Editor-windows.exe`](https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-windows.exe). Se o navegador disser que o arquivo não é baixado com frequência, abra o menu **…** ao lado dele e escolha **Manter** (no Edge, também **Mostrar mais → Manter assim mesmo**).
+2. Abra o arquivo baixado. O instalador ainda não tem assinatura digital, por isso o Windows mostra **O Windows protegeu o computador**. Clique em **Mais informações** e depois em **Executar assim mesmo**. O aviso aparece só nessa primeira instalação: as versões novas chegam pelo próprio editor.
+3. O instalador não pede senha de administrador; em seguida o editor abre e fica no menu Iniciar.
+
+Se o Windows disser que **bloqueou** o app, sem o botão *Executar assim mesmo*, o computador tem o **Controle Inteligente de Aplicativos** ligado ou uma regra da escola que só aceita programas assinados. Nesse caso, fale com quem cuida do computador.
+
+**Nos dois sistemas**, na primeira vez, o editor mostra os **Termos de uso** (a licença MIT, explicada): é preciso aceitá-los para continuar. Eles ficam depois em **Ajuda → Termos de uso**. A cada abertura, o editor mostra a sua versão, que também aparece no alto da **Ajuda**. Na tela inicial você pode criar um **Novo curso**, **Abrir** um arquivo `.egf` ou abrir um dos **Exemplos** (*World Cats*), que são uma ótima forma de ver como um curso é montado.
 
 Dica: depois de instalado, um curso `.egf` abre no editor com duplo clique. Um curso `.json` antigo vira `.egf` trocando a extensão do arquivo (o conteúdo é o mesmo).
 
