@@ -13,7 +13,7 @@ import { setUiLang, type UiLang } from "../i18n";
 export interface Prefs {
   uiLang: UiLang;
   theme: "system" | "light" | "dark";
-  ai: { model: string; temperature: number; maxTokens: number; timeout: number; url: string };
+  ai: { model: string; maxTokens: number; timeout: number; url: string };
   judge: { model: string; minConfidence: number; strictModel: boolean; url: string; timeout: number };
   /**
    * the AI agent of the side panel: which provider runs it and what its composer was left with for
@@ -47,7 +47,6 @@ export const DEFAULT_PREFS: Prefs = {
   theme: "system",
   ai: {
     model: "openai/gpt-5.6-luna",
-    temperature: 0.7,
     maxTokens: 1200,
     timeout: 45,
     url: "https://openrouter.ai/api/v1/chat/completions",
@@ -102,7 +101,8 @@ const merge = (raw: Record<string, unknown>): Prefs => {
   return {
     ...DEFAULT_PREFS,
     ...r,
-    ai: { ...DEFAULT_PREFS.ai, ...(r.ai ?? {}) },
+    // Temperature is no longer a preference: what an older version saved is dropped.
+    ai: (({ temperature: _, ...ai }) => ai)({ ...DEFAULT_PREFS.ai, ...(r.ai ?? {}) } as Prefs["ai"] & { temperature?: number }),
     // The exact slug and the decisions endpoint are no longer preferences: whatever an older version saved, the server's are used.
     judge: { ...DEFAULT_PREFS.judge, ...(r.judge ?? {}), strictModel: true, url: DEFAULT_PREFS.judge.url },
     agent: mergeAgent(r.agent),

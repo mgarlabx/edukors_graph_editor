@@ -34,6 +34,7 @@ import { NODE_TYPES } from "./course/nodeTypes";
 import type { NodeType } from "./schema/types";
 import { useUiLang } from "./i18n";
 import { needsCourse, syncMenu, watchMenu } from "./app/menu";
+import { stopPresenting } from "./app/present";
 
 const editable = (el: Element | null) =>
   !!el && (el.closest("input, textarea, select, [contenteditable=true], .monaco-editor") !== null || (el as HTMLElement).isContentEditable);
@@ -129,6 +130,7 @@ export default function App() {
   const docId = useEditor((s) => s.docId);
   const modal = useUi((s) => s.modal);
   const agent = useUi((s) => s.agent);
+  const presenting = useUi((s) => s.presenting);
   const mustAccept = usePrefs((s) => s.loaded && s.terms !== TERMS_VERSION);
 
   // Boot: preferences, the file the system asked us to open, the menu.
@@ -177,6 +179,11 @@ export default function App() {
     const onKey = (e: KeyboardEvent) => {
       const meta = e.metaKey || e.ctrlKey;
       const store = useEditor.getState();
+      if (e.key === "Escape" && useUi.getState().presenting) {
+        e.preventDefault();
+        void stopPresenting();
+        return;
+      }
       // Tabs: ⌘1…⌘9 everywhere (no menu item takes them); ⌃⇥ and ⇧⌃⇥ come from the menu in the app.
       if (meta && !e.altKey && !e.shiftKey && /^[1-9]$/.test(e.key)) {
         e.preventDefault();
@@ -246,7 +253,8 @@ export default function App() {
   }, []);
 
   return (
-    <div className="app">
+    // Presenting, the chrome is hidden, not unmounted: the agent and the tabs come back as they were.
+    <div className={`app ${presenting ? "is-presenting" : ""}`}>
       <Toolbar />
       <div className="app-body">
         <div className="app-main">

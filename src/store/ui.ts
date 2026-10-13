@@ -3,6 +3,8 @@ import { create } from "zustand";
 export type ModalId = "prefs" | "languages" | "probe" | "help" | "about" | "content" | "update" | null;
 export type HelpTab = "quick" | "full" | "terms";
 export type BottomPanel = "problems" | null;
+/** The inspector's tabs, the same for the course, a node and an edge: its data, what its type specifies, its extras. */
+export type InspectorTab = "data" | "spec" | "extras";
 
 /** A long text the full-screen editor has open (a node's content or prompt): a localized field, in one of its languages. */
 export interface ContentTarget {
@@ -29,6 +31,11 @@ interface UiState {
   inspector: boolean;
   /** the preview's side panel (calls, state, path, console); hidden, the player takes its width */
   previewSide: boolean;
+  /** the preview alone on screen, in full screen: no toolbar, tabs, bar or panels (app/present.ts) */
+  presenting: boolean;
+  /** the inspector's tab, kept as the selection changes */
+  inspectorTab: InspectorTab;
+  setInspectorTab(tab: InspectorTab): void;
   open(modal: ModalId, probeNode?: string): void;
   /** Opens Help on one of its tabs. */
   openHelp(tab?: HelpTab): void;
@@ -41,6 +48,7 @@ interface UiState {
   toggleAgent(open?: boolean): void;
   /** Opens or closes the panel beside the stage: the preview's on the preview, else the inspector. The agent has its own button. */
   toggleSidebar(preview?: boolean): void;
+  setPresenting(on: boolean): void;
 }
 
 export const useUi = create<UiState>()((set) => ({
@@ -52,6 +60,9 @@ export const useUi = create<UiState>()((set) => ({
   agent: false,
   inspector: false,
   previewSide: true,
+  presenting: false,
+  inspectorTab: "data",
+  setInspectorTab: (inspectorTab) => set({ inspectorTab }),
   open: (modal, probeNode) => set({ modal, probeNode: probeNode ?? null, helpTab: "quick" }),
   openHelp: (tab = "quick") => set({ modal: "help", helpTab: tab }),
   openContent: (content) => set({ modal: "content", content }),
@@ -60,4 +71,5 @@ export const useUi = create<UiState>()((set) => ({
   toggleBottom: (panel) => set((s) => ({ bottom: s.bottom === panel ? null : panel })),
   toggleAgent: (open) => set((s) => ({ agent: open ?? !s.agent })),
   toggleSidebar: (preview = false) => set((s) => (preview ? { previewSide: !s.previewSide } : { inspector: !s.inspector })),
+  setPresenting: (presenting) => set({ presenting }),
 }));

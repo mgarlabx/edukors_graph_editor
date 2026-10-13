@@ -134,7 +134,7 @@ describe.skipIf(!hasReference || !hasPhp)("judge parity with ai.php", () => {
     expect(judgementBlock(s1, vars)).toBe(php({ op: "block", judge: s1, vars }));
     for (const dm of full.nodes.filter((n: C) => n.type.startsWith("dynamic")))
       for (const lang of ["en", "pt", "zh"]) {
-        const mine = buildGeneration(full, dm.id, lang, vars, { model: "m", temperature: 0.7, maxTokens: 1200 });
+        const mine = buildGeneration(full, dm.id, lang, vars, { model: "m", maxTokens: 1200 });
         expect({ system: mine.system, user: mine.user }).toEqual(php({ op: "write", course: full, nodeId: dm.id, lang, vars }));
       }
   });

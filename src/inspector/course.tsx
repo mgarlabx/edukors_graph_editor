@@ -5,7 +5,7 @@ import { describe, tip } from "../schema/describe";
 import { emptyLoc, isJudge, SCHEMA_URL } from "../course/nodeTypes";
 import { localize } from "../course/localize";
 import { AutoTextarea, Field, TextInput } from "../ui/controls";
-import { emptyLangs, Group, PanelHeader } from "./common";
+import { emptyLangs, Group, PanelHeader, Tab } from "./common";
 import { MapIcon } from "../ui/icons";
 import { LocalizedField, RowTools, move } from "./fields";
 import { ExtrasField } from "./ExtrasField";
@@ -29,10 +29,18 @@ export function CourseInfoForm() {
         title={localize(info.title, lang).trim() || <span className="muted">{t("insp.untitled")}</span>}
         langs={emptyLangs(course, null)}
       />
-      <div className="insp-groups">
+      <Tab id="data">
         <Group title={t("insp.group.general")} help={describe("courseInfo")}>
           <LocalizedField path="info/title" label={t("course.title")} help={tip("courseInfo", "title")} kind="plain" />
-          <LocalizedField path="info/description" label={t("course.description")} help={tip("courseInfo", "description")} kind="plain" optional minRows={2} />
+          <LocalizedField path="info/description" label={t("course.description")} help={tip("courseInfo", "description")} kind="plain" optional open minRows={2} />
+          <Field label="course-id" help={tip("courseInfo", "course-id")}>
+            <div className="row">
+              <TextInput className="mono grow" value={info["course-id"] ?? ""} onChange={(v) => set((i) => (i["course-id"] = v), "id")} />
+              <button className="btn btn-small" onClick={() => set((i) => (i["course-id"] = crypto.randomUUID()), "new-id")} title={t("course.newIdHint")}>
+                {t("course.newId")}
+              </button>
+            </div>
+          </Field>
           <div className="grid-2">
             <Field label={t("course.author")} help={tip("courseInfo", "author")}>
               <TextInput value={info.author ?? ""} onChange={(v) => set((i) => (i.author = v), "author")} />
@@ -57,6 +65,8 @@ export function CourseInfoForm() {
             </Field>
           </div>
         </Group>
+      </Tab>
+      <Tab id="spec">
         <Group
           title={t("course.languages")}
           help={tip("courseInfo", "other-languages")}
@@ -132,15 +142,9 @@ export function CourseInfoForm() {
             + {t("course.addSection")}
           </button>
         </Group>
-        <Group title={t("insp.group.advanced")}>
-          <Field label="course-id" help={tip("courseInfo", "course-id")}>
-            <div className="row">
-              <TextInput className="mono grow" value={info["course-id"] ?? ""} onChange={(v) => set((i) => (i["course-id"] = v), "id")} />
-              <button className="btn btn-small" onClick={() => set((i) => (i["course-id"] = crypto.randomUUID()), "new-id")} title={t("course.newIdHint")}>
-                {t("course.newId")}
-              </button>
-            </div>
-          </Field>
+      </Tab>
+      <Tab id="extras">
+        <Group>
           <ExtrasField
             owner="info"
             value={info.extras}
@@ -162,7 +166,7 @@ export function CourseInfoForm() {
             )}
           </Field>
         </Group>
-      </div>
+      </Tab>
     </div>
   );
 }

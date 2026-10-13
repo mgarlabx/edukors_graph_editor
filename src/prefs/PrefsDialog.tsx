@@ -206,14 +206,9 @@ export function PrefsDialog() {
               <Field label={t("prefs.model")} hint={<code>ai.model</code>}>
                 <input className="input" list="models" value={draft.ai.model} onChange={(e) => setDraft({ ...draft, ai: { ...draft.ai, model: e.target.value } })} />
               </Field>
-              <div className="grid-2">
-                <Field label={t("prefs.temperature")} hint={<code>ai.temperature</code>}>
-                  <NumberInput value={draft.ai.temperature} min={0} max={2} step={0.1} onChange={(v) => setDraft({ ...draft, ai: { ...draft.ai, temperature: v ?? 0.7 } })} />
-                </Field>
-                <Field label={t("prefs.maxTokens")} hint={<code>ai.max_tokens</code>}>
-                  <NumberInput value={draft.ai.maxTokens} min={64} step={1} onChange={(v) => setDraft({ ...draft, ai: { ...draft.ai, maxTokens: Math.round(v ?? 1200) } })} />
-                </Field>
-              </div>
+              <Field label={t("prefs.maxTokens")} hint={<code>ai.max_tokens</code>}>
+                <NumberInput value={draft.ai.maxTokens} min={64} step={1} onChange={(v) => setDraft({ ...draft, ai: { ...draft.ai, maxTokens: Math.round(v ?? 1200) } })} />
+              </Field>
             </div>
           )}
 

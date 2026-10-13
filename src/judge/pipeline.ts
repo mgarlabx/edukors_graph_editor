@@ -161,7 +161,6 @@ export const judgementBlock = (judge: CourseNode, vars: Vars): string => {
 
 export interface GenerationSettings {
   model: string;
-  temperature: number;
   maxTokens: number;
 }
 
@@ -195,7 +194,6 @@ export const buildGeneration = (
     body: {
       model: settings.model,
       max_tokens: Math.trunc(settings.maxTokens),
-      temperature: Number(settings.temperature),
       usage: { include: true },
       messages: [
         { role: "system", content: system },

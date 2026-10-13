@@ -44,6 +44,8 @@ interface LocalizedProps {
   help?: string;
   kind: TextKind;
   optional?: boolean;
+  /** optional, and its box shown even while the course has no such text: typing in it adds it */
+  open?: boolean;
   minRows?: number;
   /** the node whose own keys {{STORAGE}} should not offer */
   owner?: string;
@@ -51,12 +53,13 @@ interface LocalizedProps {
   fullEditor?: boolean;
 }
 
-export function LocalizedField({ path, label, help, kind, optional, minRows, owner, fullEditor }: LocalizedProps) {
+export function LocalizedField({ path, label, help, kind, optional, open, minRows, owner, fullEditor }: LocalizedProps) {
   const course = useEditor((s) => s.course)!;
   const update = useEditor((s) => s.update);
   const langs = courseLangs(course);
   const source = langs[0];
-  const list = getText(course, path);
+  const found = getText(course, path);
+  const list = found ?? (open ? [] : undefined);
   const shown = useEditor((s) => s.canvasLang);
   const active = langs.includes(shown) ? shown : source;
 
@@ -115,7 +118,8 @@ export function LocalizedField({ path, label, help, kind, optional, minRows, own
         )
       }
       hint={
-        optional && (
+        optional &&
+        found && (
           <button className="link danger" onClick={() => update((c) => removeAt(c, path), "remove-field")}>
             {t("insp.remove")}
           </button>

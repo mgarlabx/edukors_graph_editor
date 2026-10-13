@@ -16,8 +16,10 @@ import { chooseEdge, summarize } from "../course/condition";
 import { keysOfCourse, scaleLabel } from "../course/keys";
 import { localize } from "../course/localize";
 import { formatCost } from "../ai/client";
-import { Tabs } from "../ui/controls";
+import { IconButton, Tabs } from "../ui/controls";
+import { ExitFullscreenIcon, FullscreenIcon } from "../ui/icons";
 import { openLink } from "../app/platform";
+import { startPresenting, stopPresenting } from "../app/present";
 import type { Course } from "../schema/types";
 import { t } from "../i18n";
 
@@ -36,6 +38,7 @@ export function PreviewTab() {
   const lang = usePreview((s) => s.lang);
   const [side, setSide] = useState<Side>("calls");
   const sideOpen = useUi((s) => s.previewSide);
+  const presenting = useUi((s) => s.presenting);
   const savedWidth = usePrefs((s) => s.sidebar.preview);
   const { width: sideWidth, handle: sideHandle } = useResizable(savedWidth, 300, 760, (w) =>
     usePrefs.getState().save({ sidebar: { ...usePrefs.getState().sidebar, preview: w } }),
@@ -101,6 +104,7 @@ export function PreviewTab() {
         });
       }
       if (m?.edukors === "open" && typeof m.href === "string") void openLink(m.href);
+      if (m?.edukors === "escape") void stopPresenting();
       if (m?.edukors === "ai" && typeof m.id === "number") {
         const reply = await answer(courseRef.current, currentState(usePreview.getState()), m.body ?? "{}");
         frame.current?.contentWindow?.postMessage({ edukors: "ai-result", id: m.id, ...reply }, "*");
@@ -124,8 +128,13 @@ export function PreviewTab() {
 
   const langs = courseLangs(course);
   return (
-    <div className="preview">
+    <div className={`preview ${presenting ? "is-presenting" : ""}`}>
       <div className="preview-main">
+        {presenting && (
+          <IconButton className="preview-present-exit" title={`${t("preview.presentExit")} (Esc)`} onClick={() => void stopPresenting()}>
+            <ExitFullscreenIcon />
+          </IconButton>
+        )}
         <div className="preview-bar">
           <button className="btn btn-small" onClick={() => usePreview.getState().restart()}>
             ↺ {t("preview.restart")}
@@ -162,6 +171,9 @@ export function PreviewTab() {
               </button>
             </span>
           )}
+          <IconButton title={t("preview.present")} onClick={() => void startPresenting()}>
+            <FullscreenIcon />
+          </IconButton>
         </div>
         <iframe
           key={reload + (frozen === course ? 0 : 0)}

@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { courseLangs, useEditor } from "../store/editor";
+import { useUi, type InspectorTab } from "../store/ui";
 import type { Course, CourseNode } from "../schema/types";
-import { describe, tip } from "../schema/describe";
-import { isJudge, PREFIX, TYPE_STYLE } from "../course/nodeTypes";
+import { tip } from "../schema/describe";
+import { PREFIX, TYPE_STYLE } from "../course/nodeTypes";
 import { renameNode } from "../course/ops";
 import { localize } from "../course/localize";
 import { Field, Help, NumberInput, TextInput } from "../ui/controls";
@@ -67,10 +68,33 @@ export function LangBar({ empty }: { empty: Set<string> }) {
   );
 }
 
+const TABS: InspectorTab[] = ["data", "spec", "extras"];
+
+/** The inspector's tabs, at the foot of its head: the same three for the course, a node and an edge. */
+function InspectorTabs() {
+  const tab = useUi((s) => s.inspectorTab);
+  const setTab = useUi((s) => s.setInspectorTab);
+  return (
+    <div className="insp-tabs" role="tablist" aria-label={t("insp.tabs")}>
+      {TABS.map((id) => (
+        <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? "is-active" : ""} onClick={() => setTab(id)}>
+          {t(`insp.tab.${id}`)}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** What one of the inspector's tabs shows: nothing while another is open. */
+export function Tab({ id, children }: { id: InspectorTab; children: React.ReactNode }) {
+  const tab = useUi((s) => s.inspectorTab);
+  return tab === id ? <div className="insp-groups" role="tabpanel">{children}</div> : null;
+}
+
 /**
  * The top of the inspector, kept in view as it scrolls, drawn like the head of
  * a pane of the preferences: a tile in the color of the type, the title, what
- * it is and its id under it, and the language of its texts.
+ * it is and its id under it, the language of its texts, and the tabs.
  */
 export function PanelHeader({
   kind,
@@ -104,6 +128,7 @@ export function PanelHeader({
         {actions && <span className="insp-head-actions">{actions}</span>}
       </div>
       {langs && <LangBar empty={langs} />}
+      <InspectorTabs />
     </header>
   );
 }
@@ -179,7 +204,7 @@ export function NodeHeader({ node }: { node: CourseNode }) {
   );
 }
 
-/** A node's id, section, title and start: the General group. */
+/** A node's id, section and title: the General group. */
 export function NodeGeneral({ node }: { node: CourseNode }) {
   const course = useEditor((s) => s.course)!;
   const update = useEditor((s) => s.update);
@@ -187,7 +212,6 @@ export function NodeGeneral({ node }: { node: CourseNode }) {
   const edit = useNodeEdit(node.id);
   const [newId, setNewId] = useState(node.id);
   const sections = course.info.sections ?? [];
-  const isStart = course.info.start === node.id;
   const lang = useEditor((s) => s.canvasLang);
   const idOk = new RegExp(`^${PREFIX[node.type]}[0-9]+$`).test(newId) && !course.nodes.some((n) => n.id === newId && n !== node);
 
@@ -247,15 +271,6 @@ export function NodeGeneral({ node }: { node: CourseNode }) {
           )}
         </Field>
       </div>
-      <label className={`check ${isJudge(node.type) ? "is-disabled" : ""}`} title={describe("courseInfo", "start")}>
-        <input
-          type="checkbox"
-          checked={isStart}
-          disabled={isJudge(node.type) || isStart}
-          onChange={() => update((c) => (c.info.start = node.id), "start")}
-        />
-        {isJudge(node.type) ? t("insp.judgeNoStart") : t("insp.isStart")}
-      </label>
     </Group>
   );
 }

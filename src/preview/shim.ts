@@ -39,8 +39,9 @@ export const STATE_KEY = `edukors.player.${PREVIEW_SCOPE}`;
 /**
  * Plain ES5, run in the player and in each HTML step's frame: the console and
  * the uncaught errors are reported as { edukors: 'console', level, text, at },
- * and a click on (or window.open of) a link to the web as { edukors: 'open',
- * href }, through `post`. The native console still gets every call. No
+ * a click on (or window.open of) a link to the web as { edukors: 'open',
+ * href }, and Esc as { edukors: 'escape' } (it ends the full-screen
+ * presentation, app/present.ts), through `post`. The native console still gets every call. No
  * backquote and no "${" in here: it sits inside a template.
  */
 const PAGE_HOOKS = String.raw`function (post) {
@@ -113,6 +114,9 @@ const PAGE_HOOKS = String.raw`function (post) {
     e.preventDefault();
     post({ edukors: 'open', href: href });
   }, true);
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !e.defaultPrevented) { post({ edukors: 'escape' }); }
+  });
   var nativeOpen = window.open;
   window.open = function (url) {
     var href = String(url == null ? '' : url).trim();
@@ -252,13 +256,13 @@ const shimSource = (seed: PlayerState | null, theme: Prefs["theme"]) => `
   // the player wrote only, named after the step.
   window.addEventListener('message', function (event) {
     var m = event.data;
-    if (event.source === parentWindow || !m || (m.edukors !== 'console' && m.edukors !== 'open')) { return; }
+    if (event.source === parentWindow || !m || (m.edukors !== 'console' && m.edukors !== 'open' && m.edukors !== 'escape')) { return; }
     var from = null;
     Array.prototype.forEach.call(document.querySelectorAll('iframe'), function (f) {
       if (f.contentWindow === event.source && frames.has(f)) { from = f; }
     });
     if (!from) { return; }
-    parentWindow.postMessage(m.edukors === 'open'
+    parentWindow.postMessage(m.edukors === 'escape' ? { edukors: 'escape' } : m.edukors === 'open'
       ? { edukors: 'open', href: String(m.href) }
       : { edukors: 'console', level: String(m.level), text: String(m.text), at: m.at, frame: 'step', title: from.getAttribute('title') || null }, '*');
   });

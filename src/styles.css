@@ -1540,6 +1540,37 @@ kbd {
   padding: 10px 14px;
 }
 
+/* The tabs, at the foot of the head: Data, Specs, Extras. */
+.insp-tabs {
+  display: flex;
+  gap: 2px;
+  margin: 10px -14px -12px;
+  padding: 0 10px;
+}
+
+.insp-tabs button {
+  -webkit-appearance: none;
+  appearance: none;
+  padding: 7px 10px 8px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.insp-tabs button:hover:not(.is-active) {
+  color: var(--text);
+}
+
+.insp-tabs button.is-active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
 /* The two parts: what every node has, and what its type has. */
 .insp-part {
   margin: 6px 0 18px;
@@ -1626,7 +1657,6 @@ kbd {
   margin-bottom: 10px;
 }
 
-.insp-group > .edge-list:last-child,
 .insp-group > .field-hint:last-child,
 .insp-group > p:last-child {
   margin-bottom: 10px;
@@ -1923,8 +1953,10 @@ kbd {
 }
 
 /* A part's extras: the JSON shown in its box, and the editor the ✎ opens. */
+/* alone in its tab: the whole of it */
 .extras-peek .content-peek-text {
-  -webkit-line-clamp: 8;
+  display: block;
+  -webkit-line-clamp: unset;
 }
 
 .extras-editor {
@@ -2005,45 +2037,6 @@ kbd {
   background: var(--accent-soft);
 }
 
-.edge-list {
-  list-style: none;
-  padding: 0;
-  margin: 6px 0;
-}
-
-.edge-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 6px 6px 8px;
-  margin-bottom: 4px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-}
-
-.edge-item:hover {
-  border-color: var(--border-strong);
-}
-
-.edge-target {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  min-width: 0;
-}
-
-.edge-target code {
-  font-weight: 600;
-  font-size: 12px;
-}
-
-.edge-target-title {
-  color: var(--muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .edge-title code {
   font-size: 14px;
 }
@@ -2056,39 +2049,6 @@ kbd {
   white-space: nowrap;
   text-overflow: ellipsis;
   text-align: left;
-}
-
-.edge-summary {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-  padding: 0;
-  border: none;
-  background: none;
-  font: inherit;
-  text-align: left;
-  color: var(--text);
-  cursor: pointer;
-}
-
-.edge-summary:hover code {
-  color: var(--accent);
-}
-
-.edge-when {
-  font-family: var(--mono);
-  font-size: 11.5px;
-  color: var(--accent);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.edge-when.is-fallback {
-  color: var(--muted);
-  font-style: italic;
 }
 
 .section-row {
@@ -2283,6 +2243,48 @@ kbd {
   border: none;
   background: transparent;
   width: 100%;
+}
+
+/* Presenting (app/present.ts): the player alone, in full screen. */
+.app.is-presenting .toolbar,
+.app.is-presenting .doc-tabs,
+.app.is-presenting .agent-panel,
+.app.is-presenting .bottom-panel,
+.preview.is-presenting .preview-bar,
+.preview.is-presenting .preview-side {
+  display: none;
+}
+
+.preview.is-presenting .preview-main {
+  position: relative;
+}
+
+/* Seen for a moment, then out of the way until the pointer comes to the corner. */
+@keyframes present-exit-hint {
+  0%,
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.preview-present-exit {
+  animation: present-exit-hint 3s;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  background: var(--panel);
+  border-color: var(--border);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.preview-present-exit:hover,
+.preview-present-exit:focus-visible {
+  opacity: 1;
 }
 
 .preview-side {

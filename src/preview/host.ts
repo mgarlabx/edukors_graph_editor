@@ -75,7 +75,7 @@ export async function answer(course: Course, state: PlayerState | null, rawBody:
   if (!node || !isDynamic(node.type)) return failure("no step to write");
   const ai = usePrefs.getState().ai;
   try {
-    const request = buildGeneration(course, nodeId, lang, vars, { model: ai.model, temperature: ai.temperature, maxTokens: ai.maxTokens });
+    const request = buildGeneration(course, nodeId, lang, vars, { model: ai.model, maxTokens: ai.maxTokens });
     const result = await chatBody(request.body, { node: nodeId, kind: "generate" }, doc);
     return text(result.text);
   } catch (e) {

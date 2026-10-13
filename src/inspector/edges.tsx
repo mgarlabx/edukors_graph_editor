@@ -1,57 +1,16 @@
-/**
- * The edges leaving a node, in the order the player tries them, reorderable
- * (plan 5.2); and the inspector of one edge, with its condition.
- */
-import type { Condition, CourseNode } from "../schema/types";
+/** The inspector of one edge: where it goes, its place among its siblings, its condition. */
+import type { Condition } from "../schema/types";
 import { useEditor } from "../store/editor";
 import { describe, tip } from "../schema/describe";
-import { summarize } from "../course/condition";
 import { localize } from "../course/localize";
-import { deleteEdges, outgoingIndexes, reorderEdge } from "../course/ops";
+import { outgoingIndexes, reorderEdge } from "../course/ops";
 import { keysOfNode, operatorsFor } from "../course/keys";
 import { ConditionEditor } from "../conditions/ConditionEditor";
 import { Field } from "../ui/controls";
-import { Group, PanelHeader } from "./common";
+import { Group, PanelHeader, Tab } from "./common";
 import { ExtrasField } from "./ExtrasField";
 import { RowTools } from "./fields";
 import { t } from "../i18n";
-
-export function OutgoingEdges({ node }: { node: CourseNode }) {
-  const course = useEditor((s) => s.course)!;
-  const update = useEditor((s) => s.update);
-  const select = useEditor((s) => s.select);
-  const lang = useEditor((s) => s.canvasLang);
-  const indexes = outgoingIndexes(course, node.id);
-  return (
-    <Group title={t("insp.group.exits")} help={`${t("edges.outgoing")}. ${tip("course", "edges")}`} count={indexes.length}>
-      {!indexes.length && <p className="muted small">{t("edges.none")}</p>}
-      <ol className="edge-list">
-        {indexes.map((index, position) => {
-          const e = course.edges[index];
-          const target = course.nodes.find((n) => n.id === e.to);
-          return (
-            <li key={index} className="edge-item">
-              <span className="edge-order">{position + 1}</span>
-              <button className="edge-summary" onClick={() => select({ edge: index, nodes: [] })}>
-                <span className="edge-target">
-                  <code>{e.to}</code> <span className="edge-target-title">{target ? localize(target.title, lang) : "?"}</span>
-                </span>
-                <span className={`edge-when ${e.when ? "" : "is-fallback"}`}>{e.when ? summarize(e.when) : t("edges.fallback")}</span>
-              </button>
-              <RowTools
-                index={position}
-                count={indexes.length}
-                onMove={(to) => update((c) => reorderEdge(c, node.id, position, to), "reorder")}
-                onRemove={() => update((c) => deleteEdges(c, [index]), "delete-edge")}
-              />
-            </li>
-          );
-        })}
-      </ol>
-      {indexes.length > 1 && <p className="field-hint">{t("edges.orderHint")}</p>}
-    </Group>
-  );
-}
 
 export function EdgeInspector({ index }: { index: number }) {
   const course = useEditor((s) => s.course)!;
@@ -86,7 +45,7 @@ export function EdgeInspector({ index }: { index: number }) {
           </span>
         }
       />
-      <div className="insp-groups">
+      <Tab id="data">
         <Group title={t("insp.group.connection")} help={describe("edge")}>
           <Field label={t("edges.from")} help={tip("edge", "from")}>
             <button className="btn wide edge-from" onClick={() => select({ nodes: [edge.from], edge: null })} title={t("insp.goToNode")}>
@@ -117,6 +76,8 @@ export function EdgeInspector({ index }: { index: number }) {
             </div>
           </Field>
         </Group>
+      </Tab>
+      <Tab id="spec">
         <Group title={t("edges.condition")} help={tip("edge", "when")}>
           {edge.when ? (
             <>
@@ -134,6 +95,8 @@ export function EdgeInspector({ index }: { index: number }) {
             </>
           )}
         </Group>
+      </Tab>
+      <Tab id="extras">
         <Group>
           <ExtrasField
             owner={`edge-${index}`}
@@ -147,7 +110,7 @@ export function EdgeInspector({ index }: { index: number }) {
             }
           />
         </Group>
-      </div>
+      </Tab>
     </div>
   );
 }

@@ -2,15 +2,14 @@ import type { ReactNode } from "react";
 import { useEditor } from "../store/editor";
 import { usePrefs } from "../store/prefs";
 import { useResizable } from "../ui/resize";
-import { Group, NodeAdvanced, NodeGeneral, NodeHeader, Part } from "./common";
+import { Group, NodeAdvanced, NodeGeneral, NodeHeader, Part, Tab } from "./common";
 import { BoolForm, DynamicForm, StaticForm } from "./simple";
 import { FormForm, QuizForm } from "./lists";
 import { JudgeForm } from "./judge";
 import { CourseInfoForm } from "./course";
-import { EdgeInspector, OutgoingEdges } from "./edges";
+import { EdgeInspector } from "./edges";
 import { isJudge, TYPE_STYLE } from "../course/nodeTypes";
 import { typeDescription } from "../schema/describe";
-import { ListIcon } from "../ui/icons";
 import { t } from "../i18n";
 
 /** The panel itself, its left edge dragged to set its width, which the preferences keep. */
@@ -60,12 +59,10 @@ export function Inspector() {
     <Shell>
       <div className="inspector-body" key={node.id}>
         <NodeHeader node={node} />
-        <div className="insp-groups">
-          <Part icon={<ListIcon size={15} />} title={t("insp.part.common")}>
-            <NodeGeneral node={node} />
-            <OutgoingEdges node={node} />
-            <NodeAdvanced node={node} />
-          </Part>
+        <Tab id="data">
+          <NodeGeneral node={node} />
+        </Tab>
+        <Tab id="spec">
           <Part icon={style.icon} color={style.color} title={t(`type.${node.type}`)} tags={[node.type]} description={typeDescription(node.type)}>
             {(node.type === "static-md" || node.type === "static-html") && (
               <Group>
@@ -86,7 +83,10 @@ export function Inspector() {
             {node.type === "form" && <FormForm node={node} />}
             {isJudge(node.type) && <JudgeForm node={node} />}
           </Part>
-        </div>
+        </Tab>
+        <Tab id="extras">
+          <NodeAdvanced node={node} />
+        </Tab>
       </div>
     </Shell>
   );
