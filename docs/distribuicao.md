@@ -1,46 +1,87 @@
-# Distribuição: assinatura, notarização e `.dmg`
+# Distribuição: assinatura, notarização e instaladores
 
-`npm run app:build` gera, em `src-tauri/target/release/bundle/`:
+`npm run app:build` gera o app universal (Apple Silicon e Intel) em `src-tauri/target/universal-apple-darwin/release/bundle/`:
 
-- `macos/Edukors Graph Editor.app` — o aplicativo (≈ 10 MB);
-- `dmg/Edukors Graph Editor_<versão>_aarch64.dmg` — a imagem de instalação.
+- `macos/Edukors Graph Editor.app` — o aplicativo;
+- `dmg/Edukors Graph Editor_<versão>_universal.dmg` — a imagem de instalação.
 
-Sem assinatura, o macOS abre o app só depois de o usuário autorizá-lo em **Ajustes → Privacidade e Segurança** (ou com clique direito → Abrir). Para distribuir a professores, o app precisa ser assinado com um certificado **Developer ID Application** e notarizado pela Apple.
+O app do Mac sai assinado com o certificado **Developer ID Application** e notarizado pela Apple: baixado pelo navegador, abre só com a pergunta padrão “é um app baixado da Internet”, sem passar por **Ajustes → Privacidade e Segurança**.
 
-## O que já está configurado
+## O que está configurado
 
-- `src-tauri/tauri.conf.json` → `bundle.macOS.hardenedRuntime: true` (exigido pela notarização) e `minimumSystemVersion: "11.0"`.
+- `src-tauri/tauri.conf.json` → `bundle.macOS.hardenedRuntime: true` (exigido pela notarização) e `minimumSystemVersion: "11.0"`. `signingIdentity` fica `null` no arquivo: a identidade vem da variável `APPLE_SIGNING_IDENTITY`, e quem não tem o certificado continua gerando o app, sem assinatura.
 - Associação de arquivo `.egf` (Edukors Graph Format, `bundle.fileAssociations`), com papel *Editor* e prioridade *Owner*, e o tipo exportado `org.edukors.grapheditor.egf` (conforme a `public.json`): o duplo clique num `.egf` abre o editor.
 - Associação de `.json` com prioridade *Alternate*, para os cursos antigos aparecerem em **Abrir com** sem tomar o lugar do editor padrão de JSON.
 - Identificador `org.edukors.grapheditor`.
 
-## O que falta (precisa da conta Apple Developer)
+## Assinatura e notarização do Mac
 
-1. Instalar o certificado *Developer ID Application* no Keychain. Conferir com:
+A conta Apple Developer é de pessoa física: o desenvolvedor que o macOS mostra é **Mauricio Garcia**, Team ID `GRVGLXMK3S`.
 
-   ```sh
-   security find-identity -v -p codesigning
-   ```
+| Item | Onde está |
+|---|---|
+| Certificado *Developer ID Application: Mauricio Garcia (GRVGLXMK3S)*, válido até 12/11/2027 | Keychain de quem o criou e, como `.p12`, no gerenciador de senhas |
+| Chave de API da App Store Connect (Team Key, papel Developer), Key ID `A9CQQ9PA49` | O `.p8` no gerenciador de senhas; a Apple só deixa baixá-lo uma vez |
+| Issuer ID da App Store Connect | **Users and Access → Integrations → Team Keys** |
 
-2. Exportar as variáveis antes do build (o Tauri assina e notariza sozinho quando elas existem):
+O Tauri assina o `.app` e notariza-o com a chave de API quando estas variáveis existem. O `.app.tar.gz` do updater é feito do `.app` já notarizado. O `.dmg`, porém, o Tauri só assina: a notarização dele é um passo à parte (`notarytool` e `stapler`, abaixo).
 
-   ```sh
-   export APPLE_SIGNING_IDENTITY="Developer ID Application: Edukors (TEAMID)"
-   export APPLE_ID="conta@exemplo.org"
-   export APPLE_PASSWORD="senha-de-app"        # senha específica de app, não a da conta
-   export APPLE_TEAM_ID="TEAMID"
-   npm run app:build
-   ```
+Os binários `claude` do agente (`Contents/Resources/agent/…/claude-agent-sdk-darwin-{arm64,x64}/claude`) vão com a assinatura original da Anthropic (Developer ID, hardened runtime, timestamp), que a notarização aceita como está: não são assinados de novo.
 
-   Alternativa sem senha: `APPLE_API_KEY`, `APPLE_API_ISSUER` e `APPLE_API_KEY_PATH` (chave da App Store Connect).
+### No GitHub Actions
 
-3. Conferir o resultado:
+O job do Mac em `.github/workflows/release.yml` lê estes secrets do repositório (**Settings → Secrets and variables → Actions**):
 
-   ```sh
-   codesign --verify --deep --strict --verbose=2 "src-tauri/target/release/bundle/macos/Edukors Graph Editor.app"
-   spctl --assess --type execute --verbose "src-tauri/target/release/bundle/macos/Edukors Graph Editor.app"
-   xcrun stapler validate "src-tauri/target/release/bundle/dmg/Edukors Graph Editor_1.13.0_aarch64.dmg"
-   ```
+| Secret | Conteúdo |
+|---|---|
+| `APPLE_CERTIFICATE` | o `.p12` em base64 (`base64 -i certificado.p12`) |
+| `APPLE_CERTIFICATE_PASSWORD` | a senha do `.p12` |
+| `APPLE_SIGNING_IDENTITY` | `Developer ID Application: Mauricio Garcia (GRVGLXMK3S)` |
+| `APPLE_API_ISSUER` | o Issuer ID |
+| `APPLE_API_KEY` | o Key ID |
+| `APPLE_API_KEY_P8` | o conteúdo do `.p8` |
+
+Com eles, o fluxo grava o `.p8` num arquivo temporário, o Tauri assina e notariza o app, um passo seguinte notariza e grampeia o `.dmg` e troca no rascunho a cópia que o `tauri-action` subiu, e a checagem final passa o app e o `.dmg` pelo Gatekeeper. Sem `APPLE_CERTIFICATE` (num fork, por exemplo), o build segue sem assinatura, com um aviso.
+
+### Num Mac, à mão
+
+Com o certificado no Keychain:
+
+```sh
+security find-identity -v -p codesigning     # deve listar 1 identidade válida
+
+export APPLE_SIGNING_IDENTITY="Developer ID Application: Mauricio Garcia (GRVGLXMK3S)"
+export APPLE_API_ISSUER="<Issuer ID>"
+export APPLE_API_KEY="A9CQQ9PA49"
+export APPLE_API_KEY_PATH="$HOME/caminho/AuthKey_A9CQQ9PA49.p8"
+npm run app:build
+```
+
+Na primeira assinatura, o macOS pede a senha de login para o `codesign` usar a chave: **Permitir sempre**. Se a identidade aparece em `find-identity` mas não como válida (`0 valid identities found`), falta o certificado intermediário da Apple: instale o `DeveloperIDG2CA.cer` de `https://www.apple.com/certificateauthority/` (duplo clique).
+
+Depois, notarizar o `.dmg` e conferir:
+
+```sh
+B=src-tauri/target/universal-apple-darwin/release/bundle
+DMG="$B/dmg/Edukors Graph Editor_<versão>_universal.dmg"
+xcrun notarytool submit "$DMG" --key "$APPLE_API_KEY_PATH" --key-id "$APPLE_API_KEY" --issuer "$APPLE_API_ISSUER" --wait
+xcrun stapler staple "$DMG"
+
+codesign --verify --deep --strict --verbose=2 "$B/macos/Edukors Graph Editor.app"
+spctl --assess --type execute --verbose "$B/macos/Edukors Graph Editor.app"            # Notarized Developer ID
+spctl --assess --type open --context context:primary-signature --verbose "$DMG"       # Notarized Developer ID
+syspolicy_check distribution "$B/macos/Edukors Graph Editor.app"
+```
+
+Se a notarização for recusada, o motivo está em `xcrun notarytool log <id> --key … --key-id … --issuer …`.
+
+### Renovar o certificado (antes de 12/11/2027)
+
+Os apps já assinados continuam abrindo depois do vencimento (a assinatura tem carimbo de tempo); só os builds novos precisam do certificado novo.
+
+1. No Keychain Access, **Certificate Assistant → Request a Certificate From a Certificate Authority…**, salvo em disco.
+2. Em developer.apple.com → **Certificates** → **+** → **Developer ID Application** (G2 Sub-CA), com esse pedido. Só o titular da conta pode criar.
+3. Instalar o `.cer`, exportar de novo como `.p12` e atualizar `APPLE_CERTIFICATE` e `APPLE_CERTIFICATE_PASSWORD`. A identidade (nome e Team ID) não muda.
 
 ## Intel e Apple Silicon
 
@@ -71,7 +112,7 @@ O instalador do Windows (NSIS, `Edukors Graph Editor_<versão>_x64-setup.exe`) s
 - O agente vai junto, como no Mac, com o `claude.exe` do pacote `@anthropic-ai/claude-agent-sdk-win32-x64` (≈ 250 MB): o instalador fica grande. O Node continua sendo do usuário; `agent.rs` o procura no PATH e onde o instalador oficial, nvm-windows, fnm, Volta e Scoop o põem.
 - A chave da OpenRouter fica no Gerenciador de Credenciais do Windows.
 - Um `.egf` aberto no Explorer com o editor já aberto vai para a janela que está aberta (`tauri-plugin-single-instance`).
-- Só x64. O instalador não é assinado: o SmartScreen avisa “O Windows protegeu o computador”, e a pessoa segue em **Mais informações → Executar assim mesmo**. Para tirar o aviso é preciso um certificado de assinatura de código (OV/EV ou Azure Trusted Signing), configurado em `bundle.windows.signCommand`.
+- Só x64. O instalador não é assinado: o SmartScreen avisa “O Windows protegeu o computador”, e a pessoa segue em **Mais informações → Executar assim mesmo**. Para tirar o aviso é preciso um certificado de assinatura de código (OV, com a chave num serviço de assinatura em nuvem), configurado em `bundle.windows.signCommand`. O Azure Artifact Signing (antigo Trusted Signing) não emite certificados para organizações brasileiras.
 
 ## Releases e atualização automática
 
@@ -121,6 +162,6 @@ São cópias, com nome sem versão, do `.dmg` e do `.exe` de cada release. A v2.
 - sem internet, a verificação automática não diz nada, e a manual explica o erro;
 - com um `.sig` alterado no release de teste, o app recusa a atualização.
 
-### Sem assinatura de código
+### Atualizações e assinatura
 
-As atualizações funcionam sem os certificados. Mas, sem assinatura, cada build do Mac tem uma assinatura *ad hoc* diferente, e o macOS pode pedir a senha do usuário na primeira vez que a versão nova lê a chave da OpenRouter no Keychain. **Permitir sempre** resolve até a próxima versão. A primeira instalação, a partir do `.dmg` baixado no navegador, continua exigindo a liberação em **Ajustes → Privacidade e Segurança**. As versões seguintes, baixadas pelo próprio app, não passam por isso.
+As atualizações funcionam com ou sem os certificados. As versões do Mac até a 2.13.0 saíram sem assinatura (*ad hoc*, diferente a cada build), e o macOS pedia a senha do usuário na primeira vez que a versão nova lia a chave da OpenRouter no Keychain. Com o Developer ID, a identidade é a mesma em todas as versões: o pedido aparece uma última vez na passagem da versão sem assinatura para a primeira assinada, e não volta. No Windows, que ainda não é assinado, a primeira instalação continua com o aviso do SmartScreen; as versões seguintes, baixadas pelo próprio app, não passam por ele.

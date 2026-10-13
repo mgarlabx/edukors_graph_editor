@@ -107,6 +107,33 @@ jobs:
 
       - run: npm ci
 
+      # The Apple credentials, for Tauri to sign and notarize the app: only when
+      # the secrets are there, so that a fork without them still builds, unsigned.
+      # tauri-action imports APPLE_CERTIFICATE (the .p12, in base64) into a keychain
+      # of its own; notarization uses the App Store Connect API key (docs/distribuicao.md).
+      - if: matrix.platform == 'macos-latest'
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: |
+          if [ -z "$APPLE_CERTIFICATE" ]; then
+            echo "::warning::no Apple certificate: the Mac app will not be signed"; exit 0
+          fi
+          printf '%s\n' "$APPLE_API_KEY_P8" > "$RUNNER_TEMP/AuthKey.p8"
+          {
+            echo "APPLE_CERTIFICATE=$APPLE_CERTIFICATE"
+            echo "APPLE_CERTIFICATE_PASSWORD=$APPLE_CERTIFICATE_PASSWORD"
+            echo "APPLE_SIGNING_IDENTITY=$APPLE_SIGNING_IDENTITY"
+            echo "APPLE_API_ISSUER=$APPLE_API_ISSUER"
+            echo "APPLE_API_KEY=$APPLE_API_KEY"
+            echo "APPLE_API_KEY_PATH=$RUNNER_TEMP/AuthKey.p8"
+          } >> "$GITHUB_ENV"
+
       # Builds the interface, stages the agent (scripts/stage-agent.mjs: on the Mac
       # both claude binaries, on Windows claude.exe), makes the app or the installer
       # with its updater signature, and uploads them to the draft. latest.json is
@@ -120,6 +147,31 @@ jobs:
           releaseId: ${{ needs.prepare.outputs.release_id }}
           includeUpdaterJson: false
           args: --config src-tauri/tauri.bundle.conf.json --config src-tauri/tauri.release.conf.json ${{ matrix.args }}
+
+      # Tauri notarizes the .app (and the .app.tar.gz the updater gets is made from
+      # it) but only signs the .dmg: notarized and stapled here, it opens without a
+      # warning when downloaded, and replaces the copy tauri-action put in the draft.
+      - if: matrix.platform == 'macos-latest' && env.APPLE_API_KEY_PATH != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          RELEASE_ID: ${{ needs.prepare.outputs.release_id }}
+        run: |
+          dmg=( src-tauri/target/universal-apple-darwin/release/bundle/dmg/*_${VERSION}_universal.dmg )
+          xcrun notarytool submit "${dmg[0]}" --key "$APPLE_API_KEY_PATH" --key-id "$APPLE_API_KEY" --issuer "$APPLE_API_ISSUER" --wait
+          xcrun stapler staple "${dmg[0]}"
+          asset=$(gh api --paginate "repos/${{ github.repository }}/releases/$RELEASE_ID/assets" \
+            --jq ".[] | select(.name | endswith(\"_${VERSION}_universal.dmg\")) | \"\(.id) \(.name)\"")
+          if [ "$(printf '%s\n' "$asset" | grep -c .)" -ne 1 ]; then
+            echo "::error::expected one .dmg in the draft, found: $asset"; exit 1
+          fi
+          gh api -X DELETE "repos/${{ github.repository }}/releases/assets/${asset%% *}"
+          curl --fail-with-body -sS -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary "@${dmg[0]}" \
+            "https://uploads.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID/assets?name=${asset#* }" > /dev/null
 
       # The installer once more, under a name without the version, for links that
       # always give the latest: releases/latest/download/Edukors-Graph-Editor-mac.dmg
@@ -142,13 +194,22 @@ jobs:
             --data-binary "@${files[0]}" \
             "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ needs.prepare.outputs.release_id }}/assets?name=${{ matrix.download }}" > /dev/null
 
-      # The universal app must carry the agent for both kinds of Mac.
+      # The universal app must carry the agent for both kinds of Mac, and, signed,
+      # pass Gatekeeper as a download would: the app and the .dmg, both notarized.
       - if: matrix.platform == 'macos-latest'
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
         run: |
-          SDK="src-tauri/target/universal-apple-darwin/release/bundle/macos/Edukors Graph Editor.app/Contents/Resources/agent/node_modules/@anthropic-ai"
+          BUNDLE=src-tauri/target/universal-apple-darwin/release/bundle
+          APP="$BUNDLE/macos/Edukors Graph Editor.app"
+          SDK="$APP/Contents/Resources/agent/node_modules/@anthropic-ai"
           for arch in arm64 x64; do
             test -x "$SDK/claude-agent-sdk-darwin-$arch/claude" || { echo "::error::the app has no claude for darwin-$arch"; exit 1; }
           done
+          if [ -n "$APPLE_API_KEY_PATH" ]; then
+            spctl --assess --type execute --verbose "$APP"
+            spctl --assess --type open --context context:primary-signature --verbose "$BUNDLE"/dmg/*_${VERSION}_universal.dmg
+          fi
 
   # latest.json, from the signatures both builds uploaded: written once, here,
   # since two builds updating the same file could each drop the other's platform.
