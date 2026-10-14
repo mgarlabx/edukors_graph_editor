@@ -6,11 +6,12 @@
 //! event, stamped with the generation of the process that wrote it, so that a
 //! line from a process already replaced is recognized as such.
 //!
-//! Which provider answers for the agent -- Claude Code through its SDK, the
-//! Antigravity CLI, Codex -- is the sidecar's business: it starts whatever it
-//! needs itself, and this side knows nothing about them. Every provider signs
-//! in with the account logged in on this machine, so the API keys of all three
-//! are taken out of the process's environment: an account, never a key.
+//! Which provider answers for the agent -- OpenCode, Claude Code through its
+//! SDK, the Antigravity CLI, Codex -- is the sidecar's business: it starts
+//! whatever it needs itself, and this side knows nothing about them. Every
+//! provider signs in with what is set up on this machine (an account, or the
+//! providers connected to OpenCode, which keeps their credentials itself), so
+//! the API keys in the environment are taken out of the process's.
 
 use std::collections::VecDeque;
 use std::io::{BufRead, BufReader, Write};

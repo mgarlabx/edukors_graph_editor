@@ -2,8 +2,8 @@
 /**
  * Finding and asking after the command-line tools the agent can run on.
  *
- * Only Claude Code travels inside the app. The Antigravity CLI and Codex are
- * the person's own install, so the editor has to find them the way a terminal
+ * Only Claude Code travels inside the app. OpenCode, the Antigravity CLI and
+ * Codex are the person's own install, so the editor has to find them the way a terminal
  * would: an app opened from the Finder has a short PATH, which is why the
  * usual places are tried by hand and, failing that, the login shell is asked.
  */

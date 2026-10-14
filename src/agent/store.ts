@@ -17,7 +17,7 @@ import { parseMcpConfig } from "./mcpConfig";
 import { applyEvent, emptyTranscript, fold, notice, settle, splitContext, type Transcript } from "./transcript";
 import { messageContext, selectionLabel } from "./context";
 import { runTool } from "./editorTools";
-import { usePrefs } from "../store/prefs";
+import { DEFAULT_PREFS, usePrefs } from "../store/prefs";
 import { openLink } from "../app/platform";
 
 export type Mode = "ask" | "auto" | "plan";
@@ -247,7 +247,7 @@ export const useAgent = create<AgentState>()((set, get) => {
     ...emptyTranscript(),
     connection: "idle",
     error: null,
-    provider: "claude",
+    provider: DEFAULT_PREFS.agent.provider,
     capabilities: null,
     available: [],
     account: null,

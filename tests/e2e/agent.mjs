@@ -9,10 +9,10 @@
 // With --live, the page talks to the real agent/sidecar.mjs (through a small
 // bridge here, standing in for the app's Rust side) and so to the provider,
 // with the account logged in on this Mac: one short edit of a course.
-//   node tests/e2e/agent.mjs [outDir] [--live] [--provider=claude|antigravity|codex] [--fake-agy]
+//   node tests/e2e/agent.mjs [outDir] [--live] [--provider=claude|opencode|antigravity|codex] [--fake-agy]
 //
-// --fake-agy and --fake-codex put tests/fake-agy.mjs and tests/fake-codex.mjs
-// in the place of the vendors' CLIs, so those providers can be driven on a
+// --fake-agy, --fake-codex and --fake-opencode put tests/fake-agy.mjs,
+// tests/fake-codex.mjs and tests/fake-opencode.mjs in the place of the vendors' CLIs, so those providers can be driven on a
 // machine that does not have them.
 import http from "node:http";
 import { spawn } from "node:child_process";
@@ -113,6 +113,7 @@ function scriptedTransport() {
         t: "ready",
         cwd: "/tmp",
         providers: [
+          { id: "opencode", available: false, reason: "missing" },
           { id: "claude", available: true, version: "test" },
           { id: "antigravity", available: true, version: "1.2.2" },
           { id: "codex", available: false, reason: "missing" },
@@ -256,6 +257,7 @@ function startBridge() {
             EDUKORS_AGENT_CWD: cwd,
             ...(args.includes("--fake-agy") ? { EDUKORS_AGY: join(root, "tests", "fake-agy.mjs") } : {}),
             ...(args.includes("--fake-codex") ? { EDUKORS_CODEX: join(root, "tests", "fake-codex.mjs") } : {}),
+            ...(args.includes("--fake-opencode") ? { EDUKORS_OPENCODE: join(root, "tests", "fake-opencode.mjs") } : {}),
           },
           stdio: ["pipe", "pipe", "pipe"],
         });
@@ -317,9 +319,9 @@ function bridgeTransport(base) {
 const bridge = live ? await startBridge() : null;
 if (bridge) await page.addInitScript(bridgeTransport, bridge.base);
 else await page.addInitScript(scriptedTransport);
-// A live run against another provider starts with it chosen in the preferences.
-if (live && liveProvider !== "claude")
-  await page.addInitScript((provider) => localStorage.setItem("edukors-editor.prefs", JSON.stringify({ agent: { provider } })), liveProvider);
+// The run starts on the provider it is about, chosen in the preferences: a new
+// install would start on OpenCode, which the scripted run does not play.
+await page.addInitScript((provider) => localStorage.setItem("edukors-editor.prefs", JSON.stringify({ agent: { provider } })), liveProvider);
 
 await page.goto(url);
 // The terms of use come first, on a fresh profile.

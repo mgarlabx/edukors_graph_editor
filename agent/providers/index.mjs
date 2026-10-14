@@ -7,15 +7,16 @@
  * (open, send, interrupt, set, close, list, history, remove, usage, login) and
  * speaks to the panel through the host (agent/host.js documents it).
  *
- * Only Claude Code travels inside the app. Antigravity and Codex are the
- * person's own install: the editor finds them, says so when they are missing,
- * and never downloads anything.
+ * Only Claude Code travels inside the app. OpenCode, Antigravity and Codex
+ * are the person's own install: the editor finds them, says so when they are
+ * missing, and never downloads anything.
  */
 
 /** In the order the panel offers them. */
-export const PROVIDER_IDS = /** @type {const} */ (["claude", "antigravity", "codex"]);
+export const PROVIDER_IDS = /** @type {const} */ (["opencode", "claude", "antigravity", "codex"]);
 
 const loaders = {
+  opencode: () => import("./opencode.mjs"),
   claude: () => import("./claude.mjs"),
   antigravity: () => import("./antigravity.mjs"),
   codex: () => import("./codex.mjs"),

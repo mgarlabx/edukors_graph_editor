@@ -1,7 +1,7 @@
 // @ts-check
 /**
  * The editor's tools over a local MCP server, for the providers that run as a
- * CLI of their own (Antigravity, Codex).
+ * CLI of their own (OpenCode, Antigravity, Codex).
  *
  * Claude Code is given the tools inside its own process, by the SDK. The other
  * providers only take MCP servers, so the same tool list (agent/tools.mjs) is

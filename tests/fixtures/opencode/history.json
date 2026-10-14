@@ -1,0 +1,182 @@
+[
+ {
+  "info": {
+   "id": "msg_13a22e88d001fU40Ls9irF3NsK",
+   "sessionID": "ses_ec5dd1786ffe7ATYOocYUHnt9X",
+   "role": "user",
+   "time": {
+    "created": 1791976728717
+   },
+   "agent": "edukors",
+   "model": {
+    "providerID": "mock",
+    "modelID": "mock-1"
+   },
+   "system": "Answer in Portuguese."
+  },
+  "parts": [
+   {
+    "id": "prt_13a22e890001xbxREG5BDulq9n",
+    "sessionID": "ses_ec5dd1786ffe7ATYOocYUHnt9X",
+    "messageID": "msg_13a22e88d001fU40Ls9irF3NsK",
+    "type": "text",
+    "text": "leia o curso"
+   }
+  ]
+ },
+ {
+  "info": {
+   "id": "msg_13a22e98a001384SINraAkhl9g",
+   "sessionID": "ses_ec5dd1786ffe7ATYOocYUHnt9X",
+   "role": "assistant",
+   "time": {
+    "created": 1791976728970,
+    "completed": 1791976729489
+   },
+   "parentID": "msg_13a22e88d001fU40Ls9irF3NsK",
+   "modelID": "mock-1",
+   "providerID": "mock",
+   "mode": "edukors",
+   "agent": "edukors",
+   "path": {
+    "cwd": "/Users/professora/Library/Application Support/org.edukors.grapheditor/agent/opencode/workspace",
+    "root": "/"
+   },
+   "cost": 0,
+   "tokens": {
+    "input": 0,
+    "output": 0,
+    "reasoning": 0,
+    "cache": {
+     "read": 0,
+     "write": 0
+    }
+   },
+   "finish": "tool-calls"
+  },
+  "parts": [
+   {
+    "id": "prt_13a22eb810013AIJQxcxeMlGvD",
+    "sessionID": "ses_ec5dd1786ffe7ATYOocYUHnt9X",
+    "messageID": "msg_13a22e98a001384SINraAkhl9g",
+    "type": "step-start"
+   },
+   {
+    "id": "prt_13a22eb83001OzfW2mvN6T3yCg",
+    "sessionID": "ses_ec5dd1786ffe7ATYOocYUHnt9X",
+    "messageID": "msg_13a22e98a001384SINraAkhl9g",
+    "type": "reasoning",
+    "text": "Vou ler o curso.",
+    "time": {
+     "start": 1791976729475,
+     "end": 1791976729476
+    }
+   },
+   {
+    "id": "prt_13a22eb85001FN5am0SbJFrxJF",
+    "sessionID": "ses_ec5dd1786ffe7ATYOocYUHnt9X",
+    "messageID": "msg_13a22e98a001384SINraAkhl9g",
+    "type": "tool",
+    "callID": "call_1",
+    "tool": "edukors_read_course",
+    "state": {
+     "status": "completed",
+     "input": {},
+     "output": "Course 'Gatos': 6 nodes, 5 edges",
+     "title": "",
+     "metadata": {
+      "truncated": false
+     },
+     "time": {
+      "start": 1791976729481,
+      "end": 1791976729486
+     }
+    }
+   },
+   {
+    "id": "prt_13a22eb8f001kQHOR34xoAOuWZ",
+    "sessionID": "ses_ec5dd1786ffe7ATYOocYUHnt9X",
+    "messageID": "msg_13a22e98a001384SINraAkhl9g",
+    "type": "step-finish",
+    "reason": "tool-calls",
+    "cost": 0,
+    "tokens": {
+     "input": 0,
+     "output": 0,
+     "reasoning": 0,
+     "cache": {
+      "read": 0,
+      "write": 0
+     }
+    }
+   }
+  ]
+ },
+ {
+  "info": {
+   "id": "msg_13a22eb92001INZFZkPJTMAuB5",
+   "sessionID": "ses_ec5dd1786ffe7ATYOocYUHnt9X",
+   "role": "assistant",
+   "time": {
+    "created": 1791976729490,
+    "completed": 1791976729513
+   },
+   "parentID": "msg_13a22e88d001fU40Ls9irF3NsK",
+   "modelID": "mock-1",
+   "providerID": "mock",
+   "mode": "edukors",
+   "agent": "edukors",
+   "path": {
+    "cwd": "/Users/professora/Library/Application Support/org.edukors.grapheditor/agent/opencode/workspace",
+    "root": "/"
+   },
+   "cost": 0,
+   "tokens": {
+    "input": 0,
+    "output": 0,
+    "reasoning": 0,
+    "cache": {
+     "read": 0,
+     "write": 0
+    }
+   },
+   "finish": "stop"
+  },
+  "parts": [
+   {
+    "id": "prt_13a22eba4001AjsIjVOqT6QUQW",
+    "sessionID": "ses_ec5dd1786ffe7ATYOocYUHnt9X",
+    "messageID": "msg_13a22eb92001INZFZkPJTMAuB5",
+    "type": "step-start"
+   },
+   {
+    "id": "prt_13a22eba6001O6LhvVvDewQVg3",
+    "sessionID": "ses_ec5dd1786ffe7ATYOocYUHnt9X",
+    "messageID": "msg_13a22eb92001INZFZkPJTMAuB5",
+    "type": "text",
+    "text": "Pronto. O curso tem 6 nós.",
+    "time": {
+     "start": 1791976729510,
+     "end": 1791976729511
+    }
+   },
+   {
+    "id": "prt_13a22eba8001VPtUmWbqmf3Ymc",
+    "sessionID": "ses_ec5dd1786ffe7ATYOocYUHnt9X",
+    "messageID": "msg_13a22eb92001INZFZkPJTMAuB5",
+    "type": "step-finish",
+    "reason": "stop",
+    "cost": 0,
+    "tokens": {
+     "input": 0,
+     "output": 0,
+     "reasoning": 0,
+     "cache": {
+      "read": 0,
+      "write": 0
+     }
+    }
+   }
+  ]
+ }
+]

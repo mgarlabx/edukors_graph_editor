@@ -1,7 +1,8 @@
 // @ts-check
 /**
  * Opening a terminal with a command, for the providers whose sign-in happens
- * in one (Claude Code's `claude` → /login, Antigravity's `agy`): the editor
+ * in one (Claude Code's `claude` → /login, Antigravity's `agy`, OpenCode's
+ * `opencode auth login`): the editor
  * cannot sign in on the person's behalf, so it puts them in front of the CLI
  * that can, with one click from the panel.
  */

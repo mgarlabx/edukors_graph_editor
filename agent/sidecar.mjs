@@ -9,7 +9,7 @@
  * logs go to stderr.
  *
  * What runs underneath is a provider (agent/providers/): Claude Code through
- * the Claude Agent SDK, Antigravity CLI or Codex. This file knows none of
+ * the Claude Agent SDK, OpenCode, Antigravity CLI or Codex. This file knows none of
  * them: it keeps the protocol, the conversation's mode and permissions, the
  * questions waiting for the person and the bridge to the editor's tools, and
  * hands the rest to the provider the panel asked for.
@@ -94,7 +94,7 @@ let current = null;
  */
 let opening = null;
 
-/** One instance per provider, kept between conversations (Codex keeps a process). @type {Map<string, any>} */
+/** One instance per provider, kept between conversations (OpenCode and Codex keep a process). @type {Map<string, any>} */
 const instances = new Map();
 
 /** The names of the tools the person's questions and plans go through, per provider. */

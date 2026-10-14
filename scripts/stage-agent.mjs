@@ -17,9 +17,9 @@
  * `claude.exe`. A package npm did not install here is fetched once with
  * `npm pack` and kept in node_modules/.cache/edukors-agent/.
  *
- * The other providers are not here: the Antigravity CLI and Codex are the
- * person's own install (hundreds of megabytes each, per platform), which the
- * agent finds on the machine and never ships.
+ * The other providers are not here: OpenCode, the Antigravity CLI and Codex
+ * are the person's own install (hundreds of megabytes each, per platform),
+ * which the agent finds on the machine and never ships.
  */
 import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { execFileSync } from "node:child_process";

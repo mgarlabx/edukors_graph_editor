@@ -169,7 +169,7 @@ function Start() {
     );
   if (connection === "error" && error) {
     const key = hasKey(`agent.err.${error.code}`) ? `agent.err.${error.code}` : "agent.err.failed";
-    const missing = error.code === "missing" || error.code === "agy-missing" || error.code === "codex-missing";
+    const missing = error.code === "missing" || error.code === "agy-missing" || error.code === "codex-missing" || error.code === "opencode-missing";
     return (
       <div className="agent-start">
         <div className="agent-notice agent-notice-error" role="alert">
