@@ -15,18 +15,22 @@
  * per platform, and resolves it by Node's architecture. The Mac app is
  * universal, so both Mac packages go in; on Windows (x64 only) it is
  * `claude.exe`; on Linux, the machine's own (glibc: the .deb and the AppImage
- * are built for it, not for musl). A package npm did not install here is fetched once with
+ * are built for it, not for musl), gzipped: the AppImage's linuxdeploy rewrites
+ * every ELF file it finds, and a rewritten `claude` (a Bun executable, its code
+ * appended to the file) no longer runs. The agent unpacks it on first use
+ * (packedBinary in agent/providers/claude.mjs). A package npm did not install here is fetched once with
  * `npm pack` and kept in node_modules/.cache/edukors-agent/.
  *
  * The other providers are not here: OpenCode, the Antigravity CLI and Codex
  * are the person's own install (hundreds of megabytes each, per platform),
  * which the agent finds on the machine and never ships.
  */
-import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { gzipSync } from "node:zlib";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const MODULES = join(ROOT, "node_modules");
@@ -47,8 +51,9 @@ const CHECKS = [
   "@modelcontextprotocol/sdk/client/sse.js",
 ];
 const WINDOWS = process.platform === "win32";
-const PLATFORMS = WINDOWS ? ["win32-x64"] : process.platform === "linux" ? [`linux-${process.arch}`] : ["darwin-arm64", "darwin-x64"];
-const binary = (platform) => (platform.startsWith("win32") ? "claude.exe" : "claude");
+const LINUX = process.platform === "linux";
+const PLATFORMS = WINDOWS ? ["win32-x64"] : LINUX ? [`linux-${process.arch}`] : ["darwin-arm64", "darwin-x64"];
+const binary = (platform) => (platform.startsWith("win32") ? "claude.exe" : platform.startsWith("linux") ? "claude.gz" : "claude");
 
 const manifest = (dir) => JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
 
@@ -101,7 +106,11 @@ function stagePlatform(platform, version) {
     const tar = WINDOWS ? join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe") : "tar";
     execFileSync(tar, ["-xzf", tarball, "-C", dest, "--strip-components=1"]);
   }
-  if (!WINDOWS) chmodSync(join(dest, binary(platform)), 0o755);
+  if (LINUX) {
+    const plain = join(dest, "claude");
+    writeFileSync(`${plain}.gz`, gzipSync(readFileSync(plain), { level: 6 }));
+    rmSync(plain);
+  } else if (!WINDOWS) chmodSync(join(dest, binary(platform)), 0o755);
 }
 
 rmSync(OUT, { recursive: true, force: true });

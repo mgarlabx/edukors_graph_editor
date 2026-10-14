@@ -6,7 +6,8 @@
 
 <p align="center">
   A visual <em>builder</em> that runs on your computer, for creating and editing adaptive courses<br>
-  in the <a href="https://github.com/mgarlabx/edukors_graph">Edukors Graph</a> format.
+  in the <a href="https://github.com/mgarlabx/edukors_graph">Edukors Graph</a> format.<br>
+  More information at <a href="https://edukors.org/graph/"><strong>edukors.org/graph</strong></a>.
 </p>
 
 <p align="center">

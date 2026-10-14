@@ -11,8 +11,11 @@
  * works, interrupt it, and change the model or the mode as it goes.
  */
 import { randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { chmodSync, createReadStream, createWriteStream, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { pipeline } from "node:stream/promises";
+import { createGunzip } from "node:zlib";
 import { fileURLToPath } from "node:url";
 import * as tools from "../tools.mjs";
 import * as ext from "../extensions.mjs";
@@ -39,6 +42,46 @@ function sdkVersion() {
   } catch {
     return undefined;
   }
+}
+
+let packed = /** @type {Promise<string | undefined> | undefined} */ (undefined);
+
+/**
+ * On Linux the app carries Claude Code gzipped (scripts/stage-agent.mjs), and
+ * an AppImage is read-only: it is unpacked once per SDK version into the
+ * user's cache, and the SDK told where. Elsewhere, and in development, the SDK
+ * finds its binary itself.
+ * @returns {Promise<string | undefined>}
+ */
+function packedBinary() {
+  packed ??= (async () => {
+    if (process.platform !== "linux") return undefined;
+    const entry = fileURLToPath(import.meta.resolve("@anthropic-ai/claude-agent-sdk"));
+    const gz = join(dirname(entry), "..", `claude-agent-sdk-linux-${process.arch}`, "claude.gz");
+    if (!existsSync(gz)) return undefined;
+    const cache = join(process.env.XDG_CACHE_HOME || join(homedir(), ".cache"), "edukors-graph-editor");
+    const name = `claude-${sdkVersion() ?? "unknown"}-${process.arch}`;
+    const target = join(cache, name, "claude");
+    if (existsSync(target)) return target;
+    mkdirSync(dirname(target), { recursive: true });
+    const partial = `${target}.${process.pid}.partial`;
+    await pipeline(createReadStream(gz), createGunzip(), createWriteStream(partial, { mode: 0o755 }));
+    chmodSync(partial, 0o755);
+    renameSync(partial, target);
+    // The versions before this one are no longer used.
+    for (const old of readdirSync(cache)) {
+      if (old.startsWith("claude-") && old !== name) rmSync(join(cache, old), { recursive: true, force: true });
+    }
+    return target;
+  })();
+  packed.catch(() => (packed = undefined));
+  return packed;
+}
+
+/** The SDK option that points at the unpacked binary, where there is one. */
+async function executable() {
+  const path = await packedBinary();
+  return path ? { pathToClaudeCodeExecutable: path } : {};
 }
 
 export async function detect() {
@@ -296,6 +339,7 @@ export function create(host) {
           includePartialMessages: true,
           thinking: { type: "adaptive", display: "summarized" },
           env: claudeEnv(),
+          ...(await executable()),
           stderr: (/** @type {string} */ text) => host.log("claude:", text.trimEnd()),
         },
       });
@@ -388,7 +432,7 @@ export function create(host) {
         const inbox = new Inbox();
         const q = api.query({
           prompt: inbox,
-          options: { cwd: host.cwd, settingSources: [], strictMcpConfig: true, persistSession: false, env: claudeEnv() },
+          options: { cwd: host.cwd, settingSources: [], strictMcpConfig: true, persistSession: false, env: claudeEnv(), ...(await executable()) },
         });
         const timer = setTimeout(() => q.close(), 30_000);
         try {
