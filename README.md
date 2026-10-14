@@ -1,18 +1,59 @@
-# Edukors Graph Editor
+<p align="center">
+  <img src="src-tauri/icons/128x128@2x.png" alt="" width="112">
+</p>
 
-Edukors Graph Editor is a visual *builder* that runs on your computer, for creating and editing adaptive courses in the [Edukors Graph](https://github.com/mgarlabx/edukors_graph) format.
+<h1 align="center">Edukors Graph Editor</h1>
 
-> **📥 [Download for Mac](https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-mac.dmg) · [Download for Windows](https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-windows.exe)** — free, for macOS 11+ (Apple Silicon and Intel) and Windows 10/11 (x64). See [Download](#download) for the details. The code can be freely downloaded and modified, to produce a Linux version too.
+<p align="center">
+  A visual <em>builder</em> that runs on your computer, for creating and editing adaptive courses<br>
+  in the <a href="https://github.com/mgarlabx/edukors_graph">Edukors Graph</a> format.
+</p>
+
+<p align="center">
+  <a href="https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-mac.dmg"><img src="https://img.shields.io/badge/Download-macOS-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Download for Mac"></a>
+  <a href="https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-windows.exe"><img src="https://img.shields.io/badge/Download-Windows-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Download for Windows"></a>
+  <a href="#download"><img src="https://img.shields.io/badge/Download-Linux-E95420?style=for-the-badge&logo=linux&logoColor=white" alt="Download for Linux"></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/mgarlabx/edukors_graph_editor/releases/latest"><img src="https://img.shields.io/github/v/release/mgarlabx/edukors_graph_editor?label=latest" alt="Latest release"></a>
+  <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license"></a>
+</p>
+
+<p align="center">
+  <sub>Free, for macOS 11+ (Apple Silicon and Intel), Windows 10/11 (x64) and Linux (x64: AppImage, or .deb for Debian and Ubuntu). See <a href="#download">Download</a> for the details.</sub>
+</p>
 
 ## Part of the Edukors Graph project
 
 [Edukors Graph](https://github.com/mgarlabx/edukors_graph) is an open standard for adaptive courses, linked to the [Edukors.org](https://edukors.org) project. The idea is an old one in education: give each student what they need, taking into account what they already know. To do this, the course is described as a graph. The **nodes** are what the student sees: a text, a video, a quiz, a writing task assessed by AI. The **edges** say where they go next, based on what they have done so far. Students who pass the quiz move on; those who don't receive a different explanation before trying again.
 
+```mermaid
+flowchart LR
+    A["📖 Text<br/>Fractions"] --> B["❓ Quiz"]
+    B -- "≥ 70% correct" --> C["🎬 Video<br/>Next topic"]
+    B -- "< 70%" --> D["💡 Text<br/>Another explanation"]
+    D --> B
+```
+
 The entire course fits in a single JSON file, and the project is made up of three pieces built around that file:
 
-- the **schema**, which defines the course format;
-- the **builder**, this editor, in which courses are created and edited;
-- the **player**, a server that delivers courses to students, including inside a learning management system (via LTI 1.3).
+<table>
+  <tr>
+    <td width="33%" valign="top">
+      <h3>📐 Schema</h3>
+      Defines the course format, and the rules a valid course follows.
+    </td>
+    <td width="33%" valign="top">
+      <h3>🛠️ Builder</h3>
+      <strong>This editor</strong>, in which courses are created and edited.
+    </td>
+    <td width="33%" valign="top">
+      <h3>▶️ Player</h3>
+      A server that delivers courses to students, including inside a learning management system (via LTI 1.3).
+    </td>
+  </tr>
+</table>
 
 The schema, the player and the [sample courses](https://github.com/mgarlabx/edukors_graph/blob/main/samples/samples.README.md) live in the [edukors_graph](https://github.com/mgarlabx/edukors_graph) repository, whose [README](https://github.com/mgarlabx/edukors_graph#readme) explains the standard in full. In this editor you see the course as a map and build or adjust it with your own hands, with an AI agent alongside if you wish. The result is the course file itself, which the player opens without any conversion.
 
@@ -20,11 +61,36 @@ The schema, the player and the [sample courses](https://github.com/mgarlabx/eduk
 
 The editor was made for teachers and course authors. With it you can:
 
-- design the course path, deciding what the student sees and where they go after each activity;
-- write the content of each step, in the course's languages;
-- check that the course is correct before publishing it;
-- take the course as if you were a student, to see what they will see;
-- ask an AI agent to create or change parts of the course for you.
+<table>
+  <tr>
+    <td width="33%" valign="top">
+      <h3>🗺️ Design</h3>
+      Design the course path, deciding what the student sees and where they go after each activity.
+    </td>
+    <td width="33%" valign="top">
+      <h3>✍️ Write</h3>
+      Write the content of each step, in the course's languages.
+    </td>
+    <td width="33%" valign="top">
+      <h3>✅ Check</h3>
+      Check that the course is correct before publishing it.
+    </td>
+  </tr>
+  <tr>
+    <td width="33%" valign="top">
+      <h3>🎓 Preview</h3>
+      Take the course as if you were a student, to see what they will see.
+    </td>
+    <td width="33%" valign="top">
+      <h3>🤖 Ask the AI</h3>
+      Ask an AI agent to create or change parts of the course for you.
+    </td>
+    <td width="33%" valign="top">
+      <h3>📦 Export</h3>
+      Produce a single HTML file that runs the course on its own, with no server.
+    </td>
+  </tr>
+</table>
 
 ## How it works
 
@@ -38,7 +104,7 @@ The editor was made for teachers and course authors. With it you can:
 
 **The content editor.** The text of a step, or the prompt of an AI step, opens in a full-screen editor with a formatting bar, in Markdown or HTML, one tab per language.
 
-**The preview.** You take the course as a student, using the project's own player. AI activities (generated texts and assessments) work for real when you provide an [OpenRouter](https://openrouter.ai) key, which is stored in the Mac Keychain (on Windows, in the Credential Manager). Without the key, the preview runs in a reduced mode, and you choose the assessment results yourself.
+**The preview.** You take the course as a student, using the project's own player. AI activities (generated texts and assessments) work for real when you provide an [OpenRouter](https://openrouter.ai) key, which is stored in the Mac Keychain (on Windows, in the Credential Manager; on Linux, in the desktop's keyring). Without the key, the preview runs in a reduced mode, and you choose the assessment results yourself.
 
 **Course tabs.** Several courses can be open at the same time, and you can copy activities from one to another.
 
@@ -48,7 +114,7 @@ The editor was made for teachers and course authors. With it you can:
 
 Each course is saved in a single file, `course.egf` (Edukors Graph Format: the course's JSON under its own extension, which the app is associated with), which is also what goes to the player. The Open dialog takes `.egf` only; an older `.json` course becomes one by renaming it. The position of each box on the map is saved in it too, in the node's `position` field, which players ignore.
 
-The teacher's guide explains how to use the editor step by step, in [Portuguese](docs/guia-do-professor.md), [English](docs/guia-do-professor.en.md) and [Spanish](docs/guia-do-professor.es.md). The app shows it under Help → Full guide, in the interface's language; the three files are bundled with it, so keep them in step.
+The teacher's guide explains how to use the editor step by step, in [Portuguese](docs/teacher-guide.md), [English](docs/teacher-guide.en.md) and [Spanish](docs/teacher-guide.es.md). The app shows it under Help → Full guide, in the interface's language; the three files are bundled with it, so keep them in step.
 
 ## Download
 
@@ -56,24 +122,28 @@ The teacher's guide explains how to use the editor step by step, in [Portuguese]
 | --- | --- | --- |
 | **Mac** | [Edukors-Graph-Editor-mac.dmg](https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-mac.dmg) | macOS 11 or later, Apple Silicon or Intel |
 | **Windows** | [Edukors-Graph-Editor-windows.exe](https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-windows.exe) | Windows 10 or 11, 64-bit (x64) |
+| **Linux** | [Edukors-Graph-Editor-linux.deb](https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-linux.deb) | Debian, Ubuntu (22.04 or later), Mint and their relatives, 64-bit (x64) |
+| | [Edukors-Graph-Editor-linux.AppImage](https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-linux.AppImage) | Other distributions, 64-bit (x64) |
 
 The links always give the latest version; every version is on the [releases](https://github.com/mgarlabx/edukors_graph_editor/releases) page, and the [CHANGELOG](CHANGELOG.md) says what changed in each.
 
 **On a Mac**, open the `.dmg` and drag the app into **Applications**. The app is signed and notarized by Apple, so the first time macOS only asks whether you want to open an app downloaded from the Internet: click **Open**.
 
-**On Windows**, run the installer. It installs for the current user, without asking for administrator rights. It is not signed yet, so Windows SmartScreen warns the first time: choose **More info → Run anyway**. If Windows says it *blocked* the app, with no such button, the computer has Smart App Control turned on or a policy that only allows signed programs; see [section 2 of the teacher's guide](docs/guia-do-professor.en.md#2-install-and-open).
+**On Windows**, run the installer. It installs for the current user, without asking for administrator rights. It is not signed yet, so Windows SmartScreen warns the first time: choose **More info → Run anyway**. If Windows says it *blocked* the app, with no such button, the computer has Smart App Control turned on or a policy that only allows signed programs; see [section 2 of the teacher's guide](docs/teacher-guide.en.md#2-install-and-open).
+
+**On Linux**, install the `.deb` with a double click or `sudo apt install ./Edukors-Graph-Editor-linux.deb`; it asks for your password. The AppImage needs no installing: make it executable (`chmod +x`) and open it.
 
 The AI agent runs on [Node.js](https://nodejs.org) (version 18 or later), which must be installed on the computer for the agent panel to work. Everything else in the editor works without it.
 
 **Updates.** The app updates itself: on opening, it checks for a new version once a day (this can be turned off in Preferences), and **Check for updates…** in the menu checks at any time. It asks before installing, and asks about unsaved courses first.
 
-**Terms of use.** The first time it opens, the editor asks you to accept the [terms of use](docs/termos-de-uso.en.md) (the MIT license, explained), which stay under Help → Terms of use.
+**Terms of use.** The first time it opens, the editor asks you to accept the [terms of use](docs/terms-of-use.en.md) (the MIT license, explained), which stay under Help → Terms of use.
 
-**Optional: AI in the preview.** Create a key at [OpenRouter](https://openrouter.ai) and paste it into **Preferences** (⌘, on the Mac, Ctrl+, on Windows).
+**Optional: AI in the preview.** Create a key at [OpenRouter](https://openrouter.ai) and paste it into **Preferences** (⌘, on the Mac, Ctrl+, on Windows and Linux).
 
 **Optional: the AI agent.** In **Preferences → AI agent → Provider**, pick the agent that answers in the panel. Claude Code comes inside the editor; [OpenCode](https://opencode.ai/docs/#install) (`opencode`, the default on a new install), [Antigravity](https://antigravity.google/docs/cli/install/) (`agy`) and [Codex](https://developers.openai.com/codex/cli/) are programs you install on your computer, and the panel shows how to install and sign in to the one you pick. The editor never downloads them for you. OpenCode answers with the provider you connect to it with `opencode auth login` (OpenCode Zen or Go, a ChatGPT or Copilot plan, an API key); OpenCode Zen's free models only answer OpenCode's own agent, so they do not work here. The same page holds standing instructions for the agent, its skills and its MCP servers.
 
-> The agent signs in with your own personal account in the chosen service, which works for people using the editor on their own computer. Distributing the app to other people may call for a different kind of authentication, depending on the service; see [docs/distribuicao.md](docs/distribuicao.md) (in Portuguese).
+> The agent signs in with your own personal account in the chosen service, which works for people using the editor on their own computer. Distributing the app to other people may call for a different kind of authentication, depending on the service; see [docs/distribution.md](docs/distribution.md) (in Portuguese).
 
 **First steps.** Download the [sample courses](https://github.com/mgarlabx/edukors_graph/tree/main/samples) of the Edukors Graph repository (`.egf` files, explained in its [samples README](https://github.com/mgarlabx/edukors_graph/blob/main/samples/samples.README.md)) and open them in the editor: they are the quickest way to see how a course is put together. They also run, with a short video each, at [edukors.org/graph](https://edukors.org/graph/).
 
@@ -105,15 +175,15 @@ The first time takes a few minutes, because the app is compiled. After that it i
 
 To build the app itself, use `npm run app:build`. It needs both Mac targets of Rust, added once with `rustup target add aarch64-apple-darwin x86_64-apple-darwin`. The app is universal (Apple Silicon and Intel) and carries the agent inside it. The `.app` and `.dmg` are placed in `src-tauri/target/universal-apple-darwin/release/bundle/`. A local build is signed only when the signing certificate is present in the environment; without it, open the app the first time with right-click → **Open**.
 
-The Windows installer can only be built on Windows. On a Windows machine with Rust and Node 22, `npm ci && npm run app:build:win` builds it. The published installers, for both systems, are built on GitHub by the release workflow that runs when a version tag is pushed; signing, notarization and releases are described in [docs/distribuicao.md](docs/distribuicao.md) (in Portuguese).
+The Windows installer can only be built on Windows, and the Linux ones on Linux. On a Windows machine with Rust and Node 22, `npm ci && npm run app:build:win` builds it; on Linux, with the libraries Tauri needs, `npm ci && npm run app:build:linux`. The published installers, for all three systems, are built on GitHub by the release workflow that runs when a version tag is pushed; signing, notarization and releases are described in [docs/distribution.md](docs/distribution.md) (in Portuguese).
 
 ## Project status
 
-The editor is experimental, like the Edukors Graph standard itself, and the course format may still change. It runs on macOS (universal: Apple Silicon and Intel), signed and notarized by Apple, and on Windows (x64), not signed yet. A Linux version is not built, but the code allows it.
+The editor is experimental, like the Edukors Graph standard itself, and the course format may still change. It runs on macOS (universal: Apple Silicon and Intel), signed and notarized by Apple, on Windows (x64), not signed yet, and on Linux (x64).
 
 ## For developers
 
-The app is built with [Tauri 2](https://tauri.app) (Rust) and React; the AI agent runs in a separate Node process (`agent/`), with one module per provider in `agent/providers/`. The agent architecture, tests, code structure and known limitations are described in [docs/desenvolvimento.md](docs/desenvolvimento.md), and signing, notarization and the Windows installer in [docs/distribuicao.md](docs/distribuicao.md) (both in Portuguese). Tests run with `npm test`, and `npm run update-assets` updates the schema, the player and the map viewer from the [edukors_graph](https://github.com/mgarlabx/edukors_graph) repository.
+The app is built with [Tauri 2](https://tauri.app) (Rust) and React; the AI agent runs in a separate Node process (`agent/`), with one module per provider in `agent/providers/`. The agent architecture, tests, code structure and known limitations are described in [docs/development.md](docs/development.md), and signing, notarization and the Windows and Linux installers in [docs/distribution.md](docs/distribution.md) (both in Portuguese). Tests run with `npm test`, and `npm run update-assets` updates the schema, the player and the map viewer from the [edukors_graph](https://github.com/mgarlabx/edukors_graph) repository.
 
 ## License
 

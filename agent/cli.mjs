@@ -52,7 +52,7 @@ export async function findCli(opts) {
   for (const entry of (process.env.PATH ?? "").split(delimiter)) if (entry) candidates.push(join(entry, binary));
   for (const candidate of candidates) if (existsSync(candidate) && runnable(candidate)) return candidate;
   if (!WINDOWS) {
-    const shell = process.env.SHELL || "/bin/zsh";
+    const shell = process.env.SHELL || (process.platform === "darwin" ? "/bin/zsh" : "/bin/sh");
     const { stdout } = await run(shell, ["-lc", `command -v ${opts.binary}`], 8_000);
     const path = stdout.trim().split("\n").filter(Boolean)[0];
     if (path && existsSync(path)) return path;

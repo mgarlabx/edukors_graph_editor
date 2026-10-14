@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The .egf type, so that file managers open a course with the editor
+     (src-tauri/tauri.linux.conf.json puts it in the .deb). -->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/vnd.edukors.graph+json">
+    <comment>Edukors Graph Course</comment>
+    <comment xml:lang="pt_BR">Curso Edukors Graph</comment>
+    <comment xml:lang="es">Curso Edukors Graph</comment>
+    <sub-class-of type="application/json"/>
+    <glob pattern="*.egf"/>
+  </mime-type>
+</mime-info>

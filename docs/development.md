@@ -13,7 +13,7 @@ npm run app:build      # .app e .dmg em src-tauri/target/release/bundle/
 npm run dev            # só a interface, num navegador (sem Keychain nem diálogos nativos)
 ```
 
-Versões novas saem pelo GitHub Actions, a partir de uma tag, com o `CHANGELOG.md` e `scripts/bump-version.mjs`. O app instalado se atualiza sozinho. Ver [Releases e atualização automática](distribuicao.md#releases-e-atualização-automática).
+Versões novas saem pelo GitHub Actions, a partir de uma tag, com o `CHANGELOG.md` e `scripts/bump-version.mjs`. O app instalado se atualiza sozinho. Ver [Releases e atualização automática](distribution.md#releases-e-atualização-automática).
 
 ## Agente de IA
 
@@ -33,7 +33,7 @@ painel (src/agent/)  ⇄  Rust (src-tauri/src/agent.rs)  ⇄  Node: agent/sideca
 - **Cada mensagem** leva na frente um bloco `<editor-context>` com o curso na tela, os outros abertos, a vista e a seleção (o chip ◎ do compositor tira a seleção); o painel não mostra esse bloco.
 - O processo procura o Node no PATH, nos lugares usuais (`~/.local/bin`, Homebrew, nvm, Volta…) e, por último, no shell de login, porque um app aberto pelo Finder não recebe o PATH do terminal (`EDUKORS_NODE` força um caminho).
 
-> **Atenção, se o app for distribuído**: a documentação do Agent SDK diz que, salvo aprovação prévia, a Anthropic não permite que terceiros ofereçam o login do claude.ai, nem os limites de uso dele, nos seus produtos, inclusive agentes feitos com o SDK; para isso, pede autenticação por chave de API. O agente daqui usa o login do Claude Code do próprio Mac, que serve ao uso pessoal; para entregar o app a professores, troque para uma chave de API (ver [distribuicao.md](distribuicao.md)).
+> **Atenção, se o app for distribuído**: a documentação do Agent SDK diz que, salvo aprovação prévia, a Anthropic não permite que terceiros ofereçam o login do claude.ai, nem os limites de uso dele, nos seus produtos, inclusive agentes feitos com o SDK; para isso, pede autenticação por chave de API. O agente daqui usa o login do Claude Code do próprio Mac, que serve ao uso pessoal; para entregar o app a professores, troque para uma chave de API (ver [distribution.md](distribution.md)).
 
 ## Testes
 
@@ -111,7 +111,7 @@ O script também vigia o código que o editor porta — `bridge.js`, `ai.php`, `
 
 ## Limitações conhecidas
 
-- **Assinatura**: o app do Mac sai assinado e notarizado pelo fluxo de release; um build local só é assinado quando o certificado *Developer ID* está no ambiente. O instalador do Windows ainda não é assinado. Ver [distribuicao.md](distribuicao.md).
+- **Assinatura**: o app do Mac sai assinado e notarizado pelo fluxo de release; um build local só é assinado quando o certificado *Developer ID* está no ambiente. O instalador do Windows ainda não é assinado. Ver [distribution.md](distribution.md).
 - Os testes com IA usam um modelo simulado. A integração foi verificada com a OpenRouter simulada no nível da rede; uma rodada com a chave real fica para o primeiro uso.
 - O `tools/judge-probe.php` não é executado nos testes (precisa da chave e da rede); os testes chamam diretamente as funções do `ai.php` que ele usa.
-- **O agente precisa do Node**: o processo `agent/sidecar.mjs` vai dentro do app (`src-tauri/agent-bundle/`, em `Contents/Resources/agent/` no Mac, via `tauri.bundle.conf.json`), mas roda no Node do computador do professor, que precisa estar instalado (ver [distribuicao.md](distribuicao.md#o-agente-de-ia)).
+- **O agente precisa do Node**: o processo `agent/sidecar.mjs` vai dentro do app (`src-tauri/agent-bundle/`, em `Contents/Resources/agent/` no Mac, via `tauri.bundle.conf.json`), mas roda no Node do computador do professor, que precisa estar instalado (ver [distribution.md](distribution.md#o-agente-de-ia)).

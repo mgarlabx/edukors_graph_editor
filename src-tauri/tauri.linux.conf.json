@@ -1,0 +1,24 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "targets": ["deb", "appimage"],
+    "fileAssociations": [
+      {
+        "ext": ["egf"],
+        "name": "Edukors Graph Course",
+        "description": "Curso Edukors Graph",
+        "role": "Editor",
+        "mimeType": "application/vnd.edukors.graph+json"
+      }
+    ],
+    "linux": {
+      "deb": {
+        "section": "education",
+        "depends": ["libdbus-1-3"],
+        "files": {
+          "/usr/share/mime/packages/edukors-graph-editor.xml": "linux/edukors-graph-editor.xml"
+        }
+      }
+    }
+  }
+}

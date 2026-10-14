@@ -499,9 +499,9 @@ fn is_course_file(path: &str) -> bool {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();
-    // A .egf opened from Explorer starts the app again with the file in its
-    // arguments; while one is running, that one takes the file instead.
-    #[cfg(windows)]
+    // A .egf opened from Explorer (or a Linux file manager) starts the app again
+    // with the file in its arguments; while one is running, that one takes the file instead.
+    #[cfg(any(windows, target_os = "linux"))]
     let builder = builder.plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
         let paths: Vec<String> = argv
             .iter()

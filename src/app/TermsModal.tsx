@@ -1,5 +1,5 @@
 /**
- * The terms of use (the MIT license, explained): docs/termos-de-uso*.md, in
+ * The terms of use (the MIT license, explained): docs/terms-of-use*.md, in
  * the interface's language. Until the person accepts the current version the
  * editor shows nothing else and does nothing; Help shows them again later.
  */
@@ -10,9 +10,9 @@ import { Modal } from "../ui/controls";
 import { Markdown } from "../agent/Markdown";
 import { UI_LANGS, t, useUiLang, type UiLang } from "../i18n";
 import { isTauri } from "./platform";
-import termsPt from "../../docs/termos-de-uso.md?raw";
-import termsEn from "../../docs/termos-de-uso.en.md?raw";
-import termsEs from "../../docs/termos-de-uso.es.md?raw";
+import termsPt from "../../docs/terms-of-use.md?raw";
+import termsEn from "../../docs/terms-of-use.en.md?raw";
+import termsEs from "../../docs/terms-of-use.es.md?raw";
 
 /** Bump it when the terms change: everyone is asked to accept them again. */
 export const TERMS_VERSION = "2026-10-06";

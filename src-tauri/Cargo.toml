@@ -39,6 +39,12 @@ objc2-foundation = "0.3"
 keyring = { version = "3", features = ["windows-native"] }
 tauri-plugin-single-instance = "2"
 
+# The desktop's keyring (GNOME Keyring, KWallet) through the Secret Service,
+# and, as on Windows, one window for every course opened from the file manager.
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3", features = ["sync-secret-service", "crypto-rust"] }
+tauri-plugin-single-instance = "2"
+
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt"] }
 

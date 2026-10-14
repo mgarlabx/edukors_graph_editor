@@ -5,6 +5,7 @@ Each version has its own section, written before the tag, **always in English**:
 ## Unreleased
 
 - **OpenCode as the AI agent:** the agent panel can now run on [OpenCode](https://opencode.ai), with any provider connected to it (`opencode auth login`): OpenCode Zen or Go, a ChatGPT or Copilot plan, or an API key. It is the first option in **Preferences → AI agent → Provider** and the default on a new install; existing installs keep the agent they had. OpenCode Zen's free models only answer OpenCode's own agent, so they are not offered.
+- **Linux version:** the editor now runs on Linux (x64), as a `.deb` for Debian, Ubuntu, Mint and their relatives, and as an AppImage for other distributions. It updates itself like the Mac and Windows versions; the OpenRouter key goes in the desktop's keyring, and with the `.deb`, double-clicking an `.egf` opens it in the editor.
 
 ## 2.13.1
 

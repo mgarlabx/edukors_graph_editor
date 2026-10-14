@@ -14,7 +14,8 @@
  * The Claude Agent SDK runs a native `claude` binary from a package of its own
  * per platform, and resolves it by Node's architecture. The Mac app is
  * universal, so both Mac packages go in; on Windows (x64 only) it is
- * `claude.exe`. A package npm did not install here is fetched once with
+ * `claude.exe`; on Linux, the machine's own (glibc: the .deb and the AppImage
+ * are built for it, not for musl). A package npm did not install here is fetched once with
  * `npm pack` and kept in node_modules/.cache/edukors-agent/.
  *
  * The other providers are not here: OpenCode, the Antigravity CLI and Codex
@@ -46,7 +47,7 @@ const CHECKS = [
   "@modelcontextprotocol/sdk/client/sse.js",
 ];
 const WINDOWS = process.platform === "win32";
-const PLATFORMS = WINDOWS ? ["win32-x64"] : ["darwin-arm64", "darwin-x64"];
+const PLATFORMS = WINDOWS ? ["win32-x64"] : process.platform === "linux" ? [`linux-${process.arch}`] : ["darwin-arm64", "darwin-x64"];
 const binary = (platform) => (platform.startsWith("win32") ? "claude.exe" : "claude");
 
 const manifest = (dir) => JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));

@@ -1,6 +1,6 @@
 /**
  * Help: the quick guide (a few steps and the shortcuts), the full teacher's
- * guide, docs/guia-do-professor*.md, and the terms of use, in the interface's
+ * guide, docs/teacher-guide*.md, and the terms of use, in the interface's
  * language.
  */
 import { useState } from "react";
@@ -11,9 +11,9 @@ import { t, useUiLang, type UiLang } from "../i18n";
 import { keyLabel } from "./os";
 import { TermsText } from "./TermsModal";
 import { APP_NAME, APP_VERSION } from "./version";
-import guidePt from "../../docs/guia-do-professor.md?raw";
-import guideEn from "../../docs/guia-do-professor.en.md?raw";
-import guideEs from "../../docs/guia-do-professor.es.md?raw";
+import guidePt from "../../docs/teacher-guide.md?raw";
+import guideEn from "../../docs/teacher-guide.en.md?raw";
+import guideEs from "../../docs/teacher-guide.es.md?raw";
 
 const GUIDES: Record<UiLang, string> = { pt: guidePt, en: guideEn, es: guideEs };
 

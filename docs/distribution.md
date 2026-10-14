@@ -114,9 +114,20 @@ O instalador do Windows (NSIS, `Edukors Graph Editor_<versão>_x64-setup.exe`) s
 - Um `.egf` aberto no Explorer com o editor já aberto vai para a janela que está aberta (`tauri-plugin-single-instance`).
 - Só x64. O instalador não é assinado: o SmartScreen avisa “O Windows protegeu o computador”, e a pessoa segue em **Mais informações → Executar assim mesmo** (o roteiro para os professores está no guia, seção 2, nos três idiomas). Para tirar o aviso é preciso um certificado de assinatura de código (OV, com a chave num serviço de assinatura em nuvem), configurado em `bundle.windows.signCommand`. O Azure Artifact Signing (antigo Trusted Signing) não emite certificados para organizações brasileiras.
 
+## Linux
+
+A versão Linux sai em dois formatos: um **AppImage** (um arquivo só, que roda em quase toda distribuição, sem instalar) e um **.deb** (Debian, Ubuntu, Mint, Pop!_OS e derivados). Os dois são feitos no GitHub Actions, num Ubuntu 22.04, junto com os outros sistemas: o que é compilado contra a glibc dele também roda nas distribuições mais novas. Num Linux com Rust, Node 22 e as bibliotecas do Tauri (`libwebkit2gtk-4.1-dev`, `libayatana-appindicator3-dev`, `librsvg2-dev`, `libxdo-dev`, `libssl-dev`, `libdbus-1-dev`, `patchelf`), o mesmo sai de `npm ci && npm run app:build:linux`, em `src-tauri/target/release/bundle/appimage/` e `deb/`.
+
+- `src-tauri/tauri.linux.conf.json`, que o Tauri lê só no Linux, troca `app`/`dmg` por `deb` e `appimage` e, como no Windows, associa só `.egf`. O `.deb` instala também `src-tauri/linux/edukors-graph-editor.xml`, que ensina o sistema o que é um `.egf` (`application/vnd.edukors.graph+json`); sem ele, o gerenciador de arquivos não sabe abri-lo com o editor. O AppImage não se integra ao sistema: não tem associação de arquivos nem entrada no menu, a não ser que a pessoa use algo como o AppImageLauncher.
+- O agente vai junto, com o `claude` do pacote `@anthropic-ai/claude-agent-sdk-linux-x64` (glibc; o `-musl` não serve a nenhum dos dois formatos). O Node continua sendo do usuário; `agent.rs` o procura no PATH, nos gerenciadores de versão, no Homebrew do Linux e em `/usr/bin`. Para entrar no Claude Code ou no OpenCode, o painel abre o terminal do sistema: `x-terminal-emulator` (Debian/Ubuntu) e, se não houver, GNOME Terminal, Konsole, Xfce Terminal ou xterm (`agent/terminal.mjs`).
+- A chave da OpenRouter fica no chaveiro da área de trabalho (GNOME Keyring, KWallet), pelo Secret Service. Sem um chaveiro rodando (num gerenciador de janelas mínimo, por exemplo), o editor não consegue guardar a chave.
+- Um `.egf` aberto no gerenciador de arquivos com o editor já aberto vai para a janela que está aberta (`tauri-plugin-single-instance`, como no Windows).
+- Só x64. Não há assinatura a fazer: no Linux, a confiança vem de onde se baixa, e o `.deb` não passa por um repositório (`apt`). Instalar o `.deb` pede a senha de administrador; o AppImage, não.
+- Atualizações: o AppImage se substitui sozinho. Quem instalou o `.deb` recebe o `.deb` novo, que o app instala com `dpkg -i` e, por isso, pede a senha de administrador (`linux-x86_64-deb` no `latest.json`, que o updater procura antes de `linux-x86_64`).
+
 ## Releases e atualização automática
 
-O app procura versões novas nos releases do GitHub (`tauri-plugin-updater`, configurado em `plugins.updater` do `src-tauri/tauri.conf.json`). Ao abrir, ele verifica em silêncio, no máximo uma vez por dia, e só se a caixa **Verificar atualizações automaticamente** estiver ligada nas Preferências. O item **Verificar atualizações…** fica no menu do app (Mac) ou no menu Ajuda (Windows) e sempre responde. Antes de baixar, o app pergunta sobre os cursos não salvos e encerra o agente. No Mac, o app novo substitui o antigo e o editor reinicia. No Windows, o app fecha, o instalador roda sem perguntas (modo `passive`, por usuário, sem pedir administrador) e abre o editor de novo. Código: `src/app/updates.ts` e `src/app/UpdateModal.tsx`.
+O app procura versões novas nos releases do GitHub (`tauri-plugin-updater`, configurado em `plugins.updater` do `src-tauri/tauri.conf.json`). Ao abrir, ele verifica em silêncio, no máximo uma vez por dia, e só se a caixa **Verificar atualizações automaticamente** estiver ligada nas Preferências. O item **Verificar atualizações…** fica no menu do app (Mac) ou no menu Ajuda (Windows e Linux) e sempre responde. Antes de baixar, o app pergunta sobre os cursos não salvos e encerra o agente. No Mac e no AppImage do Linux, o app novo substitui o antigo e o editor reinicia; o `.deb` é instalado de novo com a senha de administrador. No Windows, o app fecha, o instalador roda sem perguntas (modo `passive`, por usuário, sem pedir administrador) e abre o editor de novo. Código: `src/app/updates.ts` e `src/app/UpdateModal.tsx`.
 
 Cada atualização é verificada com uma chave própria do updater, independente dos certificados da Apple e do Windows. **Se a chave privada for perdida, os apps instalados não conseguem mais se atualizar** e todos teriam de reinstalar à mão.
 
@@ -135,7 +146,7 @@ npx tauri signer generate -w ~/.tauri/edukors-updater.key
 1. Escreva a seção da versão no `CHANGELOG.md` (`## 2.12.0`), **sempre em inglês**. Esse texto vai para a página do release e para o aviso dentro do app, igual para todos os idiomas da interface.
 2. `node scripts/bump-version.mjs 2.12.0`: atualiza a versão no `package.json`, no `package-lock.json`, no `tauri.conf.json`, no `Cargo.toml` e no `Cargo.lock`. Faça o commit e o push.
 3. `git tag v2.12.0 && git push origin v2.12.0`.
-4. O fluxo `.github/workflows/release.yml` confere a tag e as versões, cria um rascunho de release e gera, em paralelo, o app universal do Mac (`.dmg` e `.app.tar.gz`) e o instalador do Windows, cada um com sua assinatura `.sig`. Cada instalador também sobe uma segunda vez, com nome fixo, para os links de download (abaixo). Por fim, monta o `latest.json` com as três plataformas (`darwin-aarch64`, `darwin-x86_64`, `windows-x86_64`). Leva de 15 a 25 minutos.
+4. O fluxo `.github/workflows/release.yml` confere a tag e as versões, cria um rascunho de release e gera, em paralelo, o app universal do Mac (`.dmg` e `.app.tar.gz`) o instalador do Windows e o AppImage e o `.deb` do Linux, cada um com sua assinatura `.sig`. Cada instalador também sobe uma segunda vez, com nome fixo, para os links de download (abaixo). Por fim, monta o `latest.json` com as plataformas (`darwin-aarch64`, `darwin-x86_64`, `windows-x86_64`, `linux-x86_64` e `linux-x86_64-deb`). Leva de 15 a 25 minutos.
 5. Revise o rascunho e clique em **Publish**. Só então o `latest.json` passa a valer em `releases/latest/download/`, e os apps instalados enxergam a versão nova.
 
 **Não edite as notas no rascunho**: o `latest.json` já foi gerado com o texto do `CHANGELOG.md`, e a mudança não chega ao app. Para corrigir, apague o rascunho e a tag, corrija o `CHANGELOG.md` e repita.
@@ -148,8 +159,10 @@ Para um site ou e-mail, estes links baixam sempre o instalador da versão public
 
 - Mac (Apple Silicon e Intel): `https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-mac.dmg`
 - Windows (x64): `https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-windows.exe`
+- Linux (x64), AppImage: `https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-linux.AppImage`
+- Linux (x64), Debian/Ubuntu: `https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-linux.deb`
 
-São cópias, com nome sem versão, do `.dmg` e do `.exe` de cada release. A v2.12.0 saiu antes delas e não as tem: os links valem a partir da versão seguinte. A página com todos os arquivos é `https://github.com/mgarlabx/edukors_graph_editor/releases/latest`.
+São cópias, com nome sem versão, do `.dmg`, do `.exe`, do AppImage e do `.deb` de cada release. Os do Linux existem a partir da primeira versão com Linux. A v2.12.0 saiu antes delas e não as tem: os links valem a partir da versão seguinte. A página com todos os arquivos é `https://github.com/mgarlabx/edukors_graph_editor/releases/latest`.
 
 ### Testar
 
@@ -158,6 +171,7 @@ São cópias, com nome sem versão, do `.dmg` e do `.exe` de cada release. A v2.
 - o aviso aparece sozinho ao abrir, e **Verificar atualizações…** também o mostra;
 - com um curso não salvo, o app pergunta antes de baixar, e **Cancelar** interrompe a atualização;
 - no Windows, com o painel do agente aberto, a instalação termina e o app reabre;
+- no Linux, o AppImage se atualiza sem pedir senha, e o `.deb` pede a de administrador;
 - depois de atualizar, **Sobre** mostra a versão N+1;
 - sem internet, a verificação automática não diz nada, e a manual explica o erro;
 - com um `.sig` alterado no release de teste, o app recusa a atualização.

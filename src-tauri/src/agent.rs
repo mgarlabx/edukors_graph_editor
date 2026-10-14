@@ -220,7 +220,7 @@ pub fn find_node() -> Option<PathBuf> {
     login_shell_node().filter(|p| usable(p))
 }
 
-/// Where the installers and version managers put Node on a Mac.
+/// Where the installers and version managers put Node on a Mac or on Linux.
 #[cfg(not(windows))]
 fn usual_places() -> Vec<PathBuf> {
     let mut places = Vec::new();
@@ -230,7 +230,7 @@ fn usual_places() -> Vec<PathBuf> {
         }
         places.extend(versions_newest_first(&h.join(".nvm/versions/node"), "bin/node"));
     }
-    places.extend(["/opt/homebrew/bin/node", "/usr/local/bin/node", "/usr/bin/node"].map(PathBuf::from));
+    places.extend(["/opt/homebrew/bin/node", "/home/linuxbrew/.linuxbrew/bin/node", "/usr/local/bin/node", "/usr/bin/node"].map(PathBuf::from));
     places
 }
 
@@ -265,7 +265,7 @@ fn usual_places() -> Vec<PathBuf> {
 /// What the login shell finds: it reads the profile, where PATH is set.
 #[cfg(not(windows))]
 fn login_shell_node() -> Option<PathBuf> {
-    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".into());
+    let shell = std::env::var("SHELL").unwrap_or_else(|_| if cfg!(target_os = "macos") { "/bin/zsh" } else { "/bin/sh" }.into());
     let out = Command::new(shell).args(["-lc", "command -v node"]).stdin(Stdio::null()).output().ok()?;
     Some(PathBuf::from(String::from_utf8_lossy(&out.stdout).trim()))
 }

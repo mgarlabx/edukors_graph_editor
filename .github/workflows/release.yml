@@ -1,6 +1,6 @@
-# The release: the Mac app (universal) and the Windows installer, built on
-# GitHub's machines, with what the updater needs (the .app.tar.gz, the
-# installer's signature, latest.json), in a draft release. Nothing reaches the
+# The release: the Mac app (universal), the Windows installer and the Linux
+# AppImage and .deb, built on GitHub's machines, with what the updater needs
+# (the .app.tar.gz, the installers' signatures, latest.json), in a draft release. Nothing reaches the
 # installed apps until the draft is published.
 #
 #   git tag v2.12.0 && git push origin v2.12.0
@@ -24,7 +24,7 @@ concurrency:
   group: release-${{ github.ref }}
 
 jobs:
-  # One draft for both builds: each making its own could leave two.
+  # One draft for all builds: each making its own could leave several.
   prepare:
     runs-on: ubuntu-latest
     outputs:
@@ -88,6 +88,12 @@ jobs:
             args: ''
             installer: src-tauri/target/release/bundle/nsis/*_{version}_x64-setup.exe
             download: Edukors-Graph-Editor-windows.exe
+          # 22.04, the oldest Ubuntu GitHub has: what is built against its glibc
+          # also runs on the newer distributions.
+          - platform: ubuntu-22.04
+            args: ''
+            installer: src-tauri/target/release/bundle/appimage/*_{version}_amd64.AppImage
+            download: Edukors-Graph-Editor-linux.AppImage
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
@@ -107,10 +113,16 @@ jobs:
 
       - run: npm ci
 
+      # What Tauri builds on (WebKitGTK and the rest) and the keyring's D-Bus.
+      - if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libdbus-1-dev patchelf xdg-utils
+
       # The Apple credentials, for Tauri to sign and notarize the app: only when
       # the secrets are there, so that a fork without them still builds, unsigned.
       # tauri-action imports APPLE_CERTIFICATE (the .p12, in base64) into a keychain
-      # of its own; notarization uses the App Store Connect API key (docs/distribuicao.md).
+      # of its own; notarization uses the App Store Connect API key (docs/distribution.md).
       - if: matrix.platform == 'macos-latest'
         shell: bash
         env:
@@ -135,9 +147,9 @@ jobs:
           } >> "$GITHUB_ENV"
 
       # Builds the interface, stages the agent (scripts/stage-agent.mjs: on the Mac
-      # both claude binaries, on Windows claude.exe), makes the app or the installer
-      # with its updater signature, and uploads them to the draft. latest.json is
-      # the last job's, written once both builds are in.
+      # both claude binaries, on Windows claude.exe, on Linux the linux-x64 one),
+      # makes the app or the installers with their updater signatures, and uploads
+      # them to the draft. latest.json is the last job's, written once all builds are in.
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -174,25 +186,30 @@ jobs:
             "https://uploads.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID/assets?name=${asset#* }" > /dev/null
 
       # The installer once more, under a name without the version, for links that
-      # always give the latest: releases/latest/download/Edukors-Graph-Editor-mac.dmg
-      # and …-windows.exe (docs/distribuicao.md).
+      # always give the latest: releases/latest/download/Edukors-Graph-Editor-mac.dmg,
+      # …-windows.exe, …-linux.AppImage and …-linux.deb (docs/distribution.md).
       - shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ needs.prepare.outputs.version }}
         run: |
-          # This version's only: the build cache may hold an older one.
-          pattern='${{ matrix.installer }}'
-          pattern="${pattern//\{version\}/$VERSION}"
-          files=( $pattern )
-          if [ "${#files[@]}" -ne 1 ] || [ ! -f "${files[0]}" ]; then
-            echo "::error::expected one installer at $pattern, found: ${files[*]}"; exit 1
+          upload() {
+            # This version's only: the build cache may hold an older one.
+            local pattern="${1//\{version\}/$VERSION}"
+            local files=( $pattern )
+            if [ "${#files[@]}" -ne 1 ] || [ ! -f "${files[0]}" ]; then
+              echo "::error::expected one installer at $pattern, found: ${files[*]}"; exit 1
+            fi
+            curl --fail-with-body -sS -X POST \
+              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+              -H "Content-Type: application/octet-stream" \
+              --data-binary "@${files[0]}" \
+              "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ needs.prepare.outputs.release_id }}/assets?name=$2" > /dev/null
+          }
+          upload '${{ matrix.installer }}' '${{ matrix.download }}'
+          if [ '${{ matrix.platform }}' = ubuntu-22.04 ]; then
+            upload 'src-tauri/target/release/bundle/deb/*_{version}_amd64.deb' Edukors-Graph-Editor-linux.deb
           fi
-          curl --fail-with-body -sS -X POST \
-            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-            -H "Content-Type: application/octet-stream" \
-            --data-binary "@${files[0]}" \
-            "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ needs.prepare.outputs.release_id }}/assets?name=${{ matrix.download }}" > /dev/null
 
       # The universal app must carry the agent for both kinds of Mac, and, signed,
       # pass Gatekeeper as a download would: the app and the .dmg, both notarized.
@@ -211,8 +228,19 @@ jobs:
             spctl --assess --type open --context context:primary-signature --verbose "$BUNDLE"/dmg/*_${VERSION}_universal.dmg
           fi
 
-  # latest.json, from the signatures both builds uploaded: written once, here,
-  # since two builds updating the same file could each drop the other's platform.
+      # The .deb must carry the agent with Linux's claude, and the .egf type for
+      # the file managers.
+      - if: matrix.platform == 'ubuntu-22.04'
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          deb=( src-tauri/target/release/bundle/deb/*_${VERSION}_amd64.deb )
+          dpkg-deb -c "${deb[0]}" > contents.txt
+          grep -q 'agent/node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude$' contents.txt || { echo "::error::the .deb has no claude for linux-x64"; exit 1; }
+          grep -q 'usr/share/mime/packages/edukors-graph-editor.xml$' contents.txt || { echo "::error::the .deb has no .egf type"; exit 1; }
+
+  # latest.json, from the signatures the builds uploaded: written once, here,
+  # since builds updating the same file could each drop another's platform.
   updater-json:
     needs: [prepare, build]
     runs-on: ubuntu-latest
@@ -252,6 +280,12 @@ jobs:
             const win = named((n) => /-setup\.exe$/.test(n));
             const macEntry = { url: url(mac), signature: await signature(mac) };
             const winEntry = { url: url(win), signature: await signature(win) };
+            // The AppImage replaces itself; an editor installed from the .deb updates with
+            // the .deb, which the updater looks for under linux-x86_64-deb first.
+            const appImage = named((n) => n.endsWith(`_${version}_amd64.AppImage`));
+            const deb = named((n) => n.endsWith(`_${version}_amd64.deb`));
+            const linuxEntry = { url: url(appImage), signature: await signature(appImage) };
+            const debEntry = { url: url(deb), signature: await signature(deb) };
             const latest = {
               version,
               notes: require('fs').readFileSync('release-notes.md', 'utf8').trim(),
@@ -260,6 +294,8 @@ jobs:
                 'darwin-aarch64': macEntry,
                 'darwin-x86_64': macEntry,
                 'windows-x86_64': winEntry,
+                'linux-x86_64': linuxEntry,
+                'linux-x86_64-deb': debEntry,
               },
             };
             for (const old of assets.filter((a) => a.name === 'latest.json')) {

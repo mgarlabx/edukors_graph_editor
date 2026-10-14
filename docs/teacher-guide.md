@@ -21,7 +21,14 @@ Um curso é um **grafo**. Cada **nó** é um passo que o estudante vê ou faz (u
 
 Se o Windows disser que **bloqueou** o app, sem o botão *Executar assim mesmo*, o computador tem o **Controle Inteligente de Aplicativos** ligado ou uma regra da escola que só aceita programas assinados. Nesse caso, fale com quem cuida do computador.
 
-**Nos dois sistemas**, na primeira vez, o editor mostra os **Termos de uso** (a licença MIT, explicada): é preciso aceitá-los para continuar. Eles ficam depois em **Ajuda → Termos de uso**. A cada abertura, o editor mostra a sua versão, que também aparece no alto da **Ajuda**. A partir daí você pode criar um **Novo curso** ou **Abrir** um arquivo `.egf`. Para ver como um curso é montado, baixe os [cursos de exemplo](https://github.com/mgarlabx/edukors_graph/blob/main/samples/samples.README.md) (*Cats of the World*, oito arquivos `.egf`, cada um explicado) e abra-os no editor; eles também rodam, cada um com um vídeo curto, em [edukors.org/graph](https://edukors.org/graph/).
+**No Linux** (64 bits, x64):
+
+- No **Ubuntu, Debian, Mint** e derivados, baixe o [`Edukors-Graph-Editor-linux.deb`](https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-linux.deb) e abra-o com dois cliques (ou rode `sudo apt install ./Edukors-Graph-Editor-linux.deb` na pasta em que ele está). A instalação pede a sua senha; depois, o editor fica no menu de aplicativos, e um `.egf` abre nele com dois cliques.
+- Em **outras distribuições**, baixe o [`Edukors-Graph-Editor-linux.AppImage`](https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-linux.AppImage), marque-o como executável (botão direito → **Propriedades → Permissões → Permitir executar como programa**, ou `chmod +x` no terminal) e abra-o. Ele roda sem instalar, de onde estiver.
+
+As versões novas chegam pelo próprio editor; no `.deb`, a atualização pede a sua senha.
+
+**Em todos os sistemas**, na primeira vez, o editor mostra os **Termos de uso** (a licença MIT, explicada): é preciso aceitá-los para continuar. Eles ficam depois em **Ajuda → Termos de uso**. A cada abertura, o editor mostra a sua versão, que também aparece no alto da **Ajuda**. A partir daí você pode criar um **Novo curso** ou **Abrir** um arquivo `.egf`. Para ver como um curso é montado, baixe os [cursos de exemplo](https://github.com/mgarlabx/edukors_graph/blob/main/samples/samples.README.md) (*Cats of the World*, oito arquivos `.egf`, cada um explicado) e abra-os no editor; eles também rodam, cada um com um vídeo curto, em [edukors.org/graph](https://edukors.org/graph/).
 
 Dica: depois de instalado, um curso `.egf` abre no editor com duplo clique. Um curso `.json` antigo vira `.egf` trocando a extensão do arquivo (o conteúdo é o mesmo).
 
@@ -198,7 +205,7 @@ Em qualquer modo, **cada alteração do agente é um passo do desfazer**: ⌘Z d
 
 ## 13. Atalhos
 
-No Windows, ⌘ e ⌃ correspondem a Ctrl, ⌥ a Alt e ⇧ a Shift; dentro do editor, cada atalho já aparece com as teclas do seu sistema.
+No Windows e no Linux, ⌘ e ⌃ correspondem a Ctrl, ⌥ a Alt e ⇧ a Shift; dentro do editor, cada atalho já aparece com as teclas do seu sistema.
 
 | Atalho                  | Ação                                                         |
 | ----------------------- | -------------------------------------------------------------- |
