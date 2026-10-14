@@ -11,6 +11,9 @@
  * the installer run (which opens it again), and the agent's claude.exe, inside
  * the app's folder, would keep the installer from replacing it. On the Mac the
  * new app takes the old one's place and the app restarts.
+ *
+ * Installed from the Microsoft Store, the app does none of this: the Store
+ * brings the updates (scripts/make-msix.mjs).
  */
 import { create } from "zustand";
 import { check, type Update } from "@tauri-apps/plugin-updater";
@@ -21,6 +24,7 @@ import { disconnect } from "../agent/client";
 import { errorText } from "../i18n/errors";
 import { settleAll } from "./files";
 import { termsAccepted } from "./TermsModal";
+import { native } from "./platform";
 
 /** How long the quiet check waits before looking again. */
 export const CHECK_EVERY = 24 * 60 * 60 * 1000;
@@ -37,6 +41,11 @@ interface UpdateState {
 }
 
 export const useUpdate = create<UpdateState>()(() => ({ status: "checking", update: null, error: "", done: 0, total: null }));
+
+let store: Promise<boolean> | null = null;
+
+/** Whether the app came from the Microsoft Store, asked once. */
+export const fromStore = (): Promise<boolean> => (store ??= native.fromStore().catch(() => false));
 
 let waiting: (() => void) | null = null;
 
@@ -80,7 +89,7 @@ export async function checkForUpdate({ silent = false } = {}): Promise<boolean> 
 /** On opening: the quiet check, when the preferences allow it and a day has gone by since the last one that got an answer. */
 export async function autoCheck(now = Date.now()): Promise<void> {
   const { updates } = usePrefs.getState();
-  if (!updates.auto || now - updates.lastCheck < CHECK_EVERY) return;
+  if (!updates.auto || now - updates.lastCheck < CHECK_EVERY || (await fromStore())) return;
   if (await checkForUpdate({ silent: true })) await usePrefs.getState().save({ updates: { ...usePrefs.getState().updates, lastCheck: now } });
 }
 

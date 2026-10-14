@@ -33,11 +33,12 @@ tauri-plugin-process = "2"
 objc2 = "0.6"
 objc2-foundation = "0.3"
 
-# The Windows Credential Manager for the key, and one window for every
-# course opened from Explorer (see run() in src/lib.rs).
+# The Windows Credential Manager for the key, one window for every course
+# opened from Explorer, and whether the app came from the Store (see run() in src/lib.rs).
 [target.'cfg(windows)'.dependencies]
 keyring = { version = "3", features = ["windows-native"] }
 tauri-plugin-single-instance = "2"
+windows-sys = { version = "0.61", features = ["Win32_Storage_Packaging_Appx"] }
 
 # The desktop's keyring (GNOME Keyring, KWallet) through the Secret Service,
 # and, as on Windows, one window for every course opened from the file manager.

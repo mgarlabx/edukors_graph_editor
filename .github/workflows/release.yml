@@ -211,6 +211,19 @@ jobs:
             upload 'src-tauri/target/release/bundle/deb/*_{version}_amd64.deb' Edukors-Graph-Editor-linux.deb
           fi
 
+      # The same Windows app as an MSIX package, for the Microsoft Store, which
+      # signs it: kept with the run's artifacts (not in the release, since the
+      # package installs only from the Store), to be submitted in Partner Center.
+      - if: matrix.platform == 'windows-latest'
+        run: node scripts/make-msix.mjs
+
+      - if: matrix.platform == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: microsoft-store-msix
+          path: src-tauri/target/Edukors-Graph-Editor-${{ needs.prepare.outputs.version }}.msix
+          if-no-files-found: error
+
       # The universal app must carry the agent for both kinds of Mac, and, signed,
       # pass Gatekeeper as a download would: the app and the .dmg, both notarized.
       - if: matrix.platform == 'macos-latest'
@@ -236,7 +249,7 @@ jobs:
         run: |
           deb=( src-tauri/target/release/bundle/deb/*_${VERSION}_amd64.deb )
           dpkg-deb -c "${deb[0]}" > contents.txt
-          grep -q 'agent/node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude$' contents.txt || { echo "::error::the .deb has no claude for linux-x64"; exit 1; }
+          grep -q 'agent/node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude.gz$' contents.txt || { echo "::error::the .deb has no claude for linux-x64"; exit 1; }
           grep -q 'usr/share/mime/packages/edukors-graph-editor.xml$' contents.txt || { echo "::error::the .deb has no .egf type"; exit 1; }
 
   # latest.json, from the signatures the builds uploaded: written once, here,

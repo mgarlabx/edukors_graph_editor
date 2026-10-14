@@ -6,6 +6,7 @@
  */
 import { useEffect, useState, type ReactNode } from "react";
 import { native } from "../app/platform";
+import { fromStore } from "../app/updates";
 import { usePrefs, DEFAULT_PREFS, type Prefs } from "../store/prefs";
 import { useUi } from "../store/ui";
 import { modelIds } from "../ai/client";
@@ -35,6 +36,8 @@ export function PrefsDialog() {
   const [keyMessage, setKeyMessage] = useState("");
   const [models, setModels] = useState<string[]>([]);
   const [section, setSection] = useState<SectionId>("app");
+  // From the Microsoft Store the updates are the Store's: nothing to choose here.
+  const [storeInstall, setStoreInstall] = useState(false);
   const [draft, setDraft] = useState<Prefs>({
     uiLang: prefs.uiLang,
     theme: prefs.theme,
@@ -50,6 +53,7 @@ export function PrefsDialog() {
 
   useEffect(() => {
     modelIds().then(setModels).catch(() => undefined);
+    void fromStore().then(setStoreInstall);
   }, []);
 
   let judgeProblem = "";
@@ -153,10 +157,12 @@ export function PrefsDialog() {
                   ))}
                 </div>
               </Field>
-              <label className="check">
-                <input type="checkbox" checked={draft.updates.auto} onChange={(e) => setDraft({ ...draft, updates: { ...draft.updates, auto: e.target.checked } })} />
-                {t("prefs.autoUpdates")}
-              </label>
+              {!storeInstall && (
+                <label className="check">
+                  <input type="checkbox" checked={draft.updates.auto} onChange={(e) => setDraft({ ...draft, updates: { ...draft.updates, auto: e.target.checked } })} />
+                  {t("prefs.autoUpdates")}
+                </label>
+              )}
             </div>
           )}
 

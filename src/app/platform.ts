@@ -48,6 +48,7 @@ const browser: Record<string, (args: Record<string, unknown>) => Promise<unknown
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   },
   take_opened_files: async () => [],
+  from_store: async () => false,
   prefs_load: async () => JSON.parse(localStorage.getItem(PREFS) ?? "{}"),
   prefs_save: async ({ prefs }) => localStorage.setItem(PREFS, JSON.stringify(prefs)),
   key_status: async () => Boolean(localStorage.getItem(DEV_KEY)),
@@ -97,6 +98,8 @@ export const native = {
   readText: (path: string) => call<string>("read_text", { path }),
   writeText: (path: string, contents: string) => call<void>("write_text", { path, contents }),
   takeOpenedFiles: () => call<string[]>("take_opened_files"),
+  /** Installed from the Microsoft Store, which brings the updates itself. */
+  fromStore: () => call<boolean>("from_store"),
   prefsLoad: () => call<Record<string, unknown>>("prefs_load"),
   prefsSave: (prefs: unknown) => call<void>("prefs_save", { prefs }),
   keyStatus: () => call<boolean>("key_status"),

@@ -54,6 +54,27 @@ fn take_opened_files(state: State<OpenedFiles>) -> Vec<String> {
     std::mem::take(&mut *state.0.lock().unwrap())
 }
 
+/// Installed from the Microsoft Store (an MSIX package, scripts/make-msix.mjs):
+/// the Store brings the updates, so the app never looks for them itself.
+#[cfg(windows)]
+fn store_install() -> bool {
+    use windows_sys::Win32::Storage::Packaging::Appx::GetCurrentPackageFullName;
+    const APPMODEL_ERROR_NO_PACKAGE: u32 = 15700;
+    let mut len = 0u32;
+    // Asked with no room for the name: a package answers that it needs more.
+    unsafe { GetCurrentPackageFullName(&mut len, std::ptr::null_mut()) != APPMODEL_ERROR_NO_PACKAGE }
+}
+
+#[cfg(not(windows))]
+fn store_install() -> bool {
+    false
+}
+
+#[tauri::command]
+fn from_store() -> bool {
+    store_install()
+}
+
 // ---------------------------------------------------------------- prefs ----
 
 fn prefs_path(app: &AppHandle) -> Result<PathBuf, String> {
@@ -463,11 +484,13 @@ fn build_menu(app: &AppHandle, lang: &str, recent: &[String], map: &MapLangs, st
         .build()?;
 
     let help = SubmenuBuilder::new(app, l[17]).item(&item("help", l[18], None)?);
+    // On Windows, without "Check for updates" when the app came from the Store.
     #[cfg(not(target_os = "macos"))]
-    let help = help
-        .separator()
-        .item(&item("check-updates", l[31], None)?)
-        .item(&PredefinedMenuItem::about(app, Some(s[0]), None)?);
+    let help = help.separator();
+    #[cfg(not(target_os = "macos"))]
+    let help = if store_install() { help } else { help.item(&item("check-updates", l[31], None)?) };
+    #[cfg(not(target_os = "macos"))]
+    let help = help.item(&PredefinedMenuItem::about(app, Some(s[0]), None)?);
     let help = help.build()?;
 
     #[cfg(target_os = "macos")]
@@ -520,11 +543,12 @@ pub fn run() {
             let _ = window.set_focus();
         }
     }));
+    // Updates from the GitHub releases (src/app/updates.ts), and the restart after one on the Mac;
+    // not from the Store, which brings them itself.
+    let builder = if store_install() { builder } else { builder.plugin(tauri_plugin_updater::Builder::new().build()) };
     let app = builder
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        // Updates from the GitHub releases (src/app/updates.ts), and the restart after one on the Mac.
-        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .manage(OpenedFiles::default())
         .manage(agent::Agent::default())
@@ -557,6 +581,7 @@ pub fn run() {
             read_text,
             write_text,
             take_opened_files,
+            from_store,
             prefs_load,
             prefs_save,
             key_status,

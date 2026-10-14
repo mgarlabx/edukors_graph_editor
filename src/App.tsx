@@ -12,7 +12,7 @@ import { DocTabs } from "./app/DocTabs";
 import { HelpModal } from "./app/HelpModal";
 import { AboutModal } from "./app/AboutModal";
 import { UpdateModal } from "./app/UpdateModal";
-import { autoCheck, checkForUpdate } from "./app/updates";
+import { autoCheck, checkForUpdate, fromStore } from "./app/updates";
 import { TERMS_VERSION, TermsGate, termsAccepted } from "./app/TermsModal";
 import { Canvas } from "./canvas/Canvas";
 import { Inspector } from "./inspector/Inspector";
@@ -86,7 +86,7 @@ export function command(id: string) {
       return ui.openHelp();
     case "check-updates":
       // Not over a dialog that is open: the answer comes in a modal of its own.
-      return isTauri() && !asking() ? checkForUpdate() : undefined;
+      return isTauri() && !asking() ? fromStore().then((store) => (store ? undefined : checkForUpdate())) : undefined;
     case "agent":
       return store.course ? ui.toggleAgent() : undefined;
     case "sidebar":
