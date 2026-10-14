@@ -98,10 +98,10 @@ O app não precisa de entitlements especiais: lê e grava apenas os arquivos que
 
 ## O agente de IA
 
-O agente roda fora do `.app`: `src-tauri/src/agent.rs` inicia o Node com `agent/sidecar.mjs`, procurando o script primeiro em `Contents/Resources/agent/` e, se não houver, na pasta do projeto, cujo caminho fica gravado na compilação. Por isso o `.app` gerado neste Mac funciona aqui, e num outro Mac o painel diz que não encontrou os arquivos do agente. Para levá-lo junto seria preciso:
+O processo do agente vai dentro do app: `src-tauri/agent-bundle/` (o `agent/` e o `node_modules` que ele usa, com o Claude Code do Agent SDK) entra como recurso pelo `src-tauri/tauri.bundle.conf.json` e fica em `Contents/Resources/agent/` no Mac. `src-tauri/src/agent.rs` procura o script primeiro ali e, se não houver (no `npm run app:dev`), na pasta do projeto. O Node não vai junto: o app usa o do computador (18 ou mais novo, procurado no `PATH`, nos gerenciadores de versão e nos lugares de instalação comuns), e o painel avisa quando não o encontra. O que já foi resolvido e o que ainda pede atenção:
 
-1. Incluir `agent/` e o `node_modules` que ele usa (`@anthropic-ai/claude-agent-sdk`, o pacote do binário `@anthropic-ai/claude-agent-sdk-darwin-arm64`, ≈ 230 MB, e `zod`) em `bundle.resources`, com o binário do Claude Code assinado junto com o app para a notarização; ou compilar o processo num executável único (o SDK documenta `bun build --compile` com `extractFromBunfs`).
-2. Exigir o Node no Mac do professor, ou levá-lo junto.
+1. ~~Incluir `agent/` e o `node_modules` que ele usa (`@anthropic-ai/claude-agent-sdk`, o pacote do binário `@anthropic-ai/claude-agent-sdk-darwin-arm64`, ≈ 230 MB, e `zod`) em `bundle.resources`, com o binário do Claude Code assinado junto com o app para a notarização; ou compilar o processo num executável único (o SDK documenta `bun build --compile` com `extractFromBunfs`).~~ Feito, com o `agent-bundle/`.
+2. Exigir o Node no computador do professor, ou levá-lo junto. Hoje ele é exigido (README e guia do professor, seção 12).
 3. **Trocar a autenticação.** Hoje o agente usa o login do Claude Code do próprio Mac (a conta do Claude). A documentação do Agent SDK diz: *"Unless previously approved, Anthropic does not allow third party developers to offer claude.ai login or rate limits for their products, including agents built on the Claude Agent SDK. Please use the API key authentication methods described in this document instead."* Para entregar o app a outras pessoas, o caminho é uma chave de API da Anthropic (guardada no Keychain, como a da OpenRouter, e passada ao processo do agente como `ANTHROPIC_API_KEY`), ou uma aprovação da Anthropic.
 
 ## Windows

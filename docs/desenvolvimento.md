@@ -106,11 +106,11 @@ O script também vigia o código que o editor porta — `bridge.js`, `ai.php`, `
 | --- | --- |
 | Nome e licença | *Edukors Graph Editor*, MIT, como o repositório. |
 | Importar para um player remoto | Fica na exportação de arquivos (curso, mapa e player). |
-| `.edukors` ou dois arquivos | Um arquivo só, `curso.json`: a posição de cada nó no canvas vai no campo `position` do próprio nó, que o schema aceita e os players ignoram. |
+| `.edukors` ou dois arquivos | Um arquivo só, `curso.egf`: a posição de cada nó no canvas vai no campo `position` do próprio nó, que o schema aceita e os players ignoram. |
 
 ## Limitações conhecidas
 
-- **Assinatura e notarização** estão configuradas, mas exigem um certificado *Developer ID*, que não há nesta máquina: o `.app` gerado não é assinado. Ver [distribuicao.md](distribuicao.md).
+- **Assinatura**: o app do Mac sai assinado e notarizado pelo fluxo de release; um build local só é assinado quando o certificado *Developer ID* está no ambiente. O instalador do Windows ainda não é assinado. Ver [distribuicao.md](distribuicao.md).
 - Os testes com IA usam um modelo simulado. A integração foi verificada com a OpenRouter simulada no nível da rede; uma rodada com a chave real fica para o primeiro uso.
 - O `tools/judge-probe.php` não é executado nos testes (precisa da chave e da rede); os testes chamam diretamente as funções do `ai.php` que ele usa.
-- **O agente roda a partir da pasta do projeto**: o processo é `agent/sidecar.mjs` com o `node_modules` daqui (o SDK traz o Claude Code para Apple Silicon, ≈ 230 MB). Um `.app` gerado neste Mac o encontra pelo caminho do projeto gravado na compilação; levar o agente dentro do `.app`, para outro Mac, ainda não está feito (ver [distribuicao.md](distribuicao.md)).
+- **O agente precisa do Node**: o processo `agent/sidecar.mjs` vai dentro do app (`src-tauri/agent-bundle/`, em `Contents/Resources/agent/` no Mac, via `tauri.bundle.conf.json`), mas roda no Node do computador do professor, que precisa estar instalado (ver [distribuicao.md](distribuicao.md#o-agente-de-ia)).
