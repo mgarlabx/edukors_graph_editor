@@ -15,11 +15,16 @@ Un curso es un **grafo**. Cada **nodo** es un paso que el estudiante ve o hace (
 
 **En Windows** (10 u 11, 64 bits):
 
+1. Abra la página del editor en Microsoft Store, [Edukors Graph Editor](https://apps.microsoft.com/detail/9N0N0P3GVRCK), y haga clic en **Obtener** (si se abre la app de Microsoft Store, haga clic en **Obtener** también allí). Sin avisos y sin contraseña de administrador.
+2. El editor queda en el menú Inicio. Las versiones nuevas llegan por Microsoft Store, como las de cualquier app instalada desde ella.
+
+Sin Microsoft Store (algunos equipos escolares la tienen desactivada), use el instalador:
+
 1. Descargue [`Edukors-Graph-Editor-windows.exe`](https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-windows.exe). Si el navegador dice que el archivo no se descarga con frecuencia, abra el menú **…** junto a él y elija **Conservar** (en Edge, también **Mostrar más → Conservar de todas formas**).
-2. Abra el archivo descargado. El instalador todavía no tiene firma digital, por eso Windows muestra **Windows protegió su PC**. Haga clic en **Más información** y luego en **Ejecutar de todas formas**. El aviso aparece solo en esta primera instalación: las versiones nuevas llegan por el propio editor.
+2. Abra el archivo descargado. Este instalador no tiene firma digital, por eso Windows muestra **Windows protegió su PC**. Haga clic en **Más información** y luego en **Ejecutar de todas formas**. El aviso aparece solo en esta primera instalación: las versiones nuevas llegan por el propio editor.
 3. El instalador no pide contraseña de administrador; enseguida el editor se abre y queda en el menú Inicio.
 
-Si Windows dice que **bloqueó** la app, sin el botón *Ejecutar de todas formas*, el equipo tiene activado el **Control inteligente de aplicaciones** o una regla de la escuela que solo acepta programas firmados. En ese caso, hable con quien administra el equipo.
+Si Windows dice que **bloqueó** el instalador, sin el botón *Ejecutar de todas formas*, el equipo tiene activado el **Control inteligente de aplicaciones** o una regla de la escuela que solo acepta programas firmados. Instale desde Microsoft Store o hable con quien administra el equipo.
 
 **En Linux** (64 bits, x64):
 

@@ -13,7 +13,7 @@ npm run app:build      # .app e .dmg em src-tauri/target/release/bundle/
 npm run dev            # só a interface, num navegador (sem Keychain nem diálogos nativos)
 ```
 
-Versões novas saem pelo GitHub Actions, a partir de uma tag, com o `CHANGELOG.md` e `scripts/bump-version.mjs`. O app instalado se atualiza sozinho. Ver [Releases e atualização automática](distribution.md#releases-e-atualização-automática).
+Versões novas saem pelo GitHub Actions, a partir de uma tag, com o `CHANGELOG.md` e `scripts/bump-version.mjs`. O app instalado se atualiza sozinho. Ver [Releases e atualização automática](distribution.md#releases-and-automatic-updates).
 
 ## Agente de IA
 
@@ -111,7 +111,7 @@ O script também vigia o código que o editor porta — `bridge.js`, `ai.php`, `
 
 ## Limitações conhecidas
 
-- **Assinatura**: o app do Mac sai assinado e notarizado pelo fluxo de release; um build local só é assinado quando o certificado *Developer ID* está no ambiente. O instalador do Windows ainda não é assinado. Ver [distribution.md](distribution.md).
+- **Assinatura**: o app do Mac sai assinado e notarizado pelo fluxo de release; um build local só é assinado quando o certificado *Developer ID* está no ambiente. O instalador do Windows não é assinado; a cópia da Microsoft Store é assinada pela própria Store. Ver [distribution.md](distribution.md).
 - Os testes com IA usam um modelo simulado. A integração foi verificada com a OpenRouter simulada no nível da rede; uma rodada com a chave real fica para o primeiro uso.
 - O `tools/judge-probe.php` não é executado nos testes (precisa da chave e da rede); os testes chamam diretamente as funções do `ai.php` que ele usa.
-- **O agente precisa do Node**: o processo `agent/sidecar.mjs` vai dentro do app (`src-tauri/agent-bundle/`, em `Contents/Resources/agent/` no Mac, via `tauri.bundle.conf.json`), mas roda no Node do computador do professor, que precisa estar instalado (ver [distribution.md](distribution.md#o-agente-de-ia)).
+- **O agente precisa do Node**: o processo `agent/sidecar.mjs` vai dentro do app (`src-tauri/agent-bundle/`, em `Contents/Resources/agent/` no Mac, via `tauri.bundle.conf.json`), mas roda no Node do computador do professor, que precisa estar instalado (ver [distribution.md](distribution.md#the-ai-agent)).

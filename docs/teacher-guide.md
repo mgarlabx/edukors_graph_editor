@@ -15,11 +15,16 @@ Um curso é um **grafo**. Cada **nó** é um passo que o estudante vê ou faz (u
 
 **No Windows** (10 ou 11, 64 bits):
 
+1. Abra a página do editor na Microsoft Store, [Edukors Graph Editor](https://apps.microsoft.com/detail/9N0N0P3GVRCK), e clique em **Obter** (se o app da Microsoft Store abrir, clique em **Obter** nele também). Sem aviso e sem senha de administrador.
+2. O editor fica no menu Iniciar. As versões novas chegam pela Microsoft Store, como as de qualquer app instalado por ela.
+
+Sem a Microsoft Store (alguns computadores de escola a têm desligada), use o instalador:
+
 1. Baixe o [`Edukors-Graph-Editor-windows.exe`](https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-windows.exe). Se o navegador disser que o arquivo não é baixado com frequência, abra o menu **…** ao lado dele e escolha **Manter** (no Edge, também **Mostrar mais → Manter assim mesmo**).
-2. Abra o arquivo baixado. O instalador ainda não tem assinatura digital, por isso o Windows mostra **O Windows protegeu o computador**. Clique em **Mais informações** e depois em **Executar assim mesmo**. O aviso aparece só nessa primeira instalação: as versões novas chegam pelo próprio editor.
+2. Abra o arquivo baixado. Esse instalador não tem assinatura digital, por isso o Windows mostra **O Windows protegeu o computador**. Clique em **Mais informações** e depois em **Executar assim mesmo**. O aviso aparece só nessa primeira instalação: as versões novas chegam pelo próprio editor.
 3. O instalador não pede senha de administrador; em seguida o editor abre e fica no menu Iniciar.
 
-Se o Windows disser que **bloqueou** o app, sem o botão *Executar assim mesmo*, o computador tem o **Controle Inteligente de Aplicativos** ligado ou uma regra da escola que só aceita programas assinados. Nesse caso, fale com quem cuida do computador.
+Se o Windows disser que **bloqueou** o instalador, sem o botão *Executar assim mesmo*, o computador tem o **Controle Inteligente de Aplicativos** ligado ou uma regra da escola que só aceita programas assinados. Instale pela Microsoft Store ou fale com quem cuida do computador.
 
 **No Linux** (64 bits, x64):
 

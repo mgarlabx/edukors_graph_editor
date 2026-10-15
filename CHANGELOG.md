@@ -2,6 +2,10 @@
 
 Each version has its own section, written before the tag, **always in English**: its text goes to the release page on GitHub and to the update notice inside the app (`scripts/release-notes.mjs`). A section changed after the build does not reach the app.
 
+## 2.14.1
+
+- **Windows:** the AI agent no longer stops as it starts ("The agent process stopped while starting", with `EISDIR: illegal operation on a directory, lstat 'C:'`).
+
 ## 2.14.0
 
 - **OpenCode as the AI agent:** the agent panel can now run on [OpenCode](https://opencode.ai), with any provider connected to it (`opencode auth login`): OpenCode Zen or Go, a ChatGPT or Copilot plan, or an API key. It is the first option in **Preferences → AI agent → Provider** and the default on a new install; existing installs keep the agent they had. OpenCode Zen's free models only answer OpenCode's own agent, so they are not offered.

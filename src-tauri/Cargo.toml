@@ -1,6 +1,6 @@
 [package]
 name = "edukors-editor"
-version = "2.14.0"
+version = "2.14.1"
 description = "Editor visual de cursos Edukors Graph"
 authors = ["Edukors"]
 license = "MIT"
@@ -27,6 +27,8 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 tokio = { version = "1", features = ["time"] }
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
+# Paths without the \\?\ prefix, which Node cannot start a script from (src/agent.rs).
+dunce = "1"
 
 # The Edit menu without the items macOS adds to it (src/macos.rs).
 [target.'cfg(target_os = "macos")'.dependencies]

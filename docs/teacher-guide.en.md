@@ -15,11 +15,16 @@ A course is a **graph**. Each **node** is a step the student sees or does (a tex
 
 **On Windows** (10 or 11, 64-bit):
 
+1. Open the editor's page in the Microsoft Store, [Edukors Graph Editor](https://apps.microsoft.com/detail/9N0N0P3GVRCK), and click **Get** (if the Microsoft Store app opens, click **Get** there too). No warning, no administrator password.
+2. The editor stays in the Start menu. New versions come through the Microsoft Store, like those of any other app installed from it.
+
+Without the Microsoft Store (some school computers have it turned off), use the installer instead:
+
 1. Download [`Edukors-Graph-Editor-windows.exe`](https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-windows.exe). If the browser says the file isn't commonly downloaded, open the **…** menu next to it and choose **Keep** (in Edge, also **Show more → Keep anyway**).
-2. Open the downloaded file. The installer has no digital signature yet, so Windows shows **Windows protected your PC**. Click **More info** and then **Run anyway**. The warning appears only on this first installation: new versions come through the editor itself.
+2. Open the downloaded file. This installer has no digital signature, so Windows shows **Windows protected your PC**. Click **More info** and then **Run anyway**. The warning appears only on this first installation: new versions come through the editor itself.
 3. The installer doesn't ask for an administrator password; then the editor opens, and it stays in the Start menu.
 
-If Windows says it **blocked** the app, with no *Run anyway* button, the computer has **Smart App Control** turned on, or a school policy that only allows signed programs. In that case, talk to whoever looks after the computer.
+If Windows says it **blocked** the installer, with no *Run anyway* button, the computer has **Smart App Control** turned on, or a school policy that only allows signed programs. Install from the Microsoft Store, or talk to whoever looks after the computer.
 
 **On Linux** (64-bit, x64):
 

@@ -75,8 +75,11 @@ pub fn agent_start(app: AppHandle, agent: State<Agent>) -> Result<Started, Strin
         }
     }
     let node = find_node().ok_or("node-missing")?;
-    let script = find_script(&app).ok_or("sidecar-missing")?;
-    let cwd = app.path().app_data_dir().map_err(|e| e.to_string())?.join("agent");
+    // On Windows the resource folder comes as `\\?\C:\...`, and Node, resolving
+    // the script it is given, stops on that: "EISDIR: illegal operation on a
+    // directory, lstat 'C:'". The plain path is the same file.
+    let script = dunce::simplified(&find_script(&app).ok_or("sidecar-missing")?).to_path_buf();
+    let cwd = dunce::simplified(&app.path().app_data_dir().map_err(|e| e.to_string())?.join("agent")).to_path_buf();
     std::fs::create_dir_all(&cwd).map_err(|e| format!("{}: {e}", cwd.display()))?;
 
     let generation = agent.generation.fetch_add(1, Ordering::SeqCst) + 1;
