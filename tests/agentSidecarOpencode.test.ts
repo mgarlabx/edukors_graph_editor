@@ -30,10 +30,10 @@ afterAll(() => agent.stop());
 describe("the agent's process, on OpenCode", () => {
   let sid = "";
 
-  it("is the first provider, finds the CLI and opens a session with the providers the person connected", async () => {
+  it("is the last provider, finds the CLI and opens a session with the providers the person connected", async () => {
     const ready = agent.lines.find((m) => m.t === "ready");
-    expect(ready.providers.map((p: any) => p.id)).toEqual(["opencode", "claude", "antigravity", "codex"]);
-    expect(ready.providers[0]).toMatchObject({ id: "opencode", available: true, version: "1.19.0" });
+    expect(ready.providers.map((p: any) => p.id)).toEqual(["claude", "codex", "antigravity", "kiro", "kimi", "opencode"]);
+    expect(ready.providers.at(-1)).toMatchObject({ id: "opencode", available: true, version: "1.19.0" });
     const opened: any = await agent.request("open", { provider: "opencode", model: "default", mode: "ask", effort: "auto", instructions: "Fale sempre em português.", mcp: {} });
     sid = opened.sessionId;
     expect(sid).toBe("ses_0001");

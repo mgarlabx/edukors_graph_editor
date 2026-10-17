@@ -2,6 +2,11 @@
 
 Each version has its own section, written before the tag, **always in English**: its text goes to the release page on GitHub and to the update notice inside the app (`scripts/release-notes.mjs`). A section changed after the build does not reach the app.
 
+## 2.17.0
+
+- **Kiro and Kimi Code as the AI agent:** the agent panel can now run on [Kiro](https://kiro.dev/docs/cli/installation/) (`kiro-cli`, signed in with `kiro-cli login`) and on [Kimi Code](https://moonshotai.github.io/kimi-code/en/guides/getting-started.html) (`kimi`, signed in with `kimi login`, or with the providers set up in it). Both are your own install, like the other agents, and work with the editor's skills and your MCP servers. Kimi Code can run read-only commands, each one put to you first; Kiro works through the editor's tools only. The older Python `kimi-cli` is not supported.
+- **Agent order:** **Preferences → AI agent → Provider** now lists Claude Code (the default), Codex, Antigravity, Kiro, Kimi Code and OpenCode.
+
 ## 2.16.0
 
 - **Claude Code is now your own install**, like the other AI agents: the editor uses the Claude Code installed on your computer instead of carrying its own copy, so the installers are hundreds of megabytes smaller and Claude Code keeps itself up to date. If it is missing, the agent panel shows **See how to install**; if it is too old, the panel asks you to update it (`claude update`).

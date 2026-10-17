@@ -61,10 +61,12 @@ export const DEFAULT_PREFS: Prefs = {
   agent: {
     provider: "claude",
     providers: {
-      opencode: { model: "default", effort: "auto" },
       claude: { model: "default", effort: "auto" },
-      antigravity: { model: "default", effort: "auto" },
       codex: { model: "default", effort: "auto" },
+      antigravity: { model: "default", effort: "auto" },
+      kiro: { model: "default", effort: "auto" },
+      kimi: { model: "default", effort: "auto" },
+      opencode: { model: "default", effort: "auto" },
     },
     model: "default",
     effort: "auto",

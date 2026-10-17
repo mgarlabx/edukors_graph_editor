@@ -8,7 +8,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { sessionTitle, useAgent } from "./store";
-import { PROVIDER_INSTALL } from "./events";
+import { NODE_INSTALL, PROVIDER_INSTALL } from "./events";
 import { Messages } from "./Messages";
 import { Asks } from "./Asks";
 import { Composer } from "./Composer";
@@ -169,7 +169,8 @@ function Start() {
     );
   if (connection === "error" && error) {
     const key = hasKey(`agent.err.${error.code}`) ? `agent.err.${error.code}` : "agent.err.failed";
-    const missing = error.code === "missing" || error.code === "agy-missing" || error.code === "codex-missing" || error.code === "opencode-missing";
+    // Each provider's own code (node-missing and sdk-missing are not a provider's).
+    const missing = error.code === "missing" || error.code === "agy-missing" || error.code === `${provider}-missing`;
     return (
       <div className="agent-start">
         <div className="agent-notice agent-notice-error" role="alert">
@@ -182,8 +183,12 @@ function Start() {
           )}
         </div>
         <div className="agent-start-actions">
-          {missing && (
-            <button type="button" className="btn btn-small btn-primary" onClick={() => void openLink(PROVIDER_INSTALL[provider])}>
+          {(missing || error.code === "node-missing") && (
+            <button
+              type="button"
+              className="btn btn-small btn-primary"
+              onClick={() => void openLink(missing ? PROVIDER_INSTALL[provider] : NODE_INSTALL)}
+            >
               {t("agent.provider.install")}
             </button>
           )}

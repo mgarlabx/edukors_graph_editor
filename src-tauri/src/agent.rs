@@ -6,8 +6,8 @@
 //! event, stamped with the generation of the process that wrote it, so that a
 //! line from a process already replaced is recognized as such.
 //!
-//! Which provider answers for the agent -- OpenCode, Claude Code through its
-//! SDK, the Antigravity CLI, Codex -- is the sidecar's business: it starts
+//! Which provider answers for the agent -- Claude Code through its SDK,
+//! Codex, the Antigravity CLI, Kiro, Kimi Code, OpenCode -- is the sidecar's business: it starts
 //! whatever it needs itself, and this side knows nothing about them. Every
 //! provider signs in with what is set up on this machine (an account, or the
 //! providers connected to OpenCode, which keeps their credentials itself), so

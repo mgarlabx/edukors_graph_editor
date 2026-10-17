@@ -2,7 +2,7 @@
  * What the agent's process tells the panel, whatever runs underneath it.
  *
  * The panel used to read the Claude Agent SDK's own messages. With more than
- * one provider behind the agent (OpenCode, Claude Code, Antigravity, Codex), each one
+ * one provider behind the agent (Claude Code, Codex, Antigravity, Kiro, Kimi, OpenCode), each one
  * speaks its own protocol, so the translation happens in the process
  * (agent/providers/*Events.mjs) and what crosses to the panel is this small
  * set of events: an answer being written block by block, the blocks once they
@@ -14,7 +14,7 @@
  */
 
 /** The providers the agent can run on, in the order the menu shows them. */
-export const PROVIDER_IDS = ["opencode", "claude", "antigravity", "codex"] as const;
+export const PROVIDER_IDS = ["claude", "codex", "antigravity", "kiro", "kimi", "opencode"] as const;
 export type ProviderId = (typeof PROVIDER_IDS)[number];
 
 /**
@@ -22,11 +22,16 @@ export type ProviderId = (typeof PROVIDER_IDS)[number];
  * missing. Not translated: they are the official pages.
  */
 export const PROVIDER_INSTALL: Record<ProviderId, string> = {
-  opencode: "https://opencode.ai/docs/#install",
   claude: "https://claude.com/claude-code",
-  antigravity: "https://antigravity.google/docs/cli/install/",
   codex: "https://developers.openai.com/codex/cli/",
+  antigravity: "https://antigravity.google/docs/cli/install/",
+  kiro: "https://kiro.dev/docs/cli/installation/",
+  kimi: "https://moonshotai.github.io/kimi-code/en/guides/getting-started.html",
+  opencode: "https://opencode.ai/docs/#install",
 };
+
+/** Where Node.js, which runs the agent, is installed from. */
+export const NODE_INSTALL = "https://nodejs.org/en/download";
 
 /** A complete block of an answer. `index` is its place in the message it came in. */
 export type Block =

@@ -31,7 +31,7 @@ describe("the agent's process, with a CLI provider", () => {
   it("finds the CLI and says what it can run", async () => {
     const ready = agent.lines.find((m) => m.t === "ready");
     expect(ready.providers.find((p: any) => p.id === "antigravity")).toMatchObject({ available: true, version: "1.2.2" });
-    expect(ready.providers.map((p: any) => p.id)).toEqual(["opencode", "claude", "antigravity", "codex"]);
+    expect(ready.providers.map((p: any) => p.id)).toEqual(["claude", "codex", "antigravity", "kiro", "kimi", "opencode"]);
   });
 
   it("opens a conversation with the models and the account the CLI reports", async () => {

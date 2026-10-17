@@ -11,8 +11,8 @@
  * SDK, the MCP SDK and zod, with everything those need, copied from the
  * project's node_modules so that the versions are the package-lock's.
  *
- * No agent's own program is here. Claude Code, OpenCode, the Antigravity CLI
- * and Codex are the person's own install (hundreds of megabytes each, per
+ * No agent's own program is here. Claude Code, Codex, the Antigravity CLI,
+ * Kiro, Kimi Code and OpenCode are the person's own install (hundreds of megabytes each, per
  * platform), which the agent finds on the machine and never ships. The Claude
  * Agent SDK comes without the native `claude` packages it lists as optional:
  * it is pointed at the person's `claude` (agent/providers/claude.mjs).

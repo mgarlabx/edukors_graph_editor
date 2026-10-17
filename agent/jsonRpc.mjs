@@ -4,7 +4,9 @@
  *
  * Codex's app server speaks this (`codex app-server`), and leaves the
  * `"jsonrpc": "2.0"` field off its messages, so this reader accepts a message
- * with or without it and writes them the same way. It carries three kinds of
+ * with or without it and writes them the same way. The Agent Client Protocol
+ * (agent/providers/acp.mjs) is the same traffic, and wants the field on every
+ * message, which `jsonrpc: true` puts there. It carries three kinds of
  * traffic: what the editor asks and waits for, what the server tells it
  * without being asked, and what the server asks the editor (an approval, a
  * question for the person), which must be answered by the same id.
@@ -20,10 +22,12 @@ const TIMEOUT_MS = 120_000;
  *   onNotification?: (method: string, params: any) => void;
  *   onRequest?: (method: string, params: any) => Promise<unknown>;
  *   log?: (...args: unknown[]) => void;
+ *   jsonrpc?: boolean;
  * }} handlers
  */
 export function attach(child, handlers = {}) {
   const log = handlers.log ?? (() => undefined);
+  const version = handlers.jsonrpc ? { jsonrpc: "2.0" } : {};
   /** @type {Map<number, { resolve: (v: any) => void; reject: (e: Error) => void; timer: NodeJS.Timeout }>} */
   const pending = new Map();
   let nextId = 1;
@@ -31,7 +35,7 @@ export function attach(child, handlers = {}) {
 
   const write = (/** @type {Record<string, unknown>} */ msg) => {
     if (closed || child.exitCode !== null) throw new Error("the app server is not running");
-    child.stdin.write(JSON.stringify(msg) + "\n");
+    child.stdin.write(JSON.stringify({ ...version, ...msg }) + "\n");
   };
 
   createInterface({ input: child.stdout }).on("line", (line) => {

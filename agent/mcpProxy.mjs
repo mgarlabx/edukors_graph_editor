@@ -1,7 +1,7 @@
 // @ts-check
 /**
  * The person's own MCP servers, for the providers that run as a CLI of their
- * own (OpenCode, Antigravity, Codex).
+ * own (Codex, Antigravity, Kiro, Kimi, OpenCode).
  *
  * Claude Code is handed the servers and connects to them itself, asking the
  * editor before each call (canUseTool). The other CLIs, in headless mode, ask

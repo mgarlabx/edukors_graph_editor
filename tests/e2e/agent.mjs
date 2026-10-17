@@ -9,7 +9,7 @@
 // With --live, the page talks to the real agent/sidecar.mjs (through a small
 // bridge here, standing in for the app's Rust side) and so to the provider,
 // with the account logged in on this Mac: one short edit of a course.
-//   node tests/e2e/agent.mjs [outDir] [--live] [--provider=claude|opencode|antigravity|codex] [--fake-agy]
+//   node tests/e2e/agent.mjs [outDir] [--live] [--provider=claude|codex|antigravity|kiro|kimi|opencode] [--fake-agy]
 //
 // --fake-agy, --fake-codex and --fake-opencode put tests/fake-agy.mjs,
 // tests/fake-codex.mjs and tests/fake-opencode.mjs in the place of the vendors' CLIs, so those providers can be driven on a
@@ -113,10 +113,12 @@ function scriptedTransport() {
         t: "ready",
         cwd: "/tmp",
         providers: [
-          { id: "opencode", available: false, reason: "missing" },
           { id: "claude", available: true, version: "test" },
-          { id: "antigravity", available: true, version: "1.2.2" },
           { id: "codex", available: false, reason: "missing" },
+          { id: "antigravity", available: true, version: "1.2.2" },
+          { id: "kiro", available: false, reason: "missing" },
+          { id: "kimi", available: false, reason: "missing" },
+          { id: "opencode", available: false, reason: "missing" },
         ],
       });
       return { generation: 1, fresh: true };

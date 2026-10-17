@@ -2,8 +2,8 @@
 /**
  * Finding and asking after the command-line tools the agent can run on.
  *
- * None of them travels inside the app. Claude Code, OpenCode, the Antigravity
- * CLI and Codex are the person's own install, so the editor has to find them the way a terminal
+ * None of them travels inside the app. Claude Code, Codex, the Antigravity
+ * CLI, Kiro, Kimi Code and OpenCode are the person's own install, so the editor has to find them the way a terminal
  * would: an app opened from the Finder has a short PATH, which is why the
  * usual places are tried by hand and, failing that, the login shell is asked.
  */
