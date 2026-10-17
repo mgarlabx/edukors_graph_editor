@@ -2,6 +2,11 @@
 
 Each version has its own section, written before the tag, **always in English**: its text goes to the release page on GitHub and to the update notice inside the app (`scripts/release-notes.mjs`). A section changed after the build does not reach the app.
 
+## 2.16.0
+
+- **Any language for a course:** in **Languages**, **Other language…** adds any ISO 639-1 code, with an optional region (such as `ko` or `pt-BR`), beyond the ones offered. Renaming a language's code is no longer offered there.
+- **A prompt written once:** a dynamic page's prompt can be written in a single language and left blank in the others; a blank one runs the prompt written in another language, and the validator no longer reports it as empty text.
+
 ## 2.15.0
 
 - **Claude Code is the default AI agent again** on a new install, since it comes inside the editor; existing installs keep the agent they chose.

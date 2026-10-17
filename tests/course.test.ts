@@ -14,6 +14,7 @@ import { diagnose } from "../src/validate";
 import { newCourse } from "../src/course/factory";
 import { holds } from "../src/course/condition";
 import { invert } from "../src/conditions/ConditionEditor";
+import { buildGeneration } from "../src/judge/pipeline";
 import { clone, loadSample, SAMPLES } from "./helpers";
 
 const errors = (c: unknown) => diagnose(c).issues.filter((i) => i.level === "error");
@@ -127,5 +128,29 @@ describe("course languages", () => {
     expect(c.info["other-languages"]).toEqual(["en", "zh"]);
     expect(c.nodes[0].title[0].lang).toBe("pt-BR");
     expect(validateRules(c).issues.filter((i) => i.level === "error")).toEqual([]);
+  });
+});
+
+describe("prompts left blank in a language", () => {
+  // A course in pt with en added: the prompt is written once, in English, in the pt slot.
+  const withBlankPrompt = () => {
+    const c = clone(loadSample(SAMPLES[2].path));
+    const dm = c.nodes.find((n: { type: string }) => n.type === "dynamic-md");
+    dm.content.prompt = [{ lang: "en", text: "Write about {{STORAGE: x}}." }, { lang: "pt", text: "" }];
+    return [c, dm.id] as const;
+  };
+
+  it("are not reported as empty text, unless every one is blank", () => {
+    const [c, id] = withBlankPrompt();
+    const empty = (course: unknown) => validateRules(course).issues.filter((i) => i.message.includes("empty prompt"));
+    expect(empty(c)).toEqual([]);
+    c.nodes.find((n: { id: string }) => n.id === id).content.prompt[0].text = " ";
+    expect(empty(c).length).toBe(1);
+  });
+
+  it("run the prompt written in another language", () => {
+    const [c, id] = withBlankPrompt();
+    const request = buildGeneration(c, id, "pt", {}, { model: "m", maxTokens: 100 });
+    expect(request.user).toBe("Write about .");
   });
 });

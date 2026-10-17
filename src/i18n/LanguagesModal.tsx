@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import { courseLangs, useEditor } from "../store/editor";
 import { useUi } from "../store/ui";
 import { Modal } from "../ui/controls";
-import { confirm, prompt } from "../ui/dialogs";
-import { addLanguage, ISO_639_1, LANG_RE, makeSource, OFFERED_LANGS, removeLanguage, renameLanguage } from "./languages";
+import { confirm, notify, prompt } from "../ui/dialogs";
+import { addLanguage, ISO_639_1, LANG_RE, makeSource, OFFERED_LANGS, removeLanguage } from "./languages";
 import { coverage } from "./texts";
 import { t } from "../i18n";
 
@@ -15,6 +15,14 @@ export function LanguagesModal() {
   const report = useMemo(() => coverage(course, langs), [course]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const canAdd = (code: string) => LANG_RE.test(code) && !langs.includes(code);
+
+  const addOther = async () => {
+    const code = (await prompt(t("lang.other"), t("lang.otherPrompt"), "", "ko, pt-BR"))?.trim();
+    if (!code) return;
+    if (!LANG_RE.test(code)) return notify(t("lang.other"), t("lang.otherInvalid", { code }));
+    if (langs.includes(code)) return notify(t("lang.other"), t("lang.otherExists", { code }));
+    update((c) => addLanguage(c, code), "lang-add");
+  };
 
   return (
     <Modal title={t("lang.title")} onClose={close} wide>
@@ -40,15 +48,6 @@ export function LanguagesModal() {
                   {r.total - r.missing.length}/{r.total}
                 </td>
                 <td className="row">
-                  <button
-                    className="link"
-                    onClick={async () => {
-                      const to = await prompt(t("lang.rename"), t("lang.renamePrompt", { lang: l }), l);
-                      if (to && LANG_RE.test(to) && !langs.includes(to)) update((c) => renameLanguage(c, l, to), "lang-rename");
-                    }}
-                  >
-                    {t("lang.rename")}
-                  </button>
                   {i > 0 && (
                     <>
                       <button className="link" onClick={() => update((c) => makeSource(c, l), "lang-source")}>
@@ -77,6 +76,9 @@ export function LanguagesModal() {
             <strong>{code}</strong> {ISO_639_1[code]}
           </button>
         ))}
+        <button className="chip" onClick={addOther}>
+          {t("lang.other")}
+        </button>
       </div>
     </Modal>
   );

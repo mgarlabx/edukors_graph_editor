@@ -329,6 +329,7 @@ function checkLocalized(
   langs: string[] | null,
   requiredLangs: string[] | null = null,
   label = "text",
+  oneIsEnough = false,
 ) {
   if (!Array.isArray(value) || value.length === 0) {
     rep.error(where, "localized-list", { label });
@@ -353,8 +354,12 @@ function checkLocalized(
     }
     const text = entry.text;
     if (typeof text !== "string") rep.error(spot, "text-string");
-    else if (blank(text)) rep.warn(spot, "text-empty", { label });
+    else if (blank(text) && !oneIsEnough) rep.warn(spot, "text-empty", { label });
   });
+  // A prompt is written once, usually in English, and runs in every language:
+  // the other entries may be left blank, as long as one of them is not.
+  if (oneIsEnough && value.every((e) => !isDict(e) || typeof e.text !== "string" || blank(e.text)))
+    rep.warn(where, "text-empty", { label });
   (requiredLangs ?? []).forEach((lang, i) => {
     if (!seen.includes(lang)) {
       if (i === 0) rep.error(where, "source-missing", { lang });
@@ -823,7 +828,7 @@ function validateNode(
       }
     }
   } else if (ntype === "dynamic-md" || ntype === "dynamic-html") {
-    checkLocalized(content.prompt, `${where}.content.prompt`, rep, null, null, "prompt");
+    checkLocalized(content.prompt, `${where}.content.prompt`, rep, null, null, "prompt", true);
     prompts = localizedTexts(content.prompt);
     let sourceJudge = content.from as string | null | undefined;
     if (sourceJudge !== undefined && sourceJudge !== null && (typeof sourceJudge !== "string" || !/^(c|s|n)[0-9]+$/.test(sourceJudge))) {

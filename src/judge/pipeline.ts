@@ -8,7 +8,7 @@
  * for means "not judged", and a judgement that did not happen produces no key
  * at all. tests/judge.parity.test.ts runs these against ai.php itself.
  */
-import type { Course, CourseNode } from "../schema/types";
+import type { Course, CourseNode, Loc } from "../schema/types";
 import { isJudge } from "../course/nodeTypes";
 import { localize } from "../course/localize";
 import { fill, type Params } from "../i18n";
@@ -181,7 +181,9 @@ export const buildGeneration = (
   const node = course.nodes.find((n) => n.id === nodeId);
   if (!node || (node.type !== "dynamic-md" && node.type !== "dynamic-html"))
     throw said("not-writer", { node: nodeId });
-  let prompt = localize(node.content?.prompt ?? [], lang);
+  // A language whose prompt was left blank runs the prompt of another one.
+  const written = ((node.content?.prompt ?? []) as Loc).filter((e) => String(e?.text ?? "").trim() !== "");
+  let prompt = localize(written, lang);
   if (prompt.trim() === "") throw said("no-prompt", { node: nodeId });
   prompt = resolveStorage(prompt, vars);
   const judge = course.nodes.find((n) => n.id === String(node.content?.from ?? ""));
