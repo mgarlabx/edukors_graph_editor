@@ -144,6 +144,9 @@ async function runTurn(threadId, text) {
   if (!cancelled) notify("turn/completed", { turn: { id: turnId, status: "completed" } });
 }
 
+/** @type {string[]} */
+let extraRoots = [];
+const disabled = new Set();
 const handlers = {
   initialize: () => ({ userAgent: "fake-codex" }),
   "account/read": () =>
@@ -170,6 +173,30 @@ const handlers = {
     writeFileSync(join(home, "last-thread.json"), JSON.stringify(params, null, 2));
     turns = [];
     return { thread: { id: "thr_fake", sessionId: "thr_fake", createdAt: 1790000000 } };
+  },
+  // Its own skills and the person's, as the real one finds them, and the
+  // editor's once their folder is added; what the editor turns off is noted.
+  "skills/extraRoots/set": (params) => {
+    extraRoots = params.extraRoots ?? [];
+    return {};
+  },
+  "skills/list": () => ({
+    data: [
+      {
+        cwd: ".",
+        errors: [],
+        skills: [
+          ...extraRoots.map((r) => ({ name: "editor-skill", description: "", path: join(r, "editor-skill", "SKILL.md"), scope: "user", enabled: true })),
+          { name: "imagegen", description: "", path: join(home, "skills", ".system", "imagegen", "SKILL.md"), scope: "system", enabled: !disabled.has(join(home, "skills", ".system", "imagegen", "SKILL.md")) },
+          { name: "theirs", description: "", path: "/Users/someone/.agents/skills/theirs/SKILL.md", scope: "user", enabled: !disabled.has("/Users/someone/.agents/skills/theirs/SKILL.md") },
+        ],
+      },
+    ],
+  }),
+  "skills/config/write": (params) => {
+    if (params.enabled === false) disabled.add(params.path);
+    writeFileSync(join(home, "skills-off.json"), JSON.stringify([...disabled]));
+    return { effectiveEnabled: params.enabled };
   },
   "thread/resume": (params) => ({ thread: { id: params.threadId } }),
   "thread/list": () => ({ data: [{ id: "thr_fake", name: "Conversa de teste", preview: "Adicione um passo", updatedAt: 1790000000 }] }),

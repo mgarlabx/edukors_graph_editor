@@ -33,7 +33,7 @@ describe("the agent's process, on Codex", () => {
     sid = opened.sessionId;
     expect(sid).toBe("thr_fake");
     expect(opened.account).toMatchObject({ provider: "codex", signedIn: true, email: "professora@exemplo.org", plan: "pro" });
-    expect(opened.capabilities).toMatchObject({ efforts: true, usage: true, bash: true, skills: false, ownQuestions: false });
+    expect(opened.capabilities).toMatchObject({ efforts: true, usage: true, bash: true, skills: true, ownQuestions: false });
     // The hidden model stays hidden, and the default stands for the one Codex recommends.
     expect(opened.models.map((m: any) => m.value)).toEqual(["default", "gpt-6.1-sol", "gpt-6.1-mini"]);
     expect(opened.models[0]).toMatchObject({ displayName: "GPT-6.1 Sol", resolved: "gpt-6.1-sol" });
@@ -54,6 +54,9 @@ describe("the agent's process, on Codex", () => {
     expect(config).toContain('sandbox_mode = "read-only"');
     expect(config).toMatch(/\[mcp_servers\.edukors\]\nurl = "http:\/\/127\.0\.0\.1:\d+\/mcp"/);
     expect(config).toContain('bearer_token_env_var = "EDUKORS_MCP_TOKEN"');
+    // Only the editor's skills: Codex's own and the person's are turned off.
+    const off = JSON.parse(readFileSync(join(agent.cwd, "codex", "skills-off.json"), "utf8"));
+    expect(off).toEqual([join(agent.cwd, "codex", "skills", ".system", "imagegen", "SKILL.md"), "/Users/someone/.agents/skills/theirs/SKILL.md"]);
     const thread = JSON.parse(readFileSync(join(agent.cwd, "codex", "last-thread.json"), "utf8"));
     expect(thread.sandboxPolicy).toEqual({ type: "readOnly" });
     expect(thread.approvalPolicy).toBe("untrusted");

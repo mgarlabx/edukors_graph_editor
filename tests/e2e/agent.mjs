@@ -78,7 +78,7 @@ function scriptedTransport() {
   const CAPS = {
     claude: { efforts: true, usage: true, bash: true, skills: true, mcp: true, login: "external", ownQuestions: true },
     antigravity: { efforts: false, usage: true, bash: false, skills: true, mcp: false, login: "external", ownQuestions: false },
-    codex: { efforts: true, usage: true, bash: true, skills: false, mcp: false, login: "browser", ownQuestions: false },
+    codex: { efforts: true, usage: true, bash: true, skills: true, mcp: false, login: "browser", ownQuestions: false },
   };
   const MODELS = {
     claude: [
@@ -444,7 +444,7 @@ if (!live) {
     await page.locator(".agent-mode-ask > .agent-chip").click();
     await page.getByRole("menuitemradio", { name: /Planejar/ }).click();
     await page.locator(".agent-model > .agent-chip").click();
-    await page.getByRole("menuitemradio", { name: /Haiku/ }).click();
+    await page.getByRole("menuitemradio", { name: /Haiku/ }).first().click();
     await page.keyboard.press("Escape");
     const s = await agent();
     expect(s.mode === "plan" && s.model === "haiku", `mode ${s.mode}, model ${s.model}`);
@@ -622,7 +622,7 @@ if (!live) {
     expect((await agent()).provider === liveProvider, `the panel is on ${(await agent()).provider}`);
     if (liveProvider === "claude") {
       await page.locator(".agent-model > .agent-chip").click();
-      await page.getByRole("menuitemradio", { name: /Haiku/ }).click();
+      await page.getByRole("menuitemradio", { name: /Haiku/ }).first().click();
       await page.keyboard.press("Escape");
     }
     await page.evaluate(() => window.__editor.getState().select({ nodes: ["sm5"], edge: null }));

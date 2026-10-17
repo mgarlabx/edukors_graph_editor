@@ -11,36 +11,26 @@
  * SDK, the MCP SDK and zod, with everything those need, copied from the
  * project's node_modules so that the versions are the package-lock's.
  *
- * The Claude Agent SDK runs a native `claude` binary from a package of its own
- * per platform, and resolves it by Node's architecture. The Mac app is
- * universal, so both Mac packages go in; on Windows (x64 only) it is
- * `claude.exe`; on Linux, the machine's own (glibc: the .deb and the AppImage
- * are built for it, not for musl), gzipped: the AppImage's linuxdeploy rewrites
- * every ELF file it finds, and a rewritten `claude` (a Bun executable, its code
- * appended to the file) no longer runs. The agent unpacks it on first use
- * (packedBinary in agent/providers/claude.mjs). A package npm did not install here is fetched once with
- * `npm pack` and kept in node_modules/.cache/edukors-agent/.
- *
- * The other providers are not here: OpenCode, the Antigravity CLI and Codex
- * are the person's own install (hundreds of megabytes each, per platform),
- * which the agent finds on the machine and never ships.
+ * No agent's own program is here. Claude Code, OpenCode, the Antigravity CLI
+ * and Codex are the person's own install (hundreds of megabytes each, per
+ * platform), which the agent finds on the machine and never ships. The Claude
+ * Agent SDK comes without the native `claude` packages it lists as optional:
+ * it is pointed at the person's `claude` (agent/providers/claude.mjs).
  */
-import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { execFileSync } from "node:child_process";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { gzipSync } from "node:zlib";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const MODULES = join(ROOT, "node_modules");
 const OUT = join(ROOT, "src-tauri", "agent-bundle");
-const CACHE = join(MODULES, ".cache", "edukors-agent");
 const SDK = "@anthropic-ai/claude-agent-sdk";
 /** What agent/*.mjs import from outside Node. */
 const ENTRIES = [SDK, "zod", "@modelcontextprotocol/sdk"];
 /** What must be where the bundle looks for it once staged. */
 const CHECKS = [
+  SDK,
   "@modelcontextprotocol/sdk/server/mcp.js",
   "@modelcontextprotocol/sdk/server/streamableHttp.js",
   "@modelcontextprotocol/sdk/server/sse.js",
@@ -50,11 +40,6 @@ const CHECKS = [
   "@modelcontextprotocol/sdk/client/streamableHttp.js",
   "@modelcontextprotocol/sdk/client/sse.js",
 ];
-const WINDOWS = process.platform === "win32";
-const LINUX = process.platform === "linux";
-const PLATFORMS = WINDOWS ? ["win32-x64"] : LINUX ? [`linux-${process.arch}`] : ["darwin-arm64", "darwin-x64"];
-const binary = (platform) => (platform.startsWith("win32") ? "claude.exe" : platform.startsWith("linux") ? "claude.gz" : "claude");
-
 const manifest = (dir) => JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
 
 /** Where Node would find `name` when it is required from `from`. */
@@ -86,33 +71,6 @@ function closure() {
   return [...found];
 }
 
-/** The SDK's native package for one platform, from node_modules or the cache. */
-function stagePlatform(platform, version) {
-  const name = `${SDK}-${platform}`;
-  const dest = join(OUT, "node_modules", name);
-  const local = join(MODULES, name);
-  if (existsSync(join(local, "package.json")) && manifest(local).version === version) {
-    cpSync(local, dest, { recursive: true });
-  } else {
-    const tarball = join(CACHE, `anthropic-ai-claude-agent-sdk-${platform}-${version}.tgz`);
-    if (!existsSync(tarball)) {
-      mkdirSync(CACHE, { recursive: true });
-      console.log(`fetching ${name}@${version}`);
-      // npm is npm.cmd on Windows, which only a shell runs.
-      execFileSync("npm", ["pack", `${name}@${version}`, "--pack-destination", CACHE, "--silent"], { stdio: ["ignore", "ignore", "inherit"], shell: WINDOWS });
-    }
-    mkdirSync(dest, { recursive: true });
-    // Windows' own tar: Git's, if first on the PATH, takes "C:" for a remote host.
-    const tar = WINDOWS ? join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe") : "tar";
-    execFileSync(tar, ["-xzf", tarball, "-C", dest, "--strip-components=1"]);
-  }
-  if (LINUX) {
-    const plain = join(dest, "claude");
-    writeFileSync(`${plain}.gz`, gzipSync(readFileSync(plain), { level: 6 }));
-    rmSync(plain);
-  } else if (!WINDOWS) chmodSync(join(dest, binary(platform)), 0o755);
-}
-
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT, { recursive: true });
 // The whole agent folder: the sidecar, the providers, the bridge and the prompt.
@@ -122,24 +80,14 @@ const packages = closure();
 for (const dir of packages) {
   cpSync(dir, join(OUT, "node_modules", relative(MODULES, dir)), {
     recursive: true,
-    // Another platform's binary, nested by npm, would only add weight.
+    // A native `claude`, nested by npm, would only add weight.
     filter: (src) => !relative(dir, src).replaceAll("\\", "/").includes(`${SDK}-`),
   });
 }
 
 const version = manifest(join(MODULES, SDK)).version;
-for (const platform of PLATFORMS) stagePlatform(platform, version);
 
-// What the SDK will do on each machine: find its binary from where it is.
-const require = createRequire(join(OUT, "node_modules", SDK, "package.json"));
-for (const platform of PLATFORMS) {
-  try {
-    require.resolve(`${SDK}-${platform}/${binary(platform)}`);
-  } catch {
-    throw new Error(`the ${platform} binary did not end up where the SDK looks for it`);
-  }
-}
-// And what the bridge will import from the staged copy.
+// What the providers and the bridge will import from the staged copy.
 const fromAgent = createRequire(join(OUT, "mcpBridge.mjs"));
 for (const entry of CHECKS) {
   try {
@@ -149,4 +97,4 @@ for (const entry of CHECKS) {
   }
 }
 
-console.log(`agent staged in ${relative(ROOT, OUT)}/: ${packages.length} packages + ${PLATFORMS.join(", ")} (SDK ${version})`);
+console.log(`agent staged in ${relative(ROOT, OUT)}/: ${packages.length} packages (SDK ${version})`);

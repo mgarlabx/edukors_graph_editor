@@ -8,8 +8,8 @@
  * preferences say not to; "Check for updates…" in the menu always answers.
  * Before anything is downloaded the unsaved courses are settled and the agent
  * is stopped: on Windows the app closes as soon as the download ends, to let
- * the installer run (which opens it again), and the agent's claude.exe, inside
- * the app's folder, would keep the installer from replacing it. On the Mac the
+ * the installer run (which opens it again), and the agent, which runs from the
+ * app's folder, must not be in the installer's way. On the Mac the
  * new app takes the old one's place and the app restarts.
  *
  * Installed from the Microsoft Store, the app does none of this: the Store

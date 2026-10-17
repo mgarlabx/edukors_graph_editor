@@ -4,6 +4,8 @@ Each version has its own section, written before the tag, **always in English**:
 
 ## 2.16.0
 
+- **Claude Code is now your own install**, like the other AI agents: the editor uses the Claude Code installed on your computer instead of carrying its own copy, so the installers are hundreds of megabytes smaller and Claude Code keeps itself up to date. If it is missing, the agent panel shows **See how to install**; if it is too old, the panel asks you to update it (`claude update`).
+- **Skills on Codex:** the skills added in **Preferences → AI agent** now work with Codex too, as with the other agents. Codex's own built-in skills and the ones in your personal Codex setup stay out of the editor.
 - **Any language for a course:** in **Languages**, **Other language…** adds any ISO 639-1 code, with an optional region (such as `ko` or `pt-BR`), beyond the ones offered. Renaming a language's code is no longer offered there.
 - **A prompt written once:** a dynamic page's prompt can be written in a single language and left blank in the others; a blank one runs the prompt written in another language, and the validator no longer reports it as empty text.
 

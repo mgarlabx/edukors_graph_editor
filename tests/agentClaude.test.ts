@@ -101,3 +101,22 @@ describe("claude events", () => {
     expect(ev.text.endsWith("…")).toBe(true);
   });
 });
+
+describe("claude detection", () => {
+  it("drives the person's own Claude Code, and says so when it is too old", async () => {
+    const { mkdtempSync, writeFileSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const dir = mkdtempSync(join(tmpdir(), "edukors-claude-"));
+    const fake = join(dir, "claude");
+    writeFileSync(fake, '#!/bin/sh\necho "1.0.5 (Claude Code)"\n', { mode: 0o755 });
+    process.env.EDUKORS_CLAUDE = fake;
+    try {
+      // @ts-expect-error -- the agent's process is plain JavaScript, checked by JSDoc
+      const claude = await import("../agent/providers/claude.mjs");
+      expect(await claude.detect()).toMatchObject({ available: false, reason: "claude-outdated" });
+    } finally {
+      delete process.env.EDUKORS_CLAUDE;
+    }
+  });
+});

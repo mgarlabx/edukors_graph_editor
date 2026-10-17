@@ -18,17 +18,18 @@
  * refused: this agent writes no files.
  */
 import { spawn } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import * as tools from "../tools.mjs";
+import * as ext from "../extensions.mjs";
 import { findCli, versionOf } from "../cli.mjs";
 import { attach } from "../jsonRpc.mjs";
 import { answersFrom, codexUsage, createMapper, historyEvents, mapQuestions } from "./codexEvents.mjs";
 
 export const id = "codex";
 
-export const capabilities = { efforts: true, usage: true, bash: true, skills: false, mcp: true, login: "browser", ownQuestions: false };
+export const capabilities = { efforts: true, usage: true, bash: true, skills: true, mcp: true, login: "browser", ownQuestions: false };
 
 const BINARY = "codex";
 
@@ -262,6 +263,37 @@ export function create(host) {
     return starting;
   }
 
+  /**
+   * The editor's skills as Codex's only ones. Its own folder is added as an
+   * extra root, and every other skill it finds is turned off: the ones it
+   * brings (imagegen, skill-installer…) and the person's own in ~/.agents,
+   * which it reads whatever its home. The switches go to config.toml, which
+   * writeHome rewrites at every start, so they are set again at each open,
+   * which is also when a skill added since is picked up.
+   */
+  async function syncSkills() {
+    const root = join(host.pluginDir, "skills");
+    const roots = [root];
+    try {
+      roots.push(realpathSync(root));
+    } catch {
+      /* no skills folder yet */
+    }
+    const ours = (/** @type {string} */ path) => roots.some((r) => path.startsWith(r + sep));
+    try {
+      await /** @type {any} */ (rpc).request("skills/extraRoots/set", { extraRoots: existsSync(root) ? [root] : [] }, 30_000);
+      const list = await /** @type {any} */ (rpc).request("skills/list", { cwds: [workspace], forceReload: true }, 30_000);
+      const found = (Array.isArray(list?.data) ? list.data : []).flatMap((/** @type {any} */ e) => (Array.isArray(e?.skills) ? e.skills : []));
+      for (const skill of found) {
+        const path = String(skill?.path ?? "");
+        if (path && skill.enabled !== false && !ours(path)) await /** @type {any} */ (rpc).request("skills/config/write", { path, enabled: false }, 30_000);
+      }
+    } catch (e) {
+      // An older Codex without these methods: it runs, with whatever skills it finds itself.
+      host.log("codex skills:", e);
+    }
+  }
+
   async function models() {
     if (modelCache) return modelCache;
     try {
@@ -321,6 +353,7 @@ export function create(host) {
         running?.kill();
       }
       await ensureServer();
+      await syncSkills();
       const who = await account();
       if (!who.signedIn) {
         // Nothing to open until there is an account: the panel offers the sign-in.
@@ -349,7 +382,7 @@ export function create(host) {
       const sid = String(thread?.thread?.id ?? thread?.threadId ?? thread?.id ?? "");
       if (!sid) throw new Error("Codex opened no thread");
       conv = { sid, model, effort, live: true };
-      return { sessionId: sid, resumed: Boolean(opts.resume), account: who, models: await models(), mcp: host.serverStates(), skills: [] };
+      return { sessionId: sid, resumed: Boolean(opts.resume), account: who, models: await models(), mcp: host.serverStates(), skills: ext.listSkills(host.pluginDir, host.log) };
     },
 
     /** @param {string} text */

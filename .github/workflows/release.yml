@@ -146,9 +146,8 @@ jobs:
             echo "APPLE_API_KEY_PATH=$RUNNER_TEMP/AuthKey.p8"
           } >> "$GITHUB_ENV"
 
-      # Builds the interface, stages the agent (scripts/stage-agent.mjs: on the Mac
-      # both claude binaries, on Windows claude.exe, on Linux the linux-x64 one),
-      # makes the app or the installers with their updater signatures, and uploads
+      # Builds the interface, stages the agent (scripts/stage-agent.mjs: its own
+      # files and the Claude Agent SDK, without any claude binary), makes the app or the installers with their updater signatures, and uploads
       # them to the draft. latest.json is the last job's, written once all builds are in.
       - uses: tauri-apps/tauri-action@v0
         env:
@@ -224,8 +223,9 @@ jobs:
           path: src-tauri/target/Edukors-Graph-Editor-${{ needs.prepare.outputs.version }}.msix
           if-no-files-found: error
 
-      # The universal app must carry the agent for both kinds of Mac, and, signed,
-      # pass Gatekeeper as a download would: the app and the .dmg, both notarized.
+      # The app must carry the agent, without a claude of its own (the person's
+      # Claude Code is used), and, signed, pass Gatekeeper as a download would:
+      # the app and the .dmg, both notarized.
       - if: matrix.platform == 'macos-latest'
         env:
           VERSION: ${{ needs.prepare.outputs.version }}
@@ -233,23 +233,23 @@ jobs:
           BUNDLE=src-tauri/target/universal-apple-darwin/release/bundle
           APP="$BUNDLE/macos/Edukors Graph Editor.app"
           SDK="$APP/Contents/Resources/agent/node_modules/@anthropic-ai"
-          for arch in arm64 x64; do
-            test -x "$SDK/claude-agent-sdk-darwin-$arch/claude" || { echo "::error::the app has no claude for darwin-$arch"; exit 1; }
-          done
+          test -f "$SDK/claude-agent-sdk/package.json" || { echo "::error::the app has no Claude Agent SDK"; exit 1; }
+          if ls -d "$SDK"/claude-agent-sdk-* 2>/dev/null; then echo "::error::the app carries a claude binary"; exit 1; fi
           if [ -n "$APPLE_API_KEY_PATH" ]; then
             spctl --assess --type execute --verbose "$APP"
             spctl --assess --type open --context context:primary-signature --verbose "$BUNDLE"/dmg/*_${VERSION}_universal.dmg
           fi
 
-      # The .deb must carry the agent with Linux's claude, and the .egf type for
-      # the file managers.
+      # The .deb must carry the agent (without a claude of its own), and the .egf
+      # type for the file managers.
       - if: matrix.platform == 'ubuntu-22.04'
         env:
           VERSION: ${{ needs.prepare.outputs.version }}
         run: |
           deb=( src-tauri/target/release/bundle/deb/*_${VERSION}_amd64.deb )
           dpkg-deb -c "${deb[0]}" > contents.txt
-          grep -q 'agent/node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude.gz$' contents.txt || { echo "::error::the .deb has no claude for linux-x64"; exit 1; }
+          grep -q 'agent/node_modules/@anthropic-ai/claude-agent-sdk/package.json$' contents.txt || { echo "::error::the .deb has no Claude Agent SDK"; exit 1; }
+          if grep -q 'agent/node_modules/@anthropic-ai/claude-agent-sdk-' contents.txt; then echo "::error::the .deb carries a claude binary"; exit 1; fi
           grep -q 'usr/share/mime/packages/edukors-graph-editor.xml$' contents.txt || { echo "::error::the .deb has no .egf type"; exit 1; }
 
   # latest.json, from the signatures the builds uploaded: written once, here,

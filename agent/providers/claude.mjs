@@ -2,8 +2,9 @@
 /**
  * The agent on Claude Code, through the Claude Agent SDK.
  *
- * Claude Code, which the SDK runs underneath, authenticates with the Claude
- * account logged in on this Mac (`claude` → /login). API keys from the
+ * Claude Code is the person's own install, like the other providers' CLIs:
+ * the SDK drives the `claude` found on this machine. It authenticates with the
+ * Claude account logged in there (`claude` → /login). API keys from the
  * environment are removed so that the account is what gets used.
  *
  * One conversation is open at a time. It runs in streaming input mode: the
@@ -11,20 +12,24 @@
  * works, interrupt it, and change the model or the mode as it goes.
  */
 import { randomUUID } from "node:crypto";
-import { chmodSync, createReadStream, createWriteStream, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { pipeline } from "node:stream/promises";
-import { createGunzip } from "node:zlib";
-import { fileURLToPath } from "node:url";
 import * as tools from "../tools.mjs";
 import * as ext from "../extensions.mjs";
+import { findCli, versionOf, WINDOWS } from "../cli.mjs";
 import { openTerminal } from "../terminal.mjs";
 import { historyEvents, translate } from "./claudeEvents.mjs";
 
 export const id = "claude";
 
 export const capabilities = { efforts: true, usage: true, bash: true, skills: true, mcp: true, login: "external", ownQuestions: true };
+
+/**
+ * The oldest Claude Code the SDK is known to drive. Older builds miss parts of
+ * the protocol the panel relies on (plan mode instructions, effort, /usage).
+ */
+const MIN_CLAUDE = "2.1.0";
 
 /** @type {any} */
 let sdk = null;
@@ -35,62 +40,70 @@ async function load() {
   return sdk;
 }
 
-function sdkVersion() {
-  try {
-    const entry = fileURLToPath(import.meta.resolve("@anthropic-ai/claude-agent-sdk"));
-    return JSON.parse(readFileSync(join(dirname(entry), "package.json"), "utf8")).version;
-  } catch {
-    return undefined;
-  }
-}
+const BINARY = "claude";
 
-let packed = /** @type {Promise<string | undefined> | undefined} */ (undefined);
+/** Where its installers put it, which a Finder-launched app does not have on its PATH. */
+const places = () =>
+  WINDOWS
+    ? [join(homedir(), ".local", "bin", "claude.exe"), join(process.env.APPDATA ?? "", "npm", "claude.cmd")]
+    : [
+        join(homedir(), ".local", "bin", BINARY),
+        join(homedir(), ".claude", "local", BINARY),
+        "/opt/homebrew/bin/claude",
+        "/usr/local/bin/claude",
+        join(homedir(), ".npm-global", "bin", BINARY),
+        join(homedir(), ".bun", "bin", BINARY),
+      ];
 
 /**
- * On Linux the app carries Claude Code gzipped (scripts/stage-agent.mjs), and
- * an AppImage is read-only: it is unpacked once per SDK version into the
- * user's cache, and the SDK told where. Elsewhere, and in development, the SDK
- * finds its binary itself.
- * @returns {Promise<string | undefined>}
+ * An npm install on Windows leaves a .cmd shim, which cannot be started
+ * without a shell: the SDK is given what the shim runs instead.
+ * @param {string} path
  */
-function packedBinary() {
-  packed ??= (async () => {
-    if (process.platform !== "linux") return undefined;
-    const entry = fileURLToPath(import.meta.resolve("@anthropic-ai/claude-agent-sdk"));
-    const gz = join(dirname(entry), "..", `claude-agent-sdk-linux-${process.arch}`, "claude.gz");
-    if (!existsSync(gz)) return undefined;
-    const cache = join(process.env.XDG_CACHE_HOME || join(homedir(), ".cache"), "edukors-graph-editor");
-    const name = `claude-${sdkVersion() ?? "unknown"}-${process.arch}`;
-    const target = join(cache, name, "claude");
-    if (existsSync(target)) return target;
-    mkdirSync(dirname(target), { recursive: true });
-    const partial = `${target}.${process.pid}.partial`;
-    await pipeline(createReadStream(gz), createGunzip(), createWriteStream(partial, { mode: 0o755 }));
-    chmodSync(partial, 0o755);
-    renameSync(partial, target);
-    // The versions before this one are no longer used.
-    for (const old of readdirSync(cache)) {
-      if (old.startsWith("claude-") && old !== name) rmSync(join(cache, old), { recursive: true, force: true });
-    }
-    return target;
-  })();
-  packed.catch(() => (packed = undefined));
-  return packed;
+function unshim(path) {
+  if (!path.toLowerCase().endsWith(".cmd")) return path;
+  const pkg = join(dirname(path), "node_modules", "@anthropic-ai", "claude-code");
+  return [join(pkg, "bin", "claude.exe"), join(pkg, "cli.js")].find((p) => existsSync(p)) ?? null;
 }
 
-/** The SDK option that points at the unpacked binary, where there is one. */
-async function executable() {
-  const path = await packedBinary();
-  return path ? { pathToClaudeCodeExecutable: path } : {};
+/** @type {string | null | undefined} */
+let found;
+
+async function findClaude() {
+  if (found === undefined) {
+    const path = await findCli({ binary: BINARY, envVar: "EDUKORS_CLAUDE", places: places() });
+    found = path ? unshim(path) : null;
+  }
+  return found;
 }
+
+/** Whether version `a` is older than `b`, both as `x.y.z`. */
+const older = (/** @type {string} */ a, /** @type {string} */ b) => {
+  const [x, y] = [a, b].map((v) => v.split(".").map(Number));
+  for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] < y[i];
+  return false;
+};
 
 export async function detect() {
   try {
     await load();
-    return { available: true, version: sdkVersion() };
   } catch (e) {
     return { available: false, reason: "sdk-missing", detail: String(/** @type {Error} */ (e)?.message ?? e) };
   }
+  const path = await findClaude();
+  if (!path) return { available: false, reason: "missing" };
+  const version = await versionOf(path);
+  if (version && older(version, MIN_CLAUDE)) {
+    return { available: false, reason: "claude-outdated", detail: `Claude Code ${version} at ${path}; ${MIN_CLAUDE} or newer is needed.` };
+  }
+  return { available: true, path, ...(version ? { version } : {}) };
+}
+
+/** The SDK option that points at the person's Claude Code. */
+async function executable() {
+  const path = await findClaude();
+  if (!path) throw Object.assign(new Error("Claude Code was not found on this machine."), { code: "missing" });
+  return { pathToClaudeCodeExecutable: path };
 }
 
 /** The environment Claude Code runs in: the logged-in account, nothing from the person's own Claude Code setup. */
