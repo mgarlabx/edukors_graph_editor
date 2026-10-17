@@ -2,6 +2,11 @@
 
 Each version has its own section, written before the tag, **always in English**: its text goes to the release page on GitHub and to the update notice inside the app (`scripts/release-notes.mjs`). A section changed after the build does not reach the app.
 
+## 2.15.0
+
+- **Claude Code is the default AI agent again** on a new install, since it comes inside the editor; existing installs keep the agent they chose.
+- **Claude Code sign-in:** on a computer where Claude Code was never logged in, the agent panel now shows the sign-in card (with **Open Terminal**) instead of opening a conversation that fails with "Not logged in · Please run /login".
+
 ## 2.14.1
 
 - **Windows:** the AI agent no longer stops as it starts ("The agent process stopped while starting", with `EISDIR: illegal operation on a directory, lstat 'C:'`).

@@ -59,7 +59,7 @@ export const DEFAULT_PREFS: Prefs = {
     timeout: 45,
   },
   agent: {
-    provider: "opencode",
+    provider: "claude",
     providers: {
       opencode: { model: "default", effort: "auto" },
       claude: { model: "default", effort: "auto" },
@@ -92,16 +92,15 @@ interface PrefsState extends Prefs {
 /**
  * The agent's settings, with one model and effort per provider. Before the
  * provider choice there was one pair, which was Claude's: it seeds Claude's.
- * A new install starts on OpenCode; one whose agent settings predate the
- * choice was on Claude Code, and stays there.
+ * A new install starts on Claude Code, which comes inside the editor; so does
+ * one whose agent settings predate the choice, since that was its only agent.
  */
 function mergeAgent(raw: Partial<Prefs["agent"]> | undefined): Prefs["agent"] {
   const agent = { ...DEFAULT_PREFS.agent, ...(raw ?? {}) };
   const providers = { ...DEFAULT_PREFS.agent.providers };
   for (const id of PROVIDER_IDS) providers[id] = { ...providers[id], ...(raw?.providers?.[id] ?? {}) };
   if (!raw?.providers?.claude) providers.claude = { model: agent.model, effort: agent.effort };
-  const fallback = raw ? "claude" : DEFAULT_PREFS.agent.provider;
-  return { ...agent, provider: raw?.provider && PROVIDER_IDS.includes(raw.provider) ? raw.provider : fallback, providers };
+  return { ...agent, provider: raw?.provider && PROVIDER_IDS.includes(raw.provider) ? raw.provider : DEFAULT_PREFS.agent.provider, providers };
 }
 
 const merge = (raw: Record<string, unknown>): Prefs => {

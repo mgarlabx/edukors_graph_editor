@@ -109,6 +109,19 @@ function claudeEnv() {
   return env;
 }
 
+/**
+ * Whether Claude Code has an account to use. Logged out, it still reports
+ * `tokenSource: "none"`, so a source counts only when it names one; Bedrock,
+ * Vertex and the like sign in outside Claude Code and report no account at all.
+ * @param {any} account
+ */
+function signedIn(account) {
+  if (!account) return false;
+  if (account.apiProvider && account.apiProvider !== "firstParty") return true;
+  const source = (/** @type {unknown} */ s) => typeof s === "string" && s !== "" && s !== "none";
+  return Boolean(account.email || account.subscriptionType || source(account.apiKeySource) || source(account.tokenSource));
+}
+
 /** How long the panel hears about servers still connecting, after a conversation opens. */
 const MCP_WATCH_MS = 60_000;
 
@@ -354,7 +367,7 @@ export function create(host) {
         resumed: Boolean(opts.resume),
         account: {
           provider: id,
-          signedIn: Boolean(account?.email || account?.subscriptionType || account?.apiKeySource || account?.tokenSource),
+          signedIn: signedIn(account),
           ...(account?.email ? { email: account.email } : {}),
           ...(account?.subscriptionType ? { plan: account.subscriptionType } : {}),
         },
