@@ -125,11 +125,16 @@ The same Windows app is also published in the Microsoft Store, as an **MSIX** pa
 - The privacy policy the Store requires is given as text in Partner Center (**Properties**), not as a URL.
 - The app generates content with AI (the agent and the OpenRouter calls), so in **Properties → Product declarations** the box *"This product incorporates generative AI features…"* must be checked; without it, certification fails under policy 11.16 (Live Generative AI Content).
 
-To send a new version to the Store, after the release workflow has run:
+The release workflow sends each new version to the Store itself (`.github/workflows/store.yml`, the **store** job of `release.yml`), with the [Microsoft Store Developer CLI](https://learn.microsoft.com/en-us/windows/apps/publish/msstore-dev-cli/overview) (`msstore`). Once the builds are through (whatever became of the Mac's), it takes the run's **microsoft-store-msix** and makes a new submission of the app (Store ID `9N0N0P3GVRCK`) with that package, the listings unchanged, and leaves it as a **draft** in Partner Center, as the GitHub release is left as a draft. To send it on:
 
-1. Download the **microsoft-store-msix** artifact from the run and unzip it: `Edukors-Graph-Editor-<version>.msix`.
-2. In Partner Center (**Apps and games → Edukors Graph Editor**), start a new submission (**Update** on the current one), and in **Packages** upload the new `.msix` and remove the old one. Change the listings only if something in them changed.
-3. **Submit for certification.** Certification takes from a few hours to three business days; the update then reaches the installed copies through the Store.
+1. In Partner Center (**Apps and games → Edukors Graph Editor**), open the draft submission and check **Packages**: the new `.msix` is there.
+2. **Submit for certification.** Certification takes from a few hours to three business days; the update then reaches the installed copies through the Store.
+
+With the repository variable `STORE_AUTO_SUBMIT` set to `true` (**Settings → Secrets and variables → Actions → Variables**), the job submits for certification itself. Partner Center takes one submission at a time: while one is in certification, the job fails, and is run again later. By hand, **Actions → Microsoft Store → Run workflow** checks that the credentials reach Partner Center (`check_only`), or sends the package of another Release run (`run_id`).
+
+The CLI signs in to Partner Center as an application of the Microsoft Entra tenant associated with the account (`Solvertank.onmicrosoft.com`), **GitHub Actions - Edukors Store**, with the **Manager (Windows)** role (**Account settings → User management → Microsoft Entra applications**). Its four values are repository secrets: `PARTNER_CENTER_TENANT_ID`, `PARTNER_CENTER_CLIENT_ID`, `PARTNER_CENTER_SELLER_ID` (**Account settings → Legal info**) and `PARTNER_CENTER_CLIENT_SECRET`, the application's key, which Partner Center shows only once. When the key expires (see **Certificates & secrets** of the application in entra.microsoft.com), a new one is made on the application's page in Partner Center (**Keys → Add new key**) and replaces the secret. Without the secrets, the job does nothing.
+
+Sending a version by hand is still possible: download the run's **microsoft-store-msix** artifact, start a new submission in Partner Center (**Update** on the current one), upload the `.msix` in **Packages**, remove the old one, and submit.
 
 ## Linux
 
@@ -163,9 +168,9 @@ npx tauri signer generate -w ~/.tauri/edukors-updater.key
 1. Write the version's section in `CHANGELOG.md` (`## 2.12.0`), **always in English**. That text goes to the release page and to the notice inside the app, the same for every interface language.
 2. `node scripts/bump-version.mjs 2.12.0`: updates the version in `package.json`, `package-lock.json`, `tauri.conf.json`, `Cargo.toml` and `Cargo.lock`. Commit and push.
 3. `git tag v2.12.0 && git push origin v2.12.0`.
-4. The `.github/workflows/release.yml` workflow checks the tag and the versions, creates a draft release and builds, in parallel, the universal Mac app (`.dmg` and `.app.tar.gz`), the Windows installer, and Linux's AppImage and `.deb`, each with its `.sig` signature. Each installer is also uploaded a second time, under a fixed name, for the download links (below). The Windows job also leaves the Microsoft Store's `.msix` among the run's artifacts. Finally, it writes `latest.json` with the platforms (`darwin-aarch64`, `darwin-x86_64`, `windows-x86_64`, `linux-x86_64` and `linux-x86_64-deb`). It takes 15 to 25 minutes.
+4. The `.github/workflows/release.yml` workflow checks the tag and the versions, creates a draft release and builds, in parallel, the universal Mac app (`.dmg` and `.app.tar.gz`), the Windows installer, and Linux's AppImage and `.deb`, each with its `.sig` signature. Each installer is also uploaded a second time, under a fixed name, for the download links (below). The Windows job also leaves the Microsoft Store's `.msix` among the run's artifacts, which the **store** job sends to Partner Center as a draft submission. Finally, it writes `latest.json` with the platforms (`darwin-aarch64`, `darwin-x86_64`, `windows-x86_64`, `linux-x86_64` and `linux-x86_64-deb`). It takes 15 to 25 minutes.
 5. Review the draft and click **Publish**. Only then does `latest.json` take effect under `releases/latest/download/`, and the installed apps see the new version.
-6. Send the `.msix` to the Microsoft Store ([Microsoft Store](#microsoft-store)).
+6. In Partner Center, submit the draft the workflow left with the new `.msix` ([Microsoft Store](#microsoft-store)).
 
 **Do not edit the notes in the draft**: `latest.json` has already been written with the text from `CHANGELOG.md`, and the change does not reach the app. To fix it, delete the draft and the tag, fix `CHANGELOG.md` and repeat.
 

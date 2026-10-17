@@ -252,6 +252,22 @@ jobs:
           if grep -q 'agent/node_modules/@anthropic-ai/claude-agent-sdk-' contents.txt; then echo "::error::the .deb carries a claude binary"; exit 1; fi
           grep -q 'usr/share/mime/packages/edukors-graph-editor.xml$' contents.txt || { echo "::error::the .deb has no .egf type"; exit 1; }
 
+  # The Windows package to the Microsoft Store (store.yml), as a draft
+  # submission in Partner Center. A job cannot wait on one leg of the build
+  # matrix alone, so it waits for all of them, but goes ahead whatever became
+  # of the others: the Mac's notarization stalling does not hold up the Store.
+  # Only for a tag: a run by hand makes a draft of the GitHub release only.
+  store:
+    needs: [prepare, build]
+    if: always() && needs.prepare.result == 'success' && github.event_name == 'push'
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/store.yml
+    with:
+      version: ${{ needs.prepare.outputs.version }}
+    secrets: inherit
+
   # latest.json, from the signatures the builds uploaded: written once, here,
   # since builds updating the same file could each drop another's platform.
   updater-json:

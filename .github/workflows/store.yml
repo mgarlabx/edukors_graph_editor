@@ -1,0 +1,101 @@
+# The Microsoft Store: the .msix the release's Windows job made, sent to
+# Partner Center with the Microsoft Store Developer CLI (msstore) as a new
+# submission of the app (Store ID 9N0N0P3GVRCK). The listing stays as it is;
+# only the package changes.
+#
+# The release workflow calls it once the Windows package is there. By hand
+# (Actions → Microsoft Store → Run workflow) it either checks that the
+# credentials reach Partner Center, or sends the package of an earlier run.
+#
+# The submission is left as a draft in Partner Center, as the GitHub release is
+# left as a draft: someone opens it and clicks "Submit for certification".
+# With the repository variable STORE_AUTO_SUBMIT set to "true", it is submitted
+# for certification right away.
+#
+# It needs four repository secrets, from Partner Center (docs/distribution.md):
+# PARTNER_CENTER_TENANT_ID, PARTNER_CENTER_SELLER_ID, PARTNER_CENTER_CLIENT_ID
+# and PARTNER_CENTER_CLIENT_SECRET. Without them, it says so and does nothing.
+name: Microsoft Store
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      check_only:
+        description: Only check that the credentials reach Partner Center
+        type: boolean
+        default: true
+      run_id:
+        description: The Release run whose microsoft-store-msix artifact is sent (when not only checking)
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  PRODUCT_ID: 9N0N0P3GVRCK
+
+jobs:
+  submit:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    env:
+      TENANT: ${{ secrets.PARTNER_CENTER_TENANT_ID }}
+      SELLER: ${{ secrets.PARTNER_CENTER_SELLER_ID }}
+      CLIENT: ${{ secrets.PARTNER_CENTER_CLIENT_ID }}
+      SECRET: ${{ secrets.PARTNER_CENTER_CLIENT_SECRET }}
+      CHECK_ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.check_only }}
+      COMMIT: ${{ vars.STORE_AUTO_SUBMIT == 'true' }}
+    steps:
+      - id: ready
+        run: |
+          if [ -z "$TENANT" ] || [ -z "$SELLER" ] || [ -z "$CLIENT" ] || [ -z "$SECRET" ]; then
+            echo "::notice::the PARTNER_CENTER_* secrets are not set: nothing is sent to the Microsoft Store"
+            echo "go=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          fi
+          if [ "$CHECK_ONLY" != "true" ] && [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -z "${{ inputs.run_id }}" ]; then
+            echo "::error::give the run_id of the Release run whose package is to be sent"; exit 1
+          fi
+
+      # The package of this release's run, or of the run given by hand.
+      - if: steps.ready.outputs.go == 'true' && env.CHECK_ONLY != 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: microsoft-store-msix
+          path: msix
+          run-id: ${{ github.event_name == 'workflow_dispatch' && inputs.run_id || github.run_id }}
+          github-token: ${{ github.token }}
+
+      - if: steps.ready.outputs.go == 'true'
+        uses: microsoft/microsoft-store-apppublisher@v1.1
+
+      - if: steps.ready.outputs.go == 'true'
+        run: |
+          msstore settings --enableTelemetry false
+          msstore reconfigure --tenantId "$TENANT" --sellerId "$SELLER" --clientId "$CLIENT" --clientSecret "$SECRET"
+          # The app, as Partner Center sees it: this fails if the credentials or the role do not reach it.
+          msstore apps get "$PRODUCT_ID"
+
+      - if: steps.ready.outputs.go == 'true' && env.CHECK_ONLY != 'true'
+        run: |
+          msix=( msix/*.msix )
+          [ -f "${msix[0]}" ] || { echo "::error::no .msix in the artifact"; exit 1; }
+          echo "sending ${msix[0]}"
+          flags=()
+          [ "$COMMIT" = "true" ] || flags+=(--noCommit)
+          msstore publish msix --inputFile "${msix[0]}" --appId "$PRODUCT_ID" "${flags[@]}"
+          if [ "$COMMIT" = "true" ]; then
+            echo "::notice::the package was submitted for certification in Partner Center"
+          else
+            echo "::notice::the package is in a draft submission in Partner Center: open it and click Submit for certification"
+          fi
