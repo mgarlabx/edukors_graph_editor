@@ -81,7 +81,6 @@ jobs:
 
       - if: steps.ready.outputs.go == 'true'
         run: |
-          msstore settings --enableTelemetry false
           msstore reconfigure --tenantId "$TENANT" --sellerId "$SELLER" --clientId "$CLIENT" --clientSecret "$SECRET"
           # The app, as Partner Center sees it: this fails if the credentials or the role do not reach it.
           msstore apps get "$PRODUCT_ID"
