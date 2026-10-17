@@ -92,8 +92,8 @@ jobs:
           echo "sending ${msix[0]}"
           flags=()
           [ "$COMMIT" = "true" ] || flags+=(--noCommit)
-          # The CLI takes the folder the .msix is in, not the file; the upload gets more than its default 100 s.
-          msstore publish msix --inputDirectory msix --appId "$PRODUCT_ID" --uploadTimeout 1800 "${flags[@]}"
+          # The CLI knows the package by the path's extension; the upload gets more than its default 100 s.
+          msstore publish "${msix[0]}" --appId "$PRODUCT_ID" --uploadTimeout 1800 "${flags[@]}"
           if [ "$COMMIT" = "true" ]; then
             echo "::notice::the package was submitted for certification in Partner Center"
           else
