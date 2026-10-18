@@ -11,9 +11,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-mac.dmg"><img src="https://img.shields.io/badge/Download-macOS-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Download for Mac"></a>
   <a href="https://apps.microsoft.com/detail/9N0N0P3GVRCK"><img src="https://img.shields.io/badge/Download-Windows-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Download for Windows"></a>
-  <a href="#download"><img src="https://img.shields.io/badge/Download-Linux-E95420?style=for-the-badge&logo=linux&logoColor=white" alt="Download for Linux"></a>
+  <a href="https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-mac.dmg"><img src="https://img.shields.io/badge/Download-macOS-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Download for Mac"></a>
+  <a href="https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-linux.AppImage"><img src="https://img.shields.io/badge/Download-Linux-E95420?style=for-the-badge&logo=linux&logoColor=white" alt="Download for Linux"></a>
 </p>
 
 <p align="center">
@@ -22,7 +22,7 @@
 </p>
 
 <p align="center">
-  <sub>Free, for macOS 11+ (Apple Silicon and Intel), Windows 10/11 (x64) and Linux (x64: AppImage, or .deb for Debian and Ubuntu). See <a href="#download">Download</a> for the details.</sub>
+  <sub>Free, for Windows 10/11 (x64), macOS 11+ (Apple Silicon and Intel) and Linux (x64, AppImage). See <a href="#download">Download</a> for the details.</sub>
 </p>
 
 ## Part of the Edukors Graph project
@@ -119,21 +119,23 @@ The teacher's guide explains how to use the editor step by step, in [Portuguese]
 
 ## Download
 
+Choose the version for your system. The apps are notarized and approved: the macOS version is notarized by Apple, and the Windows version is approved by Microsoft and distributed through the Microsoft Store.
+
 | System | Download | Requirements |
 | --- | --- | --- |
-| **Mac** | [Edukors-Graph-Editor-mac.dmg](https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-mac.dmg) | macOS 11 or later, Apple Silicon or Intel |
 | **Windows** | [Microsoft Store](https://apps.microsoft.com/detail/9N0N0P3GVRCK) | Windows 10 or 11, 64-bit (x64) |
-| | [Edukors-Graph-Editor-windows.exe](https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-windows.exe) | The same, without the Microsoft Store |
-| **Linux** | [Edukors-Graph-Editor-linux.deb](https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-linux.deb) | Debian, Ubuntu (22.04 or later), Mint and their relatives, 64-bit (x64) |
-| | [Edukors-Graph-Editor-linux.AppImage](https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-linux.AppImage) | Other distributions, 64-bit (x64) |
+| | [Edukors-Graph-Editor-windows.exe](https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-windows.exe) | The same, for schools that block the Microsoft Store |
+| **macOS** | [Edukors-Graph-Editor-mac.dmg](https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-mac.dmg) | macOS 11 or later, Apple Silicon or Intel |
+| **Linux** | [Edukors-Graph-Editor-linux.AppImage](https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-linux.AppImage) | 64-bit (x64) |
+| | [Edukors-Graph-Editor-linux.deb](https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-linux.deb) | Optional, for Debian, Ubuntu (22.04 or later), Mint and their relatives |
 
 The links always give the latest version; every version is on the [releases](https://github.com/mgarlabx/edukors_graph_editor/releases) page, and the [CHANGELOG](CHANGELOG.md) says what changed in each.
 
-**On a Mac**, open the `.dmg` and drag the app into **Applications**. The app is signed and notarized by Apple, so the first time macOS only asks whether you want to open an app downloaded from the Internet: click **Open**.
+**On Windows**, it is available in the Microsoft Store: open the editor's page in the store and click **Install**. Does your school block the Microsoft Store? Download the `.exe` installer. Outside the store, Windows may still show security warnings, even though the app is approved: in the browser, keep the file; on the **Windows protected your PC** warning, click **More info** and then **Run anyway**. If Windows says it *blocked* the installer, with no such button, the computer has Smart App Control turned on or a policy that only allows signed programs; see [section 2 of the teacher's guide](docs/teacher-guide.en.md#2-install-and-open).
 
-**On Windows**, install it from the Microsoft Store: click **Get**, with no warning and no administrator rights, and the Store brings the new versions. Without the Store, run the installer instead. It installs for the current user, without asking for administrator rights, but it is not signed, so Windows SmartScreen warns the first time: choose **More info → Run anyway**. If Windows says it *blocked* the installer, with no such button, the computer has Smart App Control turned on or a policy that only allows signed programs; see [section 2 of the teacher's guide](docs/teacher-guide.en.md#2-install-and-open).
+**On macOS**, a `.dmg` file, notarized by Apple. Open the file and drag the app into the **Applications** folder.
 
-**On Linux**, install the `.deb` with a double click or `sudo apt install ./Edukors-Graph-Editor-linux.deb`; it asks for your password. The AppImage needs no installing: make it executable (`chmod +x`) and open it.
+**On Linux**, an `.AppImage` file. Make the file executable (`chmod +x`) and open it, no installation needed. On Debian, Ubuntu and their relatives, the `.deb` is an alternative that adds the editor to the applications menu and opens `.egf` files with a double click: `sudo apt install ./Edukors-Graph-Editor-linux.deb` (it asks for your password).
 
 The AI agent runs on [Node.js](https://nodejs.org) (version 18 or later), which must be installed on the computer for the agent panel to work. Everything else in the editor works without it.
 
