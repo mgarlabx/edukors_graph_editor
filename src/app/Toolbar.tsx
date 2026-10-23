@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { courseLangs, useEditor, type Tab } from "../store/editor";
+import { courseLangs, isPreviewTab, useEditor, type Tab } from "../store/editor";
 import { useUi } from "../store/ui";
 import { createCourse, openCourse, saveCourse } from "./files";
 import { copyNodes, cutNodes, deleteSelection, pasteNodesFromClipboard } from "./clipboard";
@@ -18,6 +18,7 @@ import {
   JsonIcon,
   LayoutIcon,
   MapIcon,
+  MapPlayerIcon,
   NewFileIcon,
   OpenIcon,
   PasteIcon,
@@ -33,11 +34,14 @@ import {
 } from "../ui/icons";
 import { t } from "../i18n";
 import { keyLabel } from "./os";
+import { openLink } from "./platform";
+import edukorsLogo from "./edukors.svg?raw";
 
 const TABS: { id: Tab; Icon: typeof MapIcon; key: string }[] = [
   { id: "canvas", Icon: MapIcon, key: "⌘M" },
   { id: "json", Icon: JsonIcon, key: "⌘E" },
   { id: "preview", Icon: PreviewIcon, key: "⌘P" },
+  { id: "map-player", Icon: MapPlayerIcon, key: "⇧⌘P" },
 ];
 
 export function Toolbar() {
@@ -55,10 +59,19 @@ export function Toolbar() {
   const agentOpen = useUi((s) => s.agent);
   const inspectorOpen = useUi((s) => s.inspector);
   const previewSideOpen = useUi((s) => s.previewSide);
-  const sidebarOpen = tab === "preview" ? previewSideOpen : inspectorOpen;
+  const sidebarOpen = isPreviewTab(tab) ? previewSideOpen : inspectorOpen;
 
   return (
     <header className="toolbar" role="toolbar" aria-label="Edukors Graph Editor">
+      <button
+        type="button"
+        className="tool-brand"
+        title={t("brand.visit")}
+        aria-label={t("brand.visit")}
+        onClick={() => void openLink("https://edukors.org")}
+        dangerouslySetInnerHTML={{ __html: edukorsLogo }}
+      />
+      <span className="divider" />
       <div className="tool-group">
         <IconButton title={`${t("file.new")} (${keyLabel("⌘N")})`} onClick={createCourse}>
           <NewFileIcon />
@@ -144,7 +157,7 @@ export function Toolbar() {
             title={`${t("sidebar.toggle")} (${keyLabel("⌥⌘0")})`}
             className={sidebarOpen ? "is-active" : ""}
             aria-pressed={sidebarOpen}
-            onClick={() => useUi.getState().toggleSidebar(tab === "preview")}
+            onClick={() => useUi.getState().toggleSidebar(isPreviewTab(tab))}
           >
             <SidebarIcon />
           </IconButton>

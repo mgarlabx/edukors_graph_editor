@@ -43,7 +43,7 @@ Dica: depois de instalado, um curso `.egf` abre no editor com duplo clique. Um c
 | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Grafo** (centro)              | Os passos e as setas. Arraste os passos para organizá-los, ou arraste o título de uma seção para mover a seção inteira; use ⊞ para organizar tudo automaticamente.                                                                                                                                                                                               |
 | **Inspetor** (direita)          | O conteúdo do que estiver selecionado. O título, o tipo e o id ficam fixos no alto; abaixo, o passo se divide em duas partes: *Dados gerais* (identificação, saídas e extras) e a parte do tipo (o conteúdo, as perguntas, o julgamento…). Começa fechado ao abrir um arquivo e abre ao clicar num passo ou numa seta; o ícone de barra lateral (⌥⌘0) abre e fecha, e a borda esquerda dela se arrasta para mudar a largura — no Preview, o mesmo ícone abre e fecha o painel de chamadas, estado, caminho e console. Sem nada selecionado, mostra as informações do curso. Continua aberto quando o agente de IA aparece ao lado. |
-| **Barra de cima**               | Salvar, o ＋ que **insere** passos (os dez tipos, também no menu **Inserir**), desfazer, as abas **Mapa / EGF / Preview**, o idioma do grafo, o selo de **problemas** e, na ponta direita, o **agente de IA** ✦.                                                                                                                       |
+| **Barra de cima**               | Salvar, o ＋ que **insere** passos (os dez tipos, também no menu **Inserir**), desfazer, as abas **Mapa / EGF / Preview / Preview com mapa**, o idioma do grafo, o selo de **problemas** e, na ponta direita, o **agente de IA** ✦.                                                                                                                       |
 | **Abas de curso** (logo abaixo) | Um curso aberto por aba; ＋ cria um curso novo.                                                                                                                                                                                                                                                                                                                         |
 
 ### Vários cursos ao mesmo tempo
@@ -146,6 +146,7 @@ Na aba **Preview** você faz o curso como o estudante, com a IA de verdade.
    - **Console**: o que o curso escreve no console do navegador e os erros que ele não trata, também os de uma página HTML, cada linha com a hora e o passo de onde veio. Use para entender por que uma simulação não funciona.
 5. Se você editar o curso com o preview aberto, clique em **Aplicar alterações** para recarregar mantendo o estudante onde está.
 6. Os links de um passo abrem no navegador do seu computador, e o preview continua onde estava.
+7. A aba **Preview com mapa** (⇧⌘P) é o mesmo preview com o mapa do curso ao lado, como o estudante o vê na plataforma: o mapa marca os passos já feitos e o caminho percorrido, e acompanha o passo atual. As setas na divisa entre as duas metades ampliam uma delas. Trocar entre as duas abas não reinicia o estudante.
 
 Sem chave, o preview funciona em modo reduzido: os textos com IA mostram "tentar de novo" e as avaliações da IA viram um painel em que você mesmo escolhe o resultado.
 
@@ -227,6 +228,7 @@ No Windows e no Linux, ⌘ e ⌃ correspondem a Ctrl, ⌥ a Alt e ⇧ a Shift; d
 | ⇧⌘L                   | Organizar automaticamente                                      |
 | ⇧⌘M                   | Abrir / fechar o painel de problemas                           |
 | ⌘M / ⌘E / ⌘P         | Aba Mapa / EGF / Preview                                       |
+| ⇧⌘P                   | Aba Preview com mapa                                           |
 | ⌥⌘0                   | Abrir / fechar o inspetor (no Preview, o painel lateral)       |
 | ⌘,                     | Preferências                                                  |
 | ⇧⌘A                   | Abrir / fechar o agente de IA                                  |

@@ -31,7 +31,7 @@ export interface ToolResult {
 
 const json = (value: unknown) => JSON.stringify(value, null, 1);
 
-const VIEW = { canvas: "Graph", json: "EGF", preview: "Preview" } as const;
+const VIEW = { canvas: "Graph", json: "EGF", preview: "Preview", "map-player": "Preview with map" } as const;
 
 /** The course a tool acts on: the conversation's, else the one on screen. */
 function target(docId: string | null): { id: string; course: Course } {

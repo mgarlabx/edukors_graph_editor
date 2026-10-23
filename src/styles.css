@@ -195,6 +195,40 @@ pre,
 
 
 
+/* The Edukors logo, top left: a click opens edukors.org in the browser. Its
+   wordmark takes the text's colour, so it reads in both themes. */
+.tool-brand {
+  display: flex;
+  align-items: center;
+  height: var(--tool-size);
+  padding: 0 4px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: #1a263f;
+  cursor: pointer;
+}
+
+.tool-brand:hover {
+  background: var(--panel-2);
+}
+
+.tool-brand svg {
+  display: block;
+  height: 26px;
+  width: auto;
+}
+
+:root[data-theme="dark"] .tool-brand {
+  color: var(--text);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .tool-brand {
+    color: var(--text);
+  }
+}
+
 .tool-group {
   display: flex;
   align-items: center;
@@ -969,6 +1003,36 @@ kbd {
 
 .welcome {
   flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+/* Watermark of the empty window: the logo and the product name, faded. */
+.welcome-mark {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: var(--text);
+  opacity: 0.09;
+  pointer-events: none;
+}
+
+.welcome-mark svg {
+  display: block;
+  width: min(420px, 50vw);
+  height: auto;
+  filter: grayscale(1);
+}
+
+.welcome-mark > span:last-child {
+  font-size: clamp(22px, 3.4vw, 44px);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  margin-top: -0.2em;
 }
 
 /* -------------------------------------------------------------- insert -- */
@@ -2238,11 +2302,122 @@ kbd {
   flex-wrap: wrap;
 }
 
+.preview-stage {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
 .preview-frame {
   flex: 1;
   border: none;
   background: transparent;
   width: 100%;
+}
+
+/* The preview with the map (the "map-player" tab), as the server's
+   player-map.css lays it out: each half and its button share a grid area, the
+   button against the edge the halves share. A half given the stage to itself
+   leaves the other in the grid, hidden and collapsed to nothing. */
+.preview-stage.with-map {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas: "course map";
+}
+
+.preview-stage.with-map .preview-frame {
+  grid-area: course;
+  min-width: 0;
+  height: 100%;
+}
+
+.preview-map {
+  grid-area: map;
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-left: 1px solid var(--border);
+  /* The viewer's own paper: it is drawn in one light palette whatever the theme. */
+  background: #e9edf0;
+}
+
+.preview-half-button {
+  --point: 1;
+  z-index: 1;
+  align-self: center;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 46px;
+  padding: 0;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.preview-half-button:hover {
+  color: var(--text);
+}
+
+.preview-half-button svg {
+  width: 16px;
+  height: 16px;
+  transform: scaleX(var(--point));
+}
+
+.preview-half-button[data-half="course"] {
+  grid-area: course;
+  justify-self: end;
+  border-right: 0;
+  border-radius: 6px 0 0 6px;
+}
+
+/* On the map's paper the button takes the viewer's colours. */
+.preview-half-button[data-half="map"] {
+  --point: -1;
+  grid-area: map;
+  justify-self: start;
+  border-left: 0;
+  border-color: #d3dbe2;
+  border-radius: 0 6px 6px 0;
+  background: #ffffff;
+  color: #5c6e7e;
+}
+
+.preview-half-button[data-half="map"]:hover {
+  color: #16212b;
+}
+
+.preview-stage.alone-course {
+  grid-template-columns: minmax(0, 1fr) 0;
+}
+
+.preview-stage.alone-map {
+  grid-template-columns: 0 minmax(0, 1fr);
+}
+
+.preview-stage.alone-course .preview-map,
+.preview-stage.alone-map .preview-frame {
+  visibility: hidden;
+}
+
+.preview-stage.alone-course .preview-map {
+  border: none;
+}
+
+/* The one button left is the way back, its arrow turned round. */
+.preview-stage.alone-course .preview-half-button[data-half="map"],
+.preview-stage.alone-map .preview-half-button[data-half="course"] {
+  display: none;
+}
+
+.preview-stage.alone-course .preview-half-button[data-half="course"] {
+  --point: -1;
+}
+
+.preview-stage.alone-map .preview-half-button[data-half="map"] {
+  --point: 1;
 }
 
 /* Presenting (app/present.ts): the player alone, in full screen. */

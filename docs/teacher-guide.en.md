@@ -43,7 +43,7 @@ Tip: once installed, an `.egf` course opens in the editor with a double click. A
 | --- | --- |
 | **Graph** (center) | The steps and the arrows. Drag the steps to arrange them, or drag a section's title to move the whole section; use ⊞ to arrange everything automatically. |
 | **Inspector** (right) | The content of whatever is selected. It starts closed when you open a file and opens when you click a step or an arrow; the sidebar icon (⌥⌘0) opens and closes it, and its left edge can be dragged to change its width — in the Preview, the same icon opens and closes the panel with the calls, state, path and console. With nothing selected, it shows the course's information. It stays open when the AI agent appears beside it. |
-| **Top bar** | Save, the ＋ that **inserts** steps (the ten types, also in the **Insert** menu), undo, the **Map / EGF / Preview** tabs, the graph's language, the **problems** badge and, at the far right, the **AI agent** ✦. |
+| **Top bar** | Save, the ＋ that **inserts** steps (the ten types, also in the **Insert** menu), undo, the **Map / EGF / Preview / Preview with map** tabs, the graph's language, the **problems** badge and, at the far right, the **AI agent** ✦. |
 | **Course tabs** (just below) | One open course per tab; ＋ creates a new course. |
 
 ### Several courses at once
@@ -146,6 +146,7 @@ In the **Preview** tab you take the course as the student would, with the real A
    - **Console**: what the course writes to the browser's console and the errors it leaves unhandled, including those of an HTML page, each line with the time and the step it came from. Use it to understand why a simulation doesn't work.
 5. If you edit the course with the preview open, click **Apply changes** to reload while keeping the student where they are.
 6. The links in a step open in your computer's browser, and the preview stays where it was.
+7. The **Preview with map** tab (⇧⌘P) is the same preview with the course map beside it, as the student sees it on the platform: the map marks the steps already done and the path taken, and follows the current step. The arrows on the line between the two halves widen one of them. Switching between the two tabs does not restart the student.
 
 Without a key, the preview runs in a reduced mode: the AI texts show "try again" and the AI's assessments become a panel where you pick the result yourself.
 
@@ -227,6 +228,7 @@ On Windows and Linux, ⌘ and ⌃ stand for Ctrl, ⌥ for Alt and ⇧ for Shift;
 | ⇧⌘L | Arrange automatically |
 | ⇧⌘M | Open / close the problems panel |
 | ⌘M / ⌘E / ⌘P | Map / EGF / Preview tab |
+| ⇧⌘P | Preview with map tab |
 | ⌥⌘0 | Open / close the inspector (in the Preview, the side panel) |
 | ⌘, | Preferences |
 | ⇧⌘A | Open / close the AI agent |

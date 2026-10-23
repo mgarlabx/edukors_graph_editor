@@ -208,14 +208,14 @@ async fn ai_models() -> Result<Value, String> {
 
 // ------------------------------------------------------------------ menu ----
 
-fn labels(lang: &str) -> [&'static str; 32] {
+fn labels(lang: &str) -> [&'static str; 33] {
     match lang {
         "en" => [
             "File", "New course", "Open…", "Save", "Save as…", "Clear history", "Export course…",
             "Edit", "Undo", "Redo", "View", "Fit graph", "Auto layout", "EGF", "Preview",
             "Preferences…", "Window", "Help", "User guide", "Duplicate", "Close tab", "Next tab",
             "Previous tab", "AI agent", "Map", "Minimize", "Recent", "Delete", "Problems", "Map language",
-            "Sidebar", "Check for updates…",
+            "Sidebar", "Check for updates…", "Preview with map",
         ],
         "es" => [
             "Archivo", "Nuevo curso", "Abrir…", "Guardar", "Guardar como…", "Borrar historial",
@@ -224,6 +224,7 @@ fn labels(lang: &str) -> [&'static str; 32] {
             "Ventana", "Ayuda", "Guía de uso", "Duplicar", "Cerrar pestaña", "Pestaña siguiente",
             "Pestaña anterior", "Agente de IA", "Mapa", "Minimizar", "Recientes", "Eliminar",
             "Problemas", "Idioma del mapa", "Barra lateral", "Buscar actualizaciones…",
+            "Vista previa con mapa",
         ],
         _ => [
             "Arquivo", "Novo curso", "Abrir…", "Salvar", "Salvar como…", "Limpar histórico",
@@ -231,7 +232,7 @@ fn labels(lang: &str) -> [&'static str; 32] {
             "Organizar automaticamente", "EGF", "Preview", "Preferências…", "Janela",
             "Ajuda", "Guia de uso", "Duplicar", "Fechar aba", "Próxima aba", "Aba anterior",
             "Agente de IA", "Mapa", "Minimizar", "Recentes", "Excluir", "Problemas", "Idioma do mapa",
-            "Barra lateral", "Verificar atualizações…",
+            "Barra lateral", "Verificar atualizações…", "Preview com mapa",
         ],
     }
 }
@@ -343,9 +344,9 @@ const TEXT_EDIT: [&str; 6] = ["undo", "redo", "cut", "copy", "paste", "select-al
 /// The items that act on the course on screen, off while there is none, and
 /// every type of the Insert menu with them. The webview keeps the same list
 /// (NEEDS_COURSE in src/app/menu.ts), for the keys the menu does not take.
-const NEEDS_COURSE: [&str; 14] = [
+const NEEDS_COURSE: [&str; 15] = [
     "close-tab", "save", "save-as", "export-player", "duplicate", "delete", "fit", "layout",
-    "tab-canvas", "tab-json", "tab-preview", "problems", "agent", "sidebar",
+    "tab-canvas", "tab-json", "tab-preview", "tab-map-player", "problems", "agent", "sidebar",
 ];
 
 fn item_enabled(id: &str, state: &MenuState) -> bool {
@@ -452,6 +453,7 @@ fn build_menu(app: &AppHandle, lang: &str, recent: &[String], map: &MapLangs, st
         .item(&item("tab-canvas", l[24], Some("CmdOrCtrl+M"))?)
         .item(&item("tab-json", l[13], Some("CmdOrCtrl+E"))?)
         .item(&item("tab-preview", l[14], Some("CmdOrCtrl+P"))?)
+        .item(&item("tab-map-player", l[32], Some("CmdOrCtrl+Shift+P"))?)
         .separator()
         .item(&item("problems", l[28], Some("CmdOrCtrl+Shift+M"))?)
         .item(&item("agent", l[23], Some("CmdOrCtrl+Shift+A"))?)
@@ -685,6 +687,7 @@ mod tests {
         assert_eq!(labels("es")[29], "Idioma del mapa");
         assert_eq!(labels("pt")[30], "Barra lateral");
         assert_eq!(labels("en")[31], "Check for updates…");
+        assert_eq!(labels("pt")[32], "Preview com mapa");
         assert_eq!(labels("pt")[5], "Limpar histórico");
         assert_eq!(labels("pt")[6], "Exportar curso…");
         assert_eq!(labels("pt")[13], "EGF");

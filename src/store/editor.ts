@@ -16,7 +16,10 @@ import { diagnose, type Diagnostics } from "../validate";
 import { DEFAULT_STYLE, stringify, type JsonStyle } from "../course/serialize";
 import { emptyLayout, placeNodes, type Layout, type Position } from "./layout";
 
-export type Tab = "canvas" | "json" | "preview";
+export type Tab = "canvas" | "json" | "preview" | "map-player";
+
+/** The two tabs that run the player: the preview, alone or with the map of the course beside it. */
+export const isPreviewTab = (tab: Tab) => tab === "preview" || tab === "map-player";
 export type Selection = { nodes: string[]; edge: number | null };
 
 const LIMIT = 200;

@@ -25,7 +25,7 @@ export interface MessageContext {
   docId: string | null;
 }
 
-const VIEW = { canvas: "Graph", json: "EGF", preview: "Preview" } as const;
+const VIEW = { canvas: "Graph", json: "EGF", preview: "Preview", "map-player": "Preview with map" } as const;
 
 const MODE = {
   ask: "ask (each change to the course waits for the person's approval)",

@@ -2,7 +2,8 @@
  * The course as the student will see it, with real inference (plan 5.5), and
  * beside it what the author needs to tune it: every call, the student's state,
  * the path and why each branch was taken, and what the course wrote to the
- * console.
+ * console. With the map beside it (the "map-player" tab), the course's map
+ * follows the student from step to step, as the server's player_map.php does.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { courseLangs, useEditor } from "../store/editor";
@@ -11,6 +12,7 @@ import { useUi } from "../store/ui";
 import { useResizable } from "../ui/resize";
 import { currentState, usePreview, type CallLog, type ConsoleLevel, type PlayerState } from "./session";
 import { previewHtml } from "./shim";
+import { buildViewer } from "../app/export";
 import { answer } from "./host";
 import { chooseEdge, summarize } from "../course/condition";
 import { keysOfCourse, scaleLabel } from "../course/keys";
@@ -24,19 +26,21 @@ import type { Course } from "../schema/types";
 import { t } from "../i18n";
 
 type Side = "calls" | "state" | "path" | "console";
+type Half = "course" | "map";
 
 const LEVELS: ConsoleLevel[] = ["log", "info", "warn", "error", "debug"];
 
 /** The first time the preview opens with no key, it asks for one (plan 5.5); once per session. */
 let askedForKey = false;
 
-export function PreviewTab() {
+export function PreviewTab({ withMap = false }: { withMap?: boolean }) {
   const course = useEditor((s) => s.course)!;
   const hasKey = usePrefs((s) => s.hasKey);
   const reload = usePreview((s) => s.reload);
   const seed = usePreview((s) => s.seed);
   const lang = usePreview((s) => s.lang);
   const [side, setSide] = useState<Side>("calls");
+  const [alone, setAlone] = useState<Half | null>(null);
   const sideOpen = useUi((s) => s.previewSide);
   const presenting = useUi((s) => s.presenting);
   const savedWidth = usePrefs((s) => s.sidebar.preview);
@@ -175,14 +179,17 @@ export function PreviewTab() {
             <FullscreenIcon />
           </IconButton>
         </div>
-        <iframe
-          key={reload + (frozen === course ? 0 : 0)}
-          ref={frame}
-          className="preview-frame"
-          title={t("preview.title")}
-          sandbox="allow-scripts allow-popups allow-forms allow-modals allow-popups-to-escape-sandbox"
-          srcDoc={html}
-        />
+        <div className={`preview-stage ${withMap ? "with-map" : ""} ${withMap && alone ? `alone-${alone}` : ""}`}>
+          <iframe
+            key={reload + (frozen === course ? 0 : 0)}
+            ref={frame}
+            className="preview-frame"
+            title={t("preview.title")}
+            sandbox="allow-scripts allow-popups allow-forms allow-modals allow-popups-to-escape-sandbox"
+            srcDoc={html}
+          />
+          {withMap && <CourseMap course={frozen} alone={alone} setAlone={setAlone} />}
+        </div>
       </div>
       {sideOpen && (
         <aside className="preview-side" style={{ width: sideWidth }}>
@@ -206,6 +213,65 @@ export function PreviewTab() {
         </aside>
       )}
     </div>
+  );
+}
+
+/**
+ * The map of the course beside the player: the viewer, told where the student
+ * is every time the player saves -- {edukors: "player-state", state: {currentId,
+ * history, lang}}, what assets/player-map.js sends on the server -- and again
+ * when it says it is ready. Each half has a button that gives it the whole
+ * stage; the other is hidden, never removed, so the player goes on running and
+ * the map keeps its view.
+ */
+function CourseMap({ course, alone, setAlone }: { course: Course; alone: Half | null; setAlone: (half: Half | null) => void }) {
+  const frame = useRef<HTMLIFrameElement>(null);
+  const html = useMemo(() => buildViewer(course), [course]);
+  const states = usePreview((s) => s.states);
+  const state = currentState({ states });
+
+  const send = (s: PlayerState | null) => {
+    if (!s) return;
+    frame.current?.contentWindow?.postMessage({ edukors: "player-state", state: { currentId: s.currentId, history: s.history, lang: s.lang } }, "*");
+  };
+
+  useEffect(() => send(state), [state]);
+
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      if (event.source !== frame.current?.contentWindow) return;
+      if ((event.data as { edukors?: string })?.edukors === "map-ready") send(currentState(usePreview.getState()));
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
+
+  const button = (half: Half) => {
+    const label = alone === half ? t("preview.showBoth") : t(half === "course" ? "preview.growCourse" : "preview.growMap");
+    return (
+      <button
+        type="button"
+        className="preview-half-button"
+        data-half={half}
+        title={label}
+        aria-label={label}
+        aria-pressed={alone === half}
+        onClick={() => setAlone(alone === half ? null : half)}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M5 5l6 7-6 7" />
+          <path d="M12 5l6 7-6 7" />
+        </svg>
+      </button>
+    );
+  };
+
+  return (
+    <>
+      {button("course")}
+      <iframe ref={frame} className="preview-map" title={t("preview.map")} sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" srcDoc={html} />
+      {button("map")}
+    </>
   );
 }
 

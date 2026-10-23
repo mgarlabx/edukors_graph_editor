@@ -36,6 +36,7 @@ const SHORTCUTS: [string, string][] = [
   ["⌘M", "tab.canvas"],
   ["⌘E", "tab.json"],
   ["⌘P", "tab.preview"],
+  ["⇧⌘P", "tab.map-player"],
   ["⌘,", "prefs.title"],
   ["⇧⌘A", "agent.title"],
   ["⌥⌘0", "sidebar.toggle"],

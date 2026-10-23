@@ -80,6 +80,17 @@ export const PreviewIcon = (p: P) => (
   </Svg>
 );
 
+/** The preview with the map beside it: the player on one half, a graph on the other. */
+export const MapPlayerIcon = (p: P) => (
+  <Svg {...p}>
+    <rect x="2.5" y="4" width="19" height="16" rx="2" />
+    <path d="M12 4v16M6 9.5v5l4-2.5z" />
+    <circle cx="15.5" cy="9" r="1.3" />
+    <circle cx="18" cy="15.5" r="1.3" />
+    <path d="M16 10.3l1.5 3.9" />
+  </Svg>
+);
+
 /** The preview in full screen: four corners pushed out. */
 export const FullscreenIcon = (p: P) => (
   <Svg {...p}>

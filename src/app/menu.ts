@@ -19,7 +19,7 @@ import { native } from "./platform";
  */
 export const NEEDS_COURSE = [
   "close-tab", "save", "save-as", "export-player", "duplicate", "delete", "fit", "layout",
-  "tab-canvas", "tab-json", "tab-preview", "problems", "agent", "sidebar",
+  "tab-canvas", "tab-json", "tab-preview", "tab-map-player", "problems", "agent", "sidebar",
 ];
 
 export const needsCourse = (id: string) => NEEDS_COURSE.includes(id) || id.startsWith("insert:");

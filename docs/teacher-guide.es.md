@@ -43,7 +43,7 @@ Consejo: una vez instalado, un curso `.egf` se abre en el editor con doble clic.
 | --- | --- |
 | **Grafo** (centro) | Los pasos y las flechas. Arrastre los pasos para organizarlos, o arrastre el título de una sección para mover la sección entera; use ⊞ para organizarlo todo automáticamente. |
 | **Inspector** (derecha) | El contenido de lo que esté seleccionado. Empieza cerrado al abrir un archivo y se abre al hacer clic en un paso o en una flecha; el icono de barra lateral (⌥⌘0) lo abre y lo cierra, y su borde izquierdo se arrastra para cambiar el ancho — en la Vista previa, el mismo icono abre y cierra el panel de llamadas, estado, camino y consola. Sin nada seleccionado, muestra la información del curso. Sigue abierto cuando el agente de IA aparece a su lado. |
-| **Barra superior** | Guardar, el ＋ que **inserta** pasos (los diez tipos, también en el menú **Insertar**), deshacer, las pestañas **Mapa / EGF / Vista previa**, el idioma del grafo, la insignia de **problemas** y, en el extremo derecho, el **agente de IA** ✦. |
+| **Barra superior** | Guardar, el ＋ que **inserta** pasos (los diez tipos, también en el menú **Insertar**), deshacer, las pestañas **Mapa / EGF / Vista previa / Vista previa con mapa**, el idioma del grafo, la insignia de **problemas** y, en el extremo derecho, el **agente de IA** ✦. |
 | **Pestañas de curso** (justo debajo) | Un curso abierto por pestaña; ＋ crea un curso nuevo. |
 
 ### Varios cursos a la vez
@@ -146,6 +146,7 @@ En la pestaña **Vista previa** usted hace el curso como el estudiante, con la I
    - **Consola**: lo que el curso escribe en la consola del navegador y los errores que no maneja, también los de una página HTML, cada línea con la hora y el paso del que vino. Úsela para entender por qué una simulación no funciona.
 5. Si edita el curso con la vista previa abierta, haga clic en **Aplicar cambios** para recargar manteniendo al estudiante donde está.
 6. Los enlaces de un paso se abren en el navegador de su computadora, y la vista previa sigue donde estaba.
+7. La pestaña **Vista previa con mapa** (⇧⌘P) es la misma vista previa con el mapa del curso al lado, como lo ve el estudiante en la plataforma: el mapa marca los pasos ya hechos y el camino recorrido, y sigue el paso actual. Las flechas en la línea entre las dos mitades amplían una de ellas. Cambiar entre las dos pestañas no reinicia al estudiante.
 
 Sin clave, la vista previa funciona en modo reducido: los textos con IA muestran "intentar de nuevo" y las evaluaciones de la IA se convierten en un panel en el que usted mismo elige el resultado.
 
@@ -227,6 +228,7 @@ En Windows y en Linux, ⌘ y ⌃ corresponden a Ctrl, ⌥ a Alt y ⇧ a Shift; d
 | ⇧⌘L | Organizar automáticamente |
 | ⇧⌘M | Abrir / cerrar el panel de problemas |
 | ⌘M / ⌘E / ⌘P | Pestaña Mapa / EGF / Vista previa |
+| ⇧⌘P | Pestaña Vista previa con mapa |
 | ⌥⌘0 | Abrir / cerrar el inspector (en la Vista previa, el panel lateral) |
 | ⌘, | Preferencias |
 | ⇧⌘A | Abrir / cerrar el agente de IA |

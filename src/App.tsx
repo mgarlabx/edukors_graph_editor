@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
-import { courseLangs, useEditor } from "./store/editor";
+import { courseLangs, isPreviewTab, useEditor } from "./store/editor";
 import { positionsOf, type Position } from "./store/layout";
 import { activateNth, cycleDoc, dirtyDocs, flushPending } from "./store/docs";
 import { usePrefs } from "./store/prefs";
@@ -9,6 +9,7 @@ import { isTauri, native } from "./app/platform";
 import { closeDoc, createCourse, exportPlayer, openCourse, saveCourse, settleAll, windowTitle } from "./app/files";
 import { Toolbar } from "./app/Toolbar";
 import { DocTabs } from "./app/DocTabs";
+import edukorsLogo from "./app/edukors.svg?raw";
 import { HelpModal } from "./app/HelpModal";
 import { AboutModal } from "./app/AboutModal";
 import { UpdateModal } from "./app/UpdateModal";
@@ -90,7 +91,7 @@ export function command(id: string) {
     case "agent":
       return store.course ? ui.toggleAgent() : undefined;
     case "sidebar":
-      return store.course ? ui.toggleSidebar(store.tab === "preview") : undefined;
+      return store.course ? ui.toggleSidebar(isPreviewTab(store.tab)) : undefined;
     case "fit":
       return store.fit();
     case "layout":
@@ -103,6 +104,8 @@ export function command(id: string) {
       return store.setTab("json");
     case "tab-preview":
       return store.setTab("preview");
+    case "tab-map-player":
+      return store.setTab("map-player");
     case "undo":
     case "redo":
       // In a text field the field's own history wins; elsewhere, the course's.
@@ -207,7 +210,7 @@ export default function App() {
       }
       if (!isTauri() && meta) {
         const map: Record<string, string> = { n: "new", o: "open", s: e.shiftKey ? "save-as" : "save", z: e.shiftKey ? "redo" : "undo", d: "duplicate", 0: "fit", m: "tab-canvas", e: "tab-json", p: "tab-preview", ",": "prefs" };
-        const shifted: Record<string, string> = { l: "layout", m: "problems" };
+        const shifted: Record<string, string> = { l: "layout", m: "problems", p: "tab-map-player" };
         const id = (e.shiftKey && shifted[e.key.toLowerCase()]) || map[e.key.toLowerCase()];
         if (id && !(editable(document.activeElement) && ["z", "d"].includes(e.key.toLowerCase()))) {
           e.preventDefault();
@@ -259,7 +262,14 @@ export default function App() {
       <div className="app-body">
         <div className="app-main">
           {docId && <DocTabs />}
-          {docId ? <Workspace key={docId} /> : <div className="welcome" />}
+          {docId ? <Workspace key={docId} /> : (
+            <div className="welcome">
+              <div className="welcome-mark" aria-hidden="true">
+                <span dangerouslySetInnerHTML={{ __html: edukorsLogo }} />
+                <span>Graph Editor</span>
+              </div>
+            </div>
+          )}
         </div>
         {/* While the full-screen content editor is open it takes the agent in beside the text. */}
         {agent && docId && modal !== "content" && <AgentPanel />}
@@ -288,10 +298,10 @@ function Workspace() {
   const tab = useEditor((s) => s.tab);
   const bottom = useUi((s) => s.bottom);
   const inspector = useUi((s) => s.inspector);
-  const [previewMounted, setPreviewMounted] = useState(tab === "preview");
+  const [previewMounted, setPreviewMounted] = useState(isPreviewTab(tab));
 
   useEffect(() => {
-    if (tab === "preview") setPreviewMounted(true);
+    if (isPreviewTab(tab)) setPreviewMounted(true);
   }, [tab]);
 
   return (
@@ -305,12 +315,12 @@ function Workspace() {
             </Suspense>
           )}
           {previewMounted && (
-            <div className={tab === "preview" ? "fill" : "hidden"}>
-              <PreviewTab />
+            <div className={isPreviewTab(tab) ? "fill" : "hidden"}>
+              <PreviewTab withMap={tab === "map-player"} />
             </div>
           )}
         </main>
-        {tab !== "preview" && inspector && <Inspector />}
+        {!isPreviewTab(tab) && inspector && <Inspector />}
       </div>
       {bottom === "problems" && <ProblemsPanel />}
     </ReactFlowProvider>

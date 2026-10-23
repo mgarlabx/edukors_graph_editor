@@ -4,7 +4,7 @@
  * in the corner, or leaving full screen the system's way, ends it; so does
  * leaving the preview (another tab, another course).
  */
-import { useEditor } from "../store/editor";
+import { isPreviewTab, useEditor } from "../store/editor";
 import { useUi } from "../store/ui";
 import { isTauri } from "./platform";
 
@@ -14,7 +14,7 @@ let watching = false;
 
 export async function startPresenting() {
   const ui = useUi.getState();
-  if (ui.presenting || useEditor.getState().tab !== "preview") return;
+  if (ui.presenting || !isPreviewTab(useEditor.getState().tab)) return;
   watch();
   reached = false;
   ui.setPresenting(true);
@@ -47,7 +47,7 @@ function watch() {
   if (watching) return;
   watching = true;
   useEditor.subscribe((s, prev) => {
-    if (s.tab !== "preview" || s.docId !== prev.docId) void stopPresenting();
+    if (s.tab !== prev.tab || s.docId !== prev.docId) void stopPresenting();
   });
   if (isTauri()) {
     void (async () => {
