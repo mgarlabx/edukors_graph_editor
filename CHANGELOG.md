@@ -2,6 +2,12 @@
 
 Each version has its own section, written before the tag, **always in English**: its text goes to the release page on GitHub and to the update notice inside the app (`scripts/release-notes.mjs`). A section changed after the build does not reach the app.
 
+## 2.18.0
+
+- **Preview with map:** a fourth view (⇧⌘P, also in **View**) runs the same preview with the course map beside it, as students see it on the platform. The map marks the steps already taken and the path walked, and follows the current step; the arrows between the two halves give either one the whole width. Switching between **Preview** and **Preview with map** keeps the student where they are.
+- **Kiro (AWS):** the Kiro option in **Preferences → AI agent → Provider** now reads "Kiro (AWS)".
+- **edukors.org in the toolbar:** the Edukors logo at the left of the toolbar opens edukors.org in the browser.
+
 ## 2.17.0
 
 - **Kiro and Kimi Code as the AI agent:** the agent panel can now run on [Kiro](https://kiro.dev/docs/cli/installation/) (`kiro-cli`, signed in with `kiro-cli login`) and on [Kimi Code](https://moonshotai.github.io/kimi-code/en/guides/getting-started.html) (`kimi`, signed in with `kimi login`, or with the providers set up in it). Both are your own install, like the other agents, and work with the editor's skills and your MCP servers. Kimi Code can run read-only commands, each one put to you first; Kiro works through the editor's tools only. The older Python `kimi-cli` is not supported.
