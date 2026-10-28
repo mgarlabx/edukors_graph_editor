@@ -76,6 +76,8 @@ export interface AgentState extends Transcript {
   detections: Detection[];
   /** every account in the shared EDUKORS registry */
   accounts: AccountInfo[];
+  /** why the accounts could not be read, until a read succeeds */
+  accountsError: { code: string; detail?: string } | null;
   /** the account the agent runs on */
   accountId: string | null;
   /** its sign-in, as last checked */
@@ -440,6 +442,7 @@ export const useAgent = create<AgentState>()((set, get) => {
     error: null,
     detections: [],
     accounts: [],
+    accountsError: null,
     accountId: null,
     status: null,
     provider: null,
@@ -628,9 +631,14 @@ export const useAgent = create<AgentState>()((set, get) => {
     },
 
     async refreshAccounts() {
-      await connect();
-      const [accounts, detections] = await Promise.all([request<AccountInfo[]>("accounts.list"), request<Detection[]>("providers.detect", { refresh: true })]);
-      set({ accounts, detections });
+      try {
+        await connect();
+        const [accounts, detections] = await Promise.all([request<AccountInfo[]>("accounts.list"), request<Detection[]>("providers.detect", { refresh: true })]);
+        set({ accounts, detections, accountsError: null });
+      } catch (e) {
+        set({ accountsError: errorOf(e) });
+        throw e;
+      }
     },
 
     async selectAccount(accountId) {

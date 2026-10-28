@@ -133,8 +133,16 @@ function receive(msg: Incoming) {
   }
 }
 
+/** The start in progress, shared by every caller (the panel and the preferences may start it at once). */
+let connecting: Promise<void> | null = null;
+
 /** Starts the process if it is not running, and waits until it is ready. */
-export async function connect(): Promise<void> {
+export function connect(): Promise<void> {
+  connecting ??= start().finally(() => (connecting = null));
+  return connecting;
+}
+
+async function start(): Promise<void> {
   const tr = transport();
   if (!tr) throw new AgentError("unavailable");
   listening ??= tr.listen(receive).then(() => undefined);

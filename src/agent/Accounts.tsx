@@ -193,15 +193,30 @@ function AddAccount() {
 /** The accounts section of the preferences. */
 export function AccountsSection() {
   const accounts = useAgent((s) => s.accounts);
-  const [state, setState] = useState<"loading" | "ready" | "failed">("loading");
-  useEffect(() => {
-    useAgent
+  const error = useAgent((s) => s.accountsError);
+  const [loaded, setLoaded] = useState(false);
+  const load = () => {
+    void useAgent
       .getState()
       .refreshAccounts()
-      .then(() => setState("ready"), () => setState("failed"));
-  }, []);
-  if (state === "failed") return <p className="small muted">{t("prefs.accountsUnavailable")}</p>;
-  if (state === "loading") return <p className="small muted">{t("prefs.skillsLoading")}</p>;
+      .catch(() => undefined)
+      .finally(() => setLoaded(true));
+  };
+  useEffect(load, []);
+  if (!loaded) return <p className="small muted">{t("prefs.accountsLoading")}</p>;
+  // Cleared as soon as any read succeeds, here or in the panel.
+  if (error)
+    return (
+      <div className="agent-accounts">
+        <p className="small muted">{error.code === "unavailable" ? t("prefs.accountsUnavailable") : t("prefs.accountsFailed")}</p>
+        {error.code !== "unavailable" && error.detail && <p className="small muted">{error.detail}</p>}
+        {error.code !== "unavailable" && (
+          <button type="button" className="btn" onClick={load}>
+            {t("agent.retry")}
+          </button>
+        )}
+      </div>
+    );
   return (
     <div className="agent-accounts">
       <p className="small muted">{t("prefs.agentAccountsHint")}</p>
