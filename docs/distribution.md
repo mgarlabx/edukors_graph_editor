@@ -188,6 +188,8 @@ For a website or an email, these links always download the installer of the late
 
 The GitHub ones are copies, with names without the version, of each release's `.dmg`, `.exe`, AppImage and `.deb`. The Linux ones exist from the first version with Linux on. v2.12.0 came out before them and does not have them: the links work from the following version on. The page with all the files is `https://github.com/mgarlabx/edukors_graph_editor/releases/latest`.
 
+The Slides Editor follows the same public naming convention, using `Edukors-Slides-Editor` as its prefix. Both GitHub workflows leave releases in draft for manual review. The `_code2` download pages prefer fixed names and fall back to versioned installers for older releases; missing installers link to the releases page instead of leaving an empty card. Updater manifests and signed original assets keep their existing names.
+
 ### Testing
 
 `releases/latest/download/` ignores drafts and pre-releases: a pre-release in the main repository is not found by the app. To test end to end, use a fork, with `plugins.updater.endpoints` pointing to its releases, and the workflow triggered by hand (**Actions → Release → Run workflow**). Publish a version N, install it, publish N+1 and check that:
