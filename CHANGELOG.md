@@ -2,6 +2,15 @@
 
 Each version has its own section, written before the tag, **always in English**: its text goes to the release page on GitHub and to the update notice inside the app (`scripts/release-notes.mjs`). A section changed after the build does not reach the app.
 
+## Unreleased
+
+- **AI accounts:** the agent now runs on an AI account you add in **Preferences → AI agent → AI accounts** (Claude Code or Codex), with its own sign-in, separate from the one you may use in a terminal. Accounts are shared with the other EDUKORS apps on this computer. When the browser does not open for the sign-in, the editor shows the address and, for Claude, a field for the code shown after you authorize.
+- **Same agent everywhere:** the providers, accounts and sessions are handled by the shared EDUKORS AI library (`@edukors/ai-cli`), which the Slides editor will use too.
+- **Advanced:** instructions, MCP servers and skills now sit under **Advanced**, below the accounts. Every MCP server works with both providers, and each call to one waits for your approval as edits do. Codex now reads the editor's skills too.
+- **Attached files:** text files attached to a message are sent with it, since the agent no longer reads files on its own.
+- **Conversations** are saved by the editor and reopened as they were on screen, on the account they ran on.
+- **Removed:** Antigravity, Kiro, Kimi Code and OpenCode, until they are available in the shared library; the agent's shell and file tools; reading conversations from the providers' own history.
+
 ## 2.18.0
 
 - **Preview with map:** a fourth view (⇧⌘P, also in **View**) runs the same preview with the course map beside it, as students see it on the platform. The map marks the steps already taken and the path walked, and follows the current step; the arrows between the two halves give either one the whole width. Switching between **Preview** and **Preview with map** keeps the student where they are.

@@ -8,7 +8,8 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { sessionTitle, useAgent } from "./store";
-import { NODE_INSTALL, PROVIDER_INSTALL } from "./events";
+import { NODE_INSTALL, PROVIDER_INSTALL, type ProviderId } from "./events";
+import { SignInBox } from "./Accounts";
 import { Messages } from "./Messages";
 import { Asks } from "./Asks";
 import { Composer } from "./Composer";
@@ -145,16 +146,29 @@ function Header() {
 
 const SUGGESTIONS = ["agent.try1", "agent.try2", "agent.try3", "agent.try4"];
 
+/** The account the agent runs on, as a line: "Trabalho · Claude · ana@escola.org". */
+function AccountLine() {
+  const account = useAgent((s) => s.accounts.find((a) => a.id === s.accountId));
+  const status = useAgent((s) => s.status);
+  if (!account) return null;
+  return (
+    <p className="agent-account muted small">
+      {account.label} · {t(`agent.provider.${account.providerId}`)}
+      {status?.identity ? ` · ${status.identity}` : ""}
+    </p>
+  );
+}
+
 /** What the panel shows before the first message: the state of the connection, or where to start. */
 function Start() {
   const connection = useAgent((s) => s.connection);
   const error = useAgent((s) => s.error);
-  const account = useAgent((s) => s.account);
-  const provider = useAgent((s) => s.provider);
-  const capabilities = useAgent((s) => s.capabilities);
-  const signingIn = useAgent((s) => s.signingIn);
+  const accountId = useAgent((s) => s.accountId);
+  const account = useAgent((s) => s.accounts.find((a) => a.id === s.accountId));
+  const status = useAgent((s) => s.status);
+  const signingIn = useAgent((s) => !!s.signIn);
   const retry = useAgent((s) => s.retry);
-  const login = useAgent((s) => s.login);
+  const connectAccount = useAgent((s) => s.connectAccount);
 
   // The process stopped before any message: start it again.
   useEffect(() => {
@@ -168,13 +182,19 @@ function Start() {
       </div>
     );
   if (connection === "error" && error) {
-    const key = hasKey(`agent.err.${error.code}`) ? `agent.err.${error.code}` : "agent.err.failed";
-    // Each provider's own code (node-missing and sdk-missing are not a provider's).
-    const missing = error.code === "missing" || error.code === "agy-missing" || error.code === `${provider}-missing`;
+    const provider = (error.providerId ?? account?.providerId) as ProviderId | undefined;
+    const missing = error.code === "CLI_MISSING" || error.code === "CLI_INCOMPATIBLE";
+    const key = missing
+      ? error.code === "CLI_MISSING"
+        ? "agent.err.providerMissing"
+        : "agent.err.providerOld"
+      : hasKey(`agent.err.${error.code}`)
+        ? `agent.err.${error.code}`
+        : "agent.err.failed";
     return (
       <div className="agent-start">
         <div className="agent-notice agent-notice-error" role="alert">
-          <div>{missing ? t("agent.err.providerMissing", { provider: t(`agent.provider.${provider}`) }) : t(key)}</div>
+          <div>{t(key, { provider: provider ? t(`agent.provider.${provider}`) : "" })}</div>
           {error.detail && !missing && (
             <details>
               <summary>{t("agent.details")}</summary>
@@ -183,12 +203,8 @@ function Start() {
           )}
         </div>
         <div className="agent-start-actions">
-          {(missing || error.code === "node-missing") && (
-            <button
-              type="button"
-              className="btn btn-small btn-primary"
-              onClick={() => void openLink(missing ? PROVIDER_INSTALL[provider] : NODE_INSTALL)}
-            >
+          {((missing && provider) || error.code === "node-missing") && (
+            <button type="button" className="btn btn-small btn-primary" onClick={() => void openLink(missing && provider ? PROVIDER_INSTALL[provider] : NODE_INSTALL)}>
               {t("agent.provider.install")}
             </button>
           )}
@@ -201,28 +217,40 @@ function Start() {
       </div>
     );
   }
-  if (account?.signedIn === false)
+  if (!accountId)
     return (
       <div className="agent-start">
         <div className="agent-notice agent-notice-warning">
-          <strong>{t(`agent.loginTitle.${provider}`)}</strong>
-          <div>{t(`agent.loginHelp.${provider}`)}</div>
+          <strong>{t("agent.noAccount")}</strong>
+          <div>{t("agent.noAccountHelp")}</div>
         </div>
         <div className="agent-start-actions">
-          {capabilities?.login !== "none" && (
-            <button type="button" className="btn btn-small btn-primary" disabled={signingIn} onClick={() => void login()}>
-              {capabilities?.login === "browser" ? t("agent.loginBrowser") : t("agent.openTerminal")}
-            </button>
-          )}
-          <button type="button" className="btn btn-small" onClick={() => void retry()}>
-            {t("agent.retry")}
+          <button type="button" className="btn btn-small btn-primary" onClick={() => useUi.getState().open("prefs")}>
+            {t("agent.openAccounts")}
           </button>
         </div>
-        {signingIn && (
-          <p className="muted small">
-            <span className="spinner" /> {t("agent.signingIn")}
-          </p>
+      </div>
+    );
+  if (status && status.state !== "connected")
+    return (
+      <div className="agent-start">
+        <div className="agent-notice agent-notice-warning">
+          <strong>{t("agent.signInTitle", { name: account?.label ?? "" })}</strong>
+          <div>{t(status.state === "expired" ? "agent.signInExpired" : "agent.signInHelp")}</div>
+        </div>
+        {signingIn ? (
+          <SignInBox accountId={accountId} />
+        ) : (
+          <div className="agent-start-actions">
+            <button type="button" className="btn btn-small btn-primary" onClick={() => void connectAccount(accountId)}>
+              {t("prefs.accountConnect")}
+            </button>
+            <button type="button" className="btn btn-small" onClick={() => useUi.getState().open("prefs")}>
+              {t("agent.openAccounts")}
+            </button>
+          </div>
         )}
+        <AccountLine />
       </div>
     );
   return (
@@ -239,10 +267,7 @@ function Start() {
           </button>
         ))}
       </div>
-      <p className="agent-account muted small">
-        {account?.email ? t(`agent.account.${provider}`, { email: account.email }) : t(`agent.provider.${provider}`)}
-        {account?.plan ? ` · ${account.plan}` : ""}
-      </p>
+      <AccountLine />
       <Usage compact />
     </div>
   );

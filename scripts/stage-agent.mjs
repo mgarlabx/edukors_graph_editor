@@ -6,95 +6,104 @@
  *
  *   node scripts/stage-agent.mjs
  *
- * It holds the agent's own files (the sidecar, the providers, the tools, the
- * MCP bridge) and a node_modules with only what they import: the Claude Agent
- * SDK, the MCP SDK and zod, with everything those need, copied from the
- * project's node_modules so that the versions are the package-lock's.
+ * The agent is the shared EDUKORS AI library (@edukors/ai-cli): the bundle is a
+ * node_modules with it and everything it imports (the Claude Agent SDK, the MCP
+ * SDK, zod), resolved from each package's real location, so that a library
+ * linked from a folder brings its own dependencies at the versions it was
+ * tested with. Of each package, only what it publishes is copied.
  *
- * No agent's own program is here. Claude Code, Codex, the Antigravity CLI,
- * Kiro, Kimi Code and OpenCode are the person's own install (hundreds of megabytes each, per
- * platform), which the agent finds on the machine and never ships. The Claude
- * Agent SDK comes without the native `claude` packages it lists as optional:
- * it is pointed at the person's `claude` (agent/providers/claude.mjs).
+ * No provider's own program is here. Claude Code and Codex are the person's
+ * own install (hundreds of megabytes each, per platform), which the library
+ * finds on the machine and never ships. The Claude Agent SDK comes without the
+ * native `claude` packages it lists as optional: the library points it at the
+ * person's `claude`.
  */
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const MODULES = join(ROOT, "node_modules");
 const OUT = join(ROOT, "src-tauri", "agent-bundle");
+const LIBRARY = "@edukors/ai-cli";
 const SDK = "@anthropic-ai/claude-agent-sdk";
-/** What agent/*.mjs import from outside Node. */
-const ENTRIES = [SDK, "zod", "@modelcontextprotocol/sdk"];
 /** What must be where the bundle looks for it once staged. */
-const CHECKS = [
-  SDK,
-  "@modelcontextprotocol/sdk/server/mcp.js",
-  "@modelcontextprotocol/sdk/server/streamableHttp.js",
-  "@modelcontextprotocol/sdk/server/sse.js",
-  // The person's own servers, reached by the bridge as a client (agent/mcpProxy.mjs).
-  "@modelcontextprotocol/sdk/client/index.js",
-  "@modelcontextprotocol/sdk/client/stdio.js",
-  "@modelcontextprotocol/sdk/client/streamableHttp.js",
-  "@modelcontextprotocol/sdk/client/sse.js",
-];
+const CHECKS = [`${LIBRARY}/dist/host/main.js`, SDK, "@modelcontextprotocol/sdk/client/stdio.js", "@modelcontextprotocol/sdk/server/streamableHttp.js", "zod"];
 const manifest = (dir) => JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
 
-/** Where Node would find `name` when it is required from `from`. */
+/** Where Node would find `name` when it is imported from the real folder `from`. */
 function resolvePackage(name, from) {
-  for (let dir = from; dir.startsWith(MODULES); dir = dirname(dir)) {
+  for (let dir = from; ; dir = dirname(dir)) {
     const candidate = join(dir, "node_modules", name);
-    if (existsSync(join(candidate, "package.json"))) return candidate;
+    if (existsSync(join(candidate, "package.json"))) return realpathSync(candidate);
+    if (dirname(dir) === dir) break;
   }
-  const top = join(MODULES, name);
-  if (existsSync(join(top, "package.json"))) return top;
-  throw new Error(`${name} (needed by ${relative(ROOT, from) || "agent/"}) is not in node_modules; run npm install`);
+  throw new Error(`${name} (needed by ${relative(ROOT, from) || "the app"}) is not installed; run npm install`);
 }
 
-/** The packages the entries need, dependencies and peers, each once. */
+/** The packages the library needs, dependencies and peers, each once: name → real folder. */
 function closure() {
-  const found = new Set();
+  const found = new Map();
   const visit = (name, from) => {
     const dir = resolvePackage(name, from);
-    if (found.has(dir)) return;
-    found.add(dir);
+    if (found.has(name)) return;
+    found.set(name, dir);
     const pkg = manifest(dir);
     for (const dep of Object.keys({ ...pkg.dependencies, ...pkg.peerDependencies })) {
       const optionalPeer = pkg.peerDependenciesMeta?.[dep]?.optional && !pkg.dependencies?.[dep];
-      if (optionalPeer && !existsSync(join(MODULES, dep))) continue;
+      if (optionalPeer) {
+        try {
+          resolvePackage(dep, dir);
+        } catch {
+          continue;
+        }
+      }
       visit(dep, dir);
     }
   };
-  for (const name of ENTRIES) visit(name, MODULES);
-  return [...found];
+  visit(LIBRARY, ROOT);
+  return found;
+}
+
+/**
+ * What to copy of a package. The library, linked from its own folder, holds its
+ * sources and tests too: only its `files` go (plain paths). Installed packages
+ * hold what they published already; only a nested node_modules stays out.
+ */
+function publishes(name, dir) {
+  const files = name === LIBRARY ? manifest(dir).files : null;
+  const extra = ["package.json", "README.md", "LICENSE", "LICENSE.md"];
+  return (src) => {
+    const rel = relative(dir, src).replaceAll("\\", "/");
+    if (!rel) return true;
+    if (rel === "node_modules" || rel.startsWith("node_modules/")) return false;
+    if (!files) return true;
+    return extra.includes(rel) || files.some((f) => rel === f || rel.startsWith(f + "/") || f.startsWith(rel + "/"));
+  };
 }
 
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT, { recursive: true });
-// The whole agent folder: the sidecar, the providers, the bridge and the prompt.
-cpSync(join(ROOT, "agent"), OUT, { recursive: true });
 
 const packages = closure();
-for (const dir of packages) {
-  cpSync(dir, join(OUT, "node_modules", relative(MODULES, dir)), {
-    recursive: true,
-    // A native `claude`, nested by npm, would only add weight.
-    filter: (src) => !relative(dir, src).replaceAll("\\", "/").includes(`${SDK}-`),
-  });
+for (const [name, dir] of packages) {
+  // A native `claude`, listed by the SDK as optional, would only add weight.
+  if (name.startsWith(`${SDK}-`)) continue;
+  cpSync(dir, join(OUT, "node_modules", name), { recursive: true, dereference: true, filter: publishes(name, dir) });
 }
 
-const version = manifest(join(MODULES, SDK)).version;
-
-// What the providers and the bridge will import from the staged copy.
-const fromAgent = createRequire(join(OUT, "mcpBridge.mjs"));
+const fromBundle = createRequire(join(OUT, "node_modules", LIBRARY, "package.json"));
 for (const entry of CHECKS) {
+  const path = entry.startsWith(`${LIBRARY}/`) ? join(OUT, "node_modules", entry) : null;
   try {
-    fromAgent.resolve(entry);
+    if (path) {
+      if (!existsSync(path)) throw new Error();
+    } else fromBundle.resolve(entry);
   } catch {
     throw new Error(`${entry} is missing from the staged agent`);
   }
 }
 
-console.log(`agent staged in ${relative(ROOT, OUT)}/: ${packages.length} packages (SDK ${version})`);
+const library = manifest(packages.get(LIBRARY)).version;
+const sdk = manifest(packages.get(SDK)).version;
+console.log(`agent staged in ${relative(ROOT, OUT)}/: ${packages.size} packages (${LIBRARY} ${library}, SDK ${sdk})`);

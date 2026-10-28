@@ -1,6 +1,6 @@
 /**
  * The agent's tools, run in the editor. Their descriptions, which are what
- * Claude reads, are in agent/tools.mjs.
+ * the model reads, are in toolSpecs.ts.
  *
  * They work on the course of the conversation: the one on screen when the
  * person last wrote, which may since have gone to another tab. Reading it

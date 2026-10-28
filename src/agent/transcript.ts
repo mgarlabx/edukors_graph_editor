@@ -1,18 +1,14 @@
 /**
- * The conversation as the panel shows it, built from the agent's events.
+ * The conversation as the panel shows it, built from the library's events
+ * (@edukors/ai-cli): the answer is written into `live` as it streams, and
+ * becomes items for good when the turn ends or a tool call starts, so that
+ * the text and the tool cards stay in the order they happened. The input and
+ * result of the editor's own tools come from the panel, which runs them.
  *
- * The agent's process sends each block of an answer -- a thought, a text, a
- * tool call -- as an event of its own once it is complete, and, as it is
- * written, a stream of events with the text so far. The stream fills `live`,
- * which is shown at the end of the conversation; each complete block replaces
- * its live copy with an item for good. A conversation read back from disk goes
- * through the same steps, without the stream (`fold`).
- *
- * Which provider is behind the agent makes no difference here: the events are
- * the same for all of them (src/agent/events.ts).
+ * Saved conversations keep the items themselves (history.ts), so reading one
+ * back needs no provider.
  */
-import { splitFiles } from "./attachments";
-import type { AgentEvent, Block } from "./events";
+import type { AiEvent } from "@edukors/ai-cli";
 
 export type ToolStatus = "running" | "done" | "error";
 
@@ -66,33 +62,15 @@ const key = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${++seq}`;
 /** A notice in the conversation: an error, a limit reached, an interruption. */
 export const notice = (level: "info" | "warning" | "error", text: string, code?: string): Item => ({ kind: "notice", key: key("n"), level, text, code });
 
-/** The blocks of a complete answer, as items; the live copies of those blocks go. */
-function assistantBlocks(t: Transcript, uuid: string, messageId: string | undefined, blocks: Block[]): Transcript {
-  const items = [...t.items];
-  let live = t.live;
-  for (const b of blocks) {
-    if (b.type === "tool_use") {
-      if (items.some((it) => it.kind === "tool" && it.id === b.id)) continue;
-      items.push({ kind: "tool", key: b.id, id: b.id, name: b.name, input: b.input, status: "running" });
-    } else if (b.type === "text") items.push({ kind: "text", key: `${uuid}:${b.index}`, text: b.text });
-    else items.push({ kind: "thinking", key: `${uuid}:${b.index}`, text: b.text });
-    if (live && live.messageId === messageId) {
-      const at = live.blocks.findIndex((l) => l.type === b.type && (b.type !== "tool_use" || l.id === b.id));
-      if (at !== -1) live = { ...live, blocks: live.blocks.filter((_, k) => k !== at) };
-    }
-  }
-  return { items, live };
-}
-
 /**
- * What was being written when the turn stopped short, kept as it stood: an
- * interrupted answer has no complete message to replace its live copy.
+ * What was being written, kept as it stands: at the end of a turn, or before a
+ * tool card, so that the card comes after the words that led to it.
  */
 function freeze(t: Transcript): Transcript {
   if (!t.live?.blocks.length) return { ...t, live: null };
   const kept: Item[] = t.live.blocks
-    .filter((b) => b.type !== "tool_use" && b.text.trim())
-    .map((b) => (b.type === "text" ? { kind: "text", key: `${t.live!.messageId}:${b.index}`, text: b.text } : { kind: "thinking", key: `${t.live!.messageId}:${b.index}`, text: b.text }));
+    .filter((b) => b.text.trim())
+    .map((b) => ({ kind: b.type === "thinking" ? "thinking" : "text", key: `${t.live!.messageId}:${b.index}`, text: b.text }) as Item);
   return { items: [...t.items, ...kept], live: null };
 }
 
@@ -101,57 +79,43 @@ const interrupted = (t: Transcript): Transcript => {
   return last?.kind === "notice" && last.code === "interrupted" ? t : { ...t, items: [...t.items, notice("info", "", "interrupted")] };
 };
 
-/** One event from the agent's process, folded into the conversation. */
-export function applyEvent(t: Transcript, ev: AgentEvent): Transcript {
-  switch (ev.ev) {
-    case "msg_start":
-      return { ...t, live: { messageId: ev.messageId, blocks: [] } };
-    case "block_start": {
-      const live = t.live ?? { messageId: "", blocks: [] };
-      const block: LiveBlock = { index: ev.index, type: ev.type, text: ev.text ?? "", name: ev.name, id: ev.id, done: false };
-      return { ...t, live: { ...live, blocks: [...live.blocks, block] } };
+const toolItem = (t: Transcript, callId: string, change: (it: Extract<Item, { kind: "tool" }>) => Item): Transcript => ({
+  ...t,
+  items: t.items.map((it) => (it.kind === "tool" && it.id === callId ? change(it) : it)),
+});
+
+/** One of the library's events, folded into the conversation. Events of other kinds leave it as it is. */
+export function applyEvent(t: Transcript, ev: AiEvent): Transcript {
+  switch (ev.type) {
+    case "textDelta": {
+      const live = t.live ?? { messageId: ev.requestId ?? key("m"), blocks: [] };
+      const last = live.blocks[live.blocks.length - 1];
+      const blocks = last && last.type === "text" && !last.done ? [...live.blocks.slice(0, -1), { ...last, text: last.text + ev.text }] : [...live.blocks, { index: live.blocks.length, type: "text" as const, text: ev.text, done: false }];
+      return { ...t, live: { ...live, blocks } };
     }
-    case "block_delta":
-      if (!t.live) return t;
-      return { ...t, live: { ...t.live, blocks: t.live.blocks.map((b) => (b.index === ev.index && !b.done ? { ...b, text: b.text + ev.text } : b)) } };
-    case "block_stop":
-      if (!t.live) return t;
-      return { ...t, live: { ...t.live, blocks: t.live.blocks.map((b) => (b.index === ev.index ? { ...b, done: true } : b)) } };
-    case "assistant":
-      return assistantBlocks(t, ev.uuid, ev.messageId, ev.blocks);
-    case "tool_result":
-      return {
-        ...t,
-        items: t.items.map((it) => (it.kind === "tool" && it.id === ev.toolUseId ? { ...it, status: ev.isError ? "error" : "done", result: ev.text } : it)),
-      };
-    case "user": {
-      const { text: said, context } = splitContext(ev.text);
-      const { text, files } = splitFiles(said);
-      return { ...t, items: [...t.items, { kind: "user", key: ev.key, text, ...(context ? { context } : {}), ...(files ? { files } : {}) }] };
-    }
-    case "interrupted":
-      return interrupted(freeze(t));
-    case "turn_end": {
+    case "toolStarted": {
       const done = freeze(t);
-      if (ev.status === "success") return done;
-      if (ev.status === "interrupted") return interrupted(done);
-      return { ...done, items: [...done.items, notice("error", ev.text ?? "", ev.code)] };
+      if (done.items.some((it) => it.kind === "tool" && it.id === ev.callId)) return done;
+      return { ...done, items: [...done.items, { kind: "tool", key: ev.callId, id: ev.callId, name: ev.tool, input: {}, status: "running" }] };
     }
-    case "notice":
-      return { ...t, items: [...t.items, notice(ev.level, ev.text, ev.code)] };
-    case "divider":
-      return { ...t, items: [...t.items, { kind: "divider", key: key("d"), text: ev.text }] };
-    case "reset":
-      return emptyTranscript();
+    case "toolCompleted":
+      return toolItem(t, ev.callId, (it) => ({ ...it, status: ev.ok ? "done" : "error", ...(it.result === undefined && ev.errorCode ? { result: ev.errorCode } : {}) }));
+    case "turnCompleted":
+      return freeze(t);
+    case "cancelled":
+      return interrupted(freeze(t));
+    case "error":
+      return { ...freeze(t), items: [...freeze(t).items, notice("error", ev.error.message, ev.error.code)] };
+    default:
+      return t;
   }
 }
 
-/** A conversation read back from disk: its events, folded, with nothing still running. */
-export function fold(events: AgentEvent[]): Transcript {
-  const t = events.reduce(applyEvent, emptyTranscript());
-  // A tool call with no result was cut short when the conversation stopped.
-  return { items: t.items.map((it) => (it.kind === "tool" && it.status === "running" ? { ...it, status: "error" } : it)), live: null };
-}
+/** The input of a tool call, once the panel has it (the call or the authorization carries it). */
+export const setToolInput = (t: Transcript, callId: string, input: Record<string, unknown>): Transcript => toolItem(t, callId, (it) => ({ ...it, input }));
+
+/** The result of one of the editor's tools, as the panel ran it. */
+export const setToolResult = (t: Transcript, callId: string, result: string): Transcript => toolItem(t, callId, (it) => ({ ...it, result }));
 
 /** Tool calls left waiting when a turn ends without their results: stopped. */
 export const settle = (t: Transcript): Transcript => ({

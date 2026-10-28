@@ -6,9 +6,8 @@
  * does not show (transcript.ts takes it off again when a conversation is read
  * back).
  *
- * The mode travels with every message because only Claude Code is told it by
- * its own process; the other providers read it here. Whatever it says, the
- * editor's own gate is what refuses a change (agent/sidecar.mjs).
+ * The mode travels with every message, so every provider reads it here.
+ * Whatever it says, the editor's own gate is what refuses a change (store.ts).
  */
 import { useEditor } from "../store/editor";
 import { useUi } from "../store/ui";

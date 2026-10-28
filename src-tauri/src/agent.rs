@@ -1,4 +1,5 @@
-//! The agent's process: `agent/sidecar.mjs`, under Node.
+//! The agent's process: the shared EDUKORS AI library's host
+//! (`@edukors/ai-cli`, `dist/host/main.js`), under Node.
 //!
 //! The webview starts it the first time the agent panel opens. It is one child
 //! process spoken to in JSON lines: what the webview sends goes to its stdin as
@@ -6,12 +7,10 @@
 //! event, stamped with the generation of the process that wrote it, so that a
 //! line from a process already replaced is recognized as such.
 //!
-//! Which provider answers for the agent -- Claude Code through its SDK,
-//! Codex, the Antigravity CLI, Kiro, Kimi Code, OpenCode -- is the sidecar's business: it starts
-//! whatever it needs itself, and this side knows nothing about them. Every
-//! provider signs in with what is set up on this machine (an account, or the
-//! providers connected to OpenCode, which keeps their credentials itself), so
-//! the API keys in the environment are taken out of the process's.
+//! The providers (Claude Code, Codex), their accounts and sessions are the
+//! library's business; the panel speaks its protocol (src/agent/client.ts).
+//! This side also keeps what is the editor's own: the skills folder and the
+//! conversations the panel saves.
 
 use std::collections::VecDeque;
 use std::io::{BufRead, BufReader, Write};
@@ -79,14 +78,12 @@ pub fn agent_start(app: AppHandle, agent: State<Agent>) -> Result<Started, Strin
     // the script it is given, stops on that: "EISDIR: illegal operation on a
     // directory, lstat 'C:'". The plain path is the same file.
     let script = dunce::simplified(&find_script(&app).ok_or("sidecar-missing")?).to_path_buf();
-    let cwd = dunce::simplified(&app.path().app_data_dir().map_err(|e| e.to_string())?.join("agent")).to_path_buf();
-    std::fs::create_dir_all(&cwd).map_err(|e| format!("{}: {e}", cwd.display()))?;
 
     let generation = agent.generation.fetch_add(1, Ordering::SeqCst) + 1;
     let mut child = quiet(&node)
         .arg(&script)
+        .args(["--app-id", "graph"])
         .current_dir(script.parent().unwrap_or(Path::new("/")))
-        .env("EDUKORS_AGENT_CWD", &cwd)
         .env("PATH", search_path(&node))
         .env_remove("ANTHROPIC_API_KEY")
         .env_remove("ANTHROPIC_AUTH_TOKEN")
@@ -156,9 +153,16 @@ pub fn agent_stop(agent: State<Agent>) {
 
 // ---------------------------------------------------------------- where ----
 
-/// The script: inside the app when it is bundled (scripts/stage-agent.mjs puts
-/// it there, with the SDK beside it), else, in a debug build only, the
-/// project's own copy, which is where `npm run app:dev` runs it from. A
+/// Where the library's host is, relative to a folder holding a node_modules.
+const HOST: [&str; 6] = ["node_modules", "@edukors", "ai-cli", "dist", "host", "main.js"];
+
+fn host_in(dir: &Path) -> PathBuf {
+    HOST.iter().fold(dir.to_path_buf(), |p, part| p.join(part))
+}
+
+/// The host: inside the app when it is bundled (scripts/stage-agent.mjs puts
+/// it there, with what it imports), else, in a debug build only, the
+/// project's node_modules, which is where `npm run app:dev` runs it from. A
 /// release build looks nowhere outside itself, so that it works on any machine.
 fn find_script(app: &AppHandle) -> Option<PathBuf> {
     if let Some(p) = std::env::var_os("EDUKORS_AGENT_SCRIPT").map(PathBuf::from) {
@@ -167,16 +171,93 @@ fn find_script(app: &AppHandle) -> Option<PathBuf> {
         }
     }
     if let Ok(dir) = app.path().resource_dir() {
-        let bundled = dir.join("agent").join("sidecar.mjs");
+        let bundled = host_in(&dir.join("agent"));
         if bundled.is_file() {
             return Some(bundled);
         }
     }
     #[cfg(debug_assertions)]
-    if let Some(dev) = Path::new(env!("CARGO_MANIFEST_DIR")).join("../agent/sidecar.mjs").canonicalize().ok().filter(|p| p.is_file()) {
+    if let Some(dev) = host_in(&Path::new(env!("CARGO_MANIFEST_DIR")).join("..")).canonicalize().ok().filter(|p| p.is_file()) {
         return Some(dev);
     }
     None
+}
+
+// ------------------------------------------------- the editor's own files ----
+
+/// The agent's folder in the app's data: skills and saved conversations live here.
+fn agent_dir(app: &AppHandle) -> Result<PathBuf, String> {
+    let dir = dunce::simplified(&app.path().app_data_dir().map_err(|e| e.to_string())?.join("agent")).to_path_buf();
+    std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+    Ok(dir)
+}
+
+#[derive(Serialize)]
+pub struct AgentPaths {
+    /// The skills the agent is offered, one folder each with a SKILL.md. Where
+    /// earlier versions kept them, so that installed skills carry over.
+    skills: PathBuf,
+}
+
+#[tauri::command]
+pub fn agent_paths(app: AppHandle) -> Result<AgentPaths, String> {
+    let skills = agent_dir(&app)?.join("plugin").join("skills");
+    std::fs::create_dir_all(&skills).map_err(|e| format!("{}: {e}", skills.display()))?;
+    Ok(AgentPaths { skills })
+}
+
+/// A saved conversation's file: its id is the panel's, letters, digits and dashes only.
+fn history_file(app: &AppHandle, id: &str, ext: &str) -> Result<PathBuf, String> {
+    if id.is_empty() || id.len() > 64 || !id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') {
+        return Err("invalid conversation id".into());
+    }
+    let dir = agent_dir(app)?.join("history");
+    std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+    Ok(dir.join(format!("{id}.{ext}")))
+}
+
+/// Saves a conversation: its summary (for the list) and its body, each written whole.
+#[tauri::command]
+pub fn agent_history_write(app: AppHandle, id: String, meta: Value, body: Value) -> Result<(), String> {
+    for (ext, value) in [("meta.json", &meta), ("json", &body)] {
+        let path = history_file(&app, &id, ext)?;
+        let tmp = path.with_extension(format!("{ext}.tmp"));
+        std::fs::write(&tmp, serde_json::to_vec(value).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+        std::fs::rename(&tmp, &path).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+/// The summaries of the saved conversations, as written.
+#[tauri::command]
+pub fn agent_history_list(app: AppHandle) -> Result<Vec<Value>, String> {
+    let dir = agent_dir(&app)?.join("history");
+    let Ok(entries) = std::fs::read_dir(&dir) else {
+        return Ok(Vec::new());
+    };
+    Ok(entries
+        .filter_map(Result::ok)
+        .filter(|e| e.file_name().to_string_lossy().ends_with(".meta.json"))
+        .filter_map(|e| std::fs::read(e.path()).ok())
+        .filter_map(|bytes| serde_json::from_slice::<Value>(&bytes).ok())
+        .collect())
+}
+
+#[tauri::command]
+pub fn agent_history_read(app: AppHandle, id: String) -> Result<Value, String> {
+    let bytes = std::fs::read(history_file(&app, &id, "json")?).map_err(|e| e.to_string())?;
+    serde_json::from_slice(&bytes).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn agent_history_delete(app: AppHandle, id: String) -> Result<(), String> {
+    for ext in ["meta.json", "json"] {
+        let path = history_file(&app, &id, ext)?;
+        if path.exists() {
+            std::fs::remove_file(&path).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
 }
 
 /// A command that, on Windows, opens no console window of its own.
@@ -339,8 +420,7 @@ mod tests {
     }
 
     #[test]
-    fn the_script_is_in_the_project() {
-        let dev = Path::new(env!("CARGO_MANIFEST_DIR")).join("../agent/sidecar.mjs");
-        assert!(dev.is_file());
+    fn the_host_is_in_the_project() {
+        assert!(host_in(&Path::new(env!("CARGO_MANIFEST_DIR")).join("..")).is_file());
     }
 }

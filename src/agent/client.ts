@@ -1,44 +1,34 @@
 /**
- * The line to the agent's process (agent/sidecar.mjs), through the app
- * (src-tauri/src/agent.rs): requests that get a reply, notes that do not, and
- * what the process sends on its own -- the conversation's events, questions
- * for the person, tool calls for the editor.
+ * The line to the agent's process, the EDUKORS AI library's host
+ * (@edukors/ai-cli, `edukors-ai-host`), through the app
+ * (src-tauri/src/agent.rs): one JSON object per line.
+ *
+ *   panel → host   { id, method, params }         a request
+ *   host → panel   { id, result } | { id, error }  its answer
+ *   host → panel   { event }                        a conversation's event
+ *   host → panel   { login }                        a sign-in address
+ *   host → panel   { id: "h:<n>", method, params }  a tool call or an authorization, answered by the panel
+ *
+ * The app adds `{ t: "exit" }` when the process stops and `{ t: "log" }` for a
+ * line that is not JSON, and stamps every line with `gen`, the process that
+ * wrote it.
  *
  * In a plain browser (`npm run dev`) there is no process to start. A test can
  * put its own transport in `window.__edukorsAgentTransport`.
  */
-import type { AgentEvent, ProviderId, ProviderState } from "./events";
+import type { AiEvent, LoginPrompt, SerializedError } from "@edukors/ai-cli";
 import { invoke } from "@tauri-apps/api/core";
 import { isTauri } from "../app/platform";
 
-export type AskKind = "permission" | "question" | "plan";
+export type HostRequest = { id: string; method: "tool.call" | "tool.authorize"; params: Record<string, unknown> };
+export type LoginMessage = LoginPrompt & { requestId: number | string; accountId: string };
 
-/** One of the person's MCP servers, as Claude Code reports it. */
-export interface McpState {
-  name: string;
-  status: "connected" | "failed" | "needs-auth" | "pending" | "disabled";
-  error?: string;
-}
-
-/** One of the person's skills, from the agent's skills folder. */
-export interface SkillInfo {
-  name: string;
-  description: string;
-  dir: string;
-}
-
-/** What the process sends. The app stamps each with `gen`, the process that wrote it. */
 export type Incoming = { gen?: number } & (
-  | { t: "ready"; cwd: string; providers: ProviderState[] }
-  | { t: "fatal"; code: string; message: string }
-  | { t: "reply"; id: string; ok: boolean; data?: unknown; error?: string; code?: string }
-  | { t: "ev"; sid: string; ev: AgentEvent }
-  | { t: "ask"; id: string; sid: string; kind: AskKind; tool: string; input: Record<string, unknown>; toolUseId: string; reason: string | null; blockedPath?: string | null; once?: boolean }
-  | { t: "ask_cancel"; id: string }
-  | { t: "tool"; id: string; name: string; args: Record<string, unknown> }
-  | { t: "mcp"; sid: string; servers: McpState[] }
-  | { t: "login"; provider: ProviderId; ok: boolean; error?: string }
-  | { t: "ended"; sid: string; error?: string }
+  | { ready: { protocol: number; version: string } }
+  | { id: number | string; result?: unknown; error?: SerializedError; method?: undefined }
+  | { event: AiEvent }
+  | { login: LoginMessage }
+  | HostRequest
   | { t: "exit"; stderr?: string }
   | { t: "log"; text: string }
 );
@@ -66,34 +56,38 @@ const tauriTransport: Transport = {
   },
 };
 
-const transport = (): Transport | null =>
-  (typeof window !== "undefined" && window.__edukorsAgentTransport) || (isTauri() ? tauriTransport : null);
+const transport = (): Transport | null => (typeof window !== "undefined" && window.__edukorsAgentTransport) || (isTauri() ? tauriTransport : null);
 
-/** Why the agent could not start: one of the codes the panel explains. */
+/** An error with one of the library's stable codes (CLI_MISSING, ACCOUNT_DISCONNECTED…) or the app's own (node-missing, exited, timeout…). */
 export class AgentError extends Error {
   constructor(
     public code: string,
     message = "",
+    public meta?: Record<string, unknown>,
   ) {
     super(message || code);
   }
 }
 
+export interface Handlers {
+  event(ev: AiEvent): void;
+  login(prompt: LoginMessage): void;
+  /** A tool call or an authorization: what it resolves to is the answer. */
+  hostRequest(req: HostRequest): Promise<unknown>;
+  exit(stderr: string): void;
+}
+
 let listening: Promise<void> | null = null;
 let generation = 0;
 let seq = 0;
-const pending = new Map<string, { resolve: (data: unknown) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
+const pending = new Map<number, { resolve: (data: unknown) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
 let ready: { resolve: () => void; reject: (e: Error) => void } | null = null;
-let handler: (msg: Incoming) => void = () => undefined;
+let handlers: Handlers | null = null;
 
 /** Where what the process sends on its own goes. */
-export const onIncoming = (fn: (msg: Incoming) => void) => {
-  handler = fn;
+export const setHandlers = (h: Handlers) => {
+  handlers = h;
 };
-
-/** What the process said it can run, as of the last start. */
-let providerStates: ProviderState[] = [];
-export const providers = () => providerStates;
 
 function receive(msg: Incoming) {
   // A line from a process that has since been replaced.
@@ -101,37 +95,41 @@ function receive(msg: Incoming) {
     if (msg.gen < generation) return;
     generation = msg.gen;
   }
-  switch (msg.t) {
-    case "ready":
-      providerStates = msg.providers ?? [];
-      ready?.resolve();
-      ready = null;
-      return;
-    case "fatal":
-      ready?.reject(new AgentError(msg.code === "sdk-missing" ? "sdk-missing" : "failed", msg.message));
-      ready = null;
-      return;
-    case "reply": {
-      const waiting = pending.get(msg.id);
-      if (!waiting) return;
-      pending.delete(msg.id);
+  if ("ready" in msg) {
+    ready?.resolve();
+    ready = null;
+    return;
+  }
+  if ("event" in msg) return handlers?.event(msg.event);
+  if ("login" in msg) return handlers?.login(msg.login);
+  if ("t" in msg) {
+    if (msg.t !== "exit") return;
+    ready?.reject(new AgentError("exited", msg.stderr));
+    ready = null;
+    for (const [id, waiting] of pending) {
       clearTimeout(waiting.timer);
-      if (msg.ok) waiting.resolve(msg.data);
-      else waiting.reject(msg.code ? new AgentError(msg.code, msg.error ?? "") : new Error(msg.error ?? "failed"));
-      return;
+      waiting.reject(new AgentError("exited", msg.stderr));
+      pending.delete(id);
     }
-    case "exit":
-      ready?.reject(new AgentError("exited", msg.stderr));
-      ready = null;
-      for (const [id, waiting] of pending) {
-        clearTimeout(waiting.timer);
-        waiting.reject(new AgentError("exited", msg.stderr));
-        pending.delete(id);
-      }
-      handler(msg);
-      return;
-    default:
-      handler(msg);
+    handlers?.exit(msg.stderr ?? "");
+    return;
+  }
+  if ("method" in msg && typeof msg.method === "string") {
+    const req = msg as HostRequest;
+    const answer = handlers ? handlers.hostRequest(req) : Promise.reject(new Error("the editor is not listening"));
+    answer.then(
+      (result) => void transport()?.send({ id: req.id, result: result ?? null }).catch(() => undefined),
+      (e) => void transport()?.send({ id: req.id, error: { message: e instanceof Error ? e.message : String(e) } }).catch(() => undefined),
+    );
+    return;
+  }
+  if (typeof msg.id === "number") {
+    const waiting = pending.get(msg.id);
+    if (!waiting) return;
+    pending.delete(msg.id);
+    clearTimeout(waiting.timer);
+    if (msg.error) waiting.reject(new AgentError(msg.error.code, msg.error.message, msg.error.meta as Record<string, unknown> | undefined));
+    else waiting.resolve(msg.result);
   }
 }
 
@@ -159,18 +157,18 @@ export async function connect(): Promise<void> {
   await Promise.race([isReady, timeout]);
 }
 
-/** A request the process answers. */
-export function request<T = unknown>(t: string, payload: Record<string, unknown> = {}, timeoutMs = 60_000): Promise<T> {
+/** A request the host answers. Sign-ins and turns take as long as they take: give them a long timeout. */
+export function request<T = unknown>(method: string, params: Record<string, unknown> = {}, timeoutMs = 60_000): Promise<T> {
   const tr = transport();
   if (!tr) return Promise.reject(new AgentError("unavailable"));
-  const id = `q${++seq}`;
+  const id = ++seq;
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => {
       pending.delete(id);
       reject(new AgentError("timeout"));
     }, timeoutMs);
     pending.set(id, { resolve: resolve as (data: unknown) => void, reject, timer });
-    tr.send({ t, id, ...payload }).catch((e) => {
+    tr.send({ id, method, params }).catch((e) => {
       clearTimeout(timer);
       pending.delete(id);
       reject(e instanceof Error ? e : new Error(String(e)));
@@ -178,12 +176,8 @@ export function request<T = unknown>(t: string, payload: Record<string, unknown>
   });
 }
 
-/** A note to the process, with no reply. */
-export function notify(t: string, payload: Record<string, unknown> = {}): void {
-  transport()
-    ?.send({ t, ...payload })
-    .catch(() => undefined);
-}
+/** The id of the last request sent, for `cancel`. */
+export const lastRequestId = () => seq;
 
 /** Stops the process; the next connect() starts a new one. */
 export async function disconnect(): Promise<void> {

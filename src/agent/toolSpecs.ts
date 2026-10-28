@@ -1,26 +1,32 @@
-// @ts-check
 /**
- * The tools the agent works on the course with, declared once for every
- * provider.
+ * The tools the agent works on the course with. They run in the editor
+ * (editorTools.ts): each call reads or changes the course through the same
+ * store as the canvas and the inspector, so every change is validated and can
+ * be undone with ⌘Z.
  *
- * They are run in the editor: each call goes to the webview
- * (src/agent/editorTools.ts), which reads or changes the course through the
- * same store as the canvas and the inspector, so every change is validated and
- * can be undone with ⌘Z.
- *
- * How they reach the model depends on the provider: Claude Code is given them
- * in its own process (providers/claude.mjs builds an SDK server from this
- * list), and the others reach them over a local MCP server (mcpBridge.mjs).
- * Whoever asks, the names on the wire are the same, `mcp__edukors__<tool>`.
+ * The library (@edukors/ai-cli) offers them to whichever provider runs the
+ * session, as the MCP server `edukors`: the model calls them
+ * `mcp__edukors__<tool>`. Questions to the person are the provider's own
+ * (the library turns them into the panel's question cards); the plan is
+ * `plan_ready`, here.
  */
 import { z } from "zod";
+import { TOOL_SERVER_NAME } from "@edukors/ai-cli/settings";
 
-export const SERVER = "edukors";
+export const SERVER = TOOL_SERVER_NAME;
 
-/** The name a tool is called by, from outside: `mcp__edukors__read_course`. */
-export const qualified = (/** @type {string} */ name) => `mcp__${SERVER}__${name}`;
+/** read: never asked about; view: moves the view only; edit: changes a course; plan: the plan to approve. */
+export type ToolKind = "read" | "view" | "edit" | "plan";
 
-const NODE_TYPES = /** @type {const} */ (["static-md", "static-html", "dynamic-md", "dynamic-html", "quiz", "form", "bool", "choice", "score", "noul"]);
+export interface CourseTool {
+  name: string;
+  kind: ToolKind;
+  description: string;
+  schema: z.ZodRawShape;
+  annotations: Record<string, boolean>;
+}
+
+const NODE_TYPES = ["static-md", "static-html", "dynamic-md", "dynamic-html", "quiz", "form", "bool", "choice", "score", "noul"] as const;
 
 const loc = z
   .array(z.object({ lang: z.string(), text: z.string() }))
@@ -77,23 +83,10 @@ const operation = z.discriminatedUnion("op", [
       .describe("Fields of info to set, each replacing the field (title, description, author, version, date, start, sections, other-languages, system-prompt…). null removes an optional field."),
   }),
 ]);
-/**
- * @typedef {"read" | "view" | "edit" | "ask" | "plan"} ToolKind
- * @typedef {{
- *   name: string;
- *   kind: ToolKind;
- *   description: string;
- *   schema: import("zod").ZodRawShape;
- *   annotations: Record<string, boolean>;
- *   providerOnly?: boolean;
- * }} ToolSpec
- */
-
 const READ_ONLY = { readOnlyHint: true, openWorldHint: false };
 const CHANGES = { readOnlyHint: false, destructiveHint: true, openWorldHint: false };
 
-/** @type {ToolSpec[]} */
-export const TOOLS = [
+export const TOOLS: CourseTool[] = [
   {
     name: "get_editor_state",
     kind: "read",
@@ -176,38 +169,9 @@ export const TOOLS = [
     schema: {},
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   },
-  // Claude Code has tools of its own for these two (AskUserQuestion,
-  // ExitPlanMode); the other providers are given them here, so that the panel
-  // shows the same cards whoever is answering.
-  {
-    name: "ask_user",
-    kind: "ask",
-    providerOnly: true,
-    description:
-      "Asks the person a question and waits for the answer, with options to pick from (they can also write their own). Use it when a request is ambiguous in a way that changes the result (audience, length, number of steps, languages), before writing. Do not use it for what you can read with the other tools.",
-    schema: {
-      questions: z
-        .array(
-          z.object({
-            question: z.string().describe("The question, in the person's language."),
-            header: z.string().optional().describe("Two or three words naming the subject, shown as a tag."),
-            multiSelect: z.boolean().optional().describe("Whether more than one option can be picked."),
-            options: z
-              .array(z.object({ label: z.string(), description: z.string().optional() }))
-              .min(2)
-              .max(4)
-              .describe("Two to four answers to choose from, the one you would recommend first."),
-          }),
-        )
-        .min(1)
-        .max(3),
-    },
-    annotations: READ_ONLY,
-  },
   {
     name: "plan_ready",
     kind: "plan",
-    providerOnly: true,
     description:
       "In plan mode, once the plan is written in your reply, call this with the plan so the person can approve it. They approve it to be carried out asking before each change or on its own, or they ask for changes to the plan. Only after approval may the course change.",
     schema: { plan: z.string().describe("The plan, in the person's language, in Markdown: what will change, step by step, naming the nodes (passos).") },
@@ -215,21 +179,17 @@ export const TOOLS = [
   },
 ];
 
-/** The tools a provider is given: the two above only when it has no tool of its own for them. */
-export const toolsFor = (/** @type {boolean} */ withAskAndPlan) => TOOLS.filter((t) => withAskAndPlan || !t.providerOnly);
-
-const named = (/** @type {ToolKind[]} */ kinds) => TOOLS.filter((t) => kinds.includes(t.kind)).map((t) => qualified(t.name));
-
-/** Tools that change a course: they wait for the person's approval unless the editor is set to edit on its own. */
-export const EDIT_TOOLS = named(["edit"]);
-
-/** Tools that only read, or only move the view: never asked about. */
-export const FREE_TOOLS = named(["read", "view"]);
+/** A tool's name without its server: `mcp__edukors__read_course` → `read_course`. */
+export const plainName = (name: string) => (name.startsWith(`mcp__${SERVER}__`) ? name.slice(`mcp__${SERVER}__`.length) : name);
 
 /** The kind of a tool, by its name, qualified or not. */
-export const kindOf = (/** @type {string} */ name) => {
-  const plain = name.startsWith(`mcp__${SERVER}__`) ? name.slice(`mcp__${SERVER}__`.length) : name;
-  return TOOLS.find((t) => t.name === plain)?.kind;
-};
+export const kindOf = (name: string): ToolKind | undefined => TOOLS.find((t) => t.name === plainName(name))?.kind;
 
-/** @typedef {{ content: { type: "text"; text: string }[]; isError?: boolean }} ToolResult */
+/** The tools as the library's host takes them: name, description and JSON Schema. */
+export function toolSpecs(): { name: string; description: string; inputSchema: Record<string, unknown> }[] {
+  return TOOLS.map((t) => {
+    const inputSchema = z.toJSONSchema(z.object(t.schema)) as Record<string, unknown>;
+    delete inputSchema.$schema;
+    return { name: t.name, description: t.description, inputSchema };
+  });
+}

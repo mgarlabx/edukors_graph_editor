@@ -1,9 +1,10 @@
 /**
- * The files the person attaches to a message. The composer shows them as cards
- * and the message carries their paths at its end, in a block of their own, so
- * that the agent knows to read them and the conversation, read back from disk,
- * shows them as cards again.
+ * The files the person attaches to a message. The composer shows them as
+ * cards; the message carries them at its end, in a block of their own, with
+ * each file's contents: the agent has no file tools, so the editor reads them
+ * (text files, up to a size) and sends what it read.
  */
+import { native } from "../app/platform";
 
 const OPEN = "<attached-files>";
 const CLOSE = "</attached-files>";
@@ -23,8 +24,27 @@ export function shortName(name: string, max = 24): string {
   return `${name.slice(0, Math.max(1, max - ext.length - 1)).trimEnd()}…${ext}`;
 }
 
-/** The message with the files' paths at its end. */
-export const withFiles = (body: string, files: string[]) => (files.length ? `${body}${body ? "\n\n" : ""}${OPEN}\n${files.join("\n")}\n${CLOSE}` : body);
+/** Past this size a file is not sent: the agent reads the note instead. */
+const MAX_TEXT = 300_000;
+
+/** A file's contents for the agent, or a note saying why it is not there. */
+async function contentsOf(path: string): Promise<string> {
+  try {
+    const text = await native.readText(path);
+    if (text.includes("\u0000")) return "(not a text file: its contents were not sent)";
+    if (text.length > MAX_TEXT) return `(too large to send: ${Math.round(text.length / 1000)} kB)`;
+    return text;
+  } catch (e) {
+    return `(could not be read: ${e instanceof Error ? e.message : String(e)})`;
+  }
+}
+
+/** The message with the files at its end: each one's name, path and contents. */
+export async function withFiles(body: string, files: string[]): Promise<string> {
+  if (!files.length) return body;
+  const parts = await Promise.all(files.map(async (path) => `<file name="${fileName(path).replace(/"/g, "'")}" path="${path.replace(/"/g, "'")}">\n${await contentsOf(path)}\n</file>`));
+  return `${body}${body ? "\n\n" : ""}${OPEN}\n${parts.join("\n")}\n${CLOSE}`;
+}
 
 /** A message as the person wrote it, and the files that went with it. */
 export function splitFiles(text: string): { text: string; files?: string[] } {

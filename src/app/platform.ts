@@ -33,6 +33,10 @@ export interface HttpAnswer {
 
 const DEV_KEY = "edukors-editor.dev-openrouter-key";
 const PREFS = "edukors-editor.prefs";
+const HISTORY = "edukors-editor.agent-history";
+
+const readHistory = (): Record<string, { meta: unknown; body: unknown }> => JSON.parse(localStorage.getItem(HISTORY) ?? "{}");
+const writeHistory = (all: Record<string, { meta: unknown; body: unknown }>) => localStorage.setItem(HISTORY, JSON.stringify(all));
 
 const browser: Record<string, (args: Record<string, unknown>) => Promise<unknown>> = {
   read_text: async ({ path }) => {
@@ -55,6 +59,18 @@ const browser: Record<string, (args: Record<string, unknown>) => Promise<unknown
   key_set: async ({ key }) => localStorage.setItem(DEV_KEY, String(key)),
   key_delete: async () => localStorage.removeItem(DEV_KEY),
   set_menu: async () => undefined,
+  // The agent's saved conversations (src-tauri/src/agent.rs), kept in the browser here.
+  agent_history_list: async () => Object.values(readHistory()).map((c) => c.meta),
+  agent_history_read: async ({ id }) => {
+    const found = readHistory()[String(id)];
+    if (!found) throw new Error(`no conversation ${id}`);
+    return found.body;
+  },
+  agent_history_write: async ({ id, meta, body }) => writeHistory({ ...readHistory(), [String(id)]: { meta, body } }),
+  agent_history_delete: async ({ id }) => {
+    const { [String(id)]: _, ...rest } = readHistory();
+    writeHistory(rest);
+  },
   ai_models: async () => (await fetch("https://openrouter.ai/api/v1/models")).json(),
   // Development only: the key sits in the browser here, which the app never allows.
   ai_post: async ({ url, body }) => {
