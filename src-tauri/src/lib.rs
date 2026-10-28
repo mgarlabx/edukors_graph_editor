@@ -594,7 +594,12 @@ pub fn run() {
             set_menu,
             agent::agent_start,
             agent::agent_send,
-            agent::agent_stop
+            agent::agent_stop,
+            agent::agent_paths,
+            agent::agent_history_write,
+            agent::agent_history_list,
+            agent::agent_history_read,
+            agent::agent_history_delete
         ])
         .build(tauri::generate_context!())
         .expect("error while building the editor");

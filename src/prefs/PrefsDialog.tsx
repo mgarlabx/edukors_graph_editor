@@ -15,8 +15,7 @@ import { AutoTextarea, Field, Modal, NumberInput } from "../ui/controls";
 import { UI_LANGS, t, type UiLang } from "../i18n";
 import { errorText } from "../i18n/errors";
 import { parseMcpConfig } from "../agent/mcpConfig";
-import { useAgent } from "../agent/store";
-import { PROVIDER_IDS } from "../agent/events";
+import { AccountsSection } from "../agent/Accounts";
 import { AgentSkills } from "./AgentSkills";
 import { AiIcon, BoltIcon, CheckCircleIcon, KeyIcon, SettingsIcon, TargetIcon, WarningIcon } from "../ui/icons";
 
@@ -65,12 +64,10 @@ export function PrefsDialog() {
   const mcpProblem = parseMcpConfig(draft.agent.mcp).problem;
 
   const save = async () => {
-    // The agent panel keeps its own settings, and the content editor its line wrapping; they may have changed while this was open. The instructions, the MCP servers and the provider are this dialog's.
+    // The agent panel keeps its own settings (account, model, mode), and the content editor its line wrapping; they may have changed while this was open. The instructions and the MCP servers are this dialog's; accounts are saved as they change.
     const live = usePrefs.getState().agent;
     // The last check is the app's, and may have happened while this was open.
     await prefs.save({ ...draft, sidebar: usePrefs.getState().sidebar, editorWrap: usePrefs.getState().editorWrap, updates: { ...usePrefs.getState().updates, auto: draft.updates.auto }, agent: { ...live, instructions: draft.agent.instructions, mcp: draft.agent.mcp } });
-    // Changing the provider closes the conversation and opens one on the other side.
-    if (draft.agent.provider !== live.provider) void useAgent.getState().setProvider(draft.agent.provider);
     close();
   };
 
@@ -234,23 +231,11 @@ export function PrefsDialog() {
           {section === "agent" && (
             <>
               <div className="prefs-card">
-                <Field label={t("prefs.agentProvider")}>
-                  <div className="prefs-choices" role="radiogroup">
-                    {PROVIDER_IDS.map((id) => (
-                      <button
-                        key={id}
-                        role="radio"
-                        aria-checked={draft.agent.provider === id}
-                        className={`prefs-choice ${draft.agent.provider === id ? "is-active" : ""}`}
-                        onClick={() => setDraft({ ...draft, agent: { ...draft.agent, provider: id } })}
-                      >
-                        <span className="prefs-radio" />
-                        {t(`agent.provider.${id}`)}
-                      </button>
-                    ))}
-                  </div>
+                <Field label={t("prefs.agentAccounts")}>
+                  <AccountsSection />
                 </Field>
               </div>
+              <h3 className="prefs-group">{t("prefs.agentAdvanced")}</h3>
               <div className="prefs-card">
                 <Field label={t("prefs.agentInstructions")}>
                   <AutoTextarea

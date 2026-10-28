@@ -4551,3 +4551,120 @@ div.agent-tool-head {
   width: 100%;
   accent-color: var(--accent);
 }
+
+/* ---------------------------------------------- AI accounts and sign-in ---- */
+
+h3.prefs-group {
+  margin: 18px 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.agent-accounts,
+.agent-account-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+}
+.agent-account-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.agent-account {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.agent-account-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.agent-account-name {
+  margin-right: auto;
+}
+.agent-account-state,
+.agent-account-inuse {
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.agent-account-state.is-connected {
+  color: var(--ok);
+  background: var(--ok-soft);
+}
+.agent-account-state.is-disconnected,
+.agent-account-state.is-expired,
+.agent-account-state.is-missing {
+  color: var(--warning);
+  background: var(--warning-soft);
+}
+.agent-account-state.is-unknown,
+.agent-account-state.is-checking {
+  color: var(--muted);
+  background: var(--panel-2);
+}
+.agent-account-inuse {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.agent-account .row,
+.agent-signin .row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.agent-account-add,
+.agent-signin {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+}
+.agent-account-add label,
+.agent-signin-code label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.agent-signin {
+  padding: 10px 12px;
+  background: var(--panel-2);
+  border-radius: var(--radius);
+}
+.agent-signin p {
+  margin: 0;
+}
+.agent-signin-code {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+.agent-signin-code input {
+  width: 100%;
+}
+.agent-signin .error,
+.agent-account-add .error {
+  color: var(--error);
+}
+.agent-start .agent-signin {
+  width: 100%;
+}
+.agent-account > div,
+.agent-accounts > p {
+  text-align: left;
+}
+.agent-accounts > .btn {
+  align-self: flex-start;
+}

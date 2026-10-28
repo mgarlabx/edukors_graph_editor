@@ -12,8 +12,8 @@ import { applyOperations, EditError, outline, placeAdded, type Operation } from 
 import { runTool } from "../src/agent/editorTools";
 import { messageContext, selectionLabel } from "../src/agent/context";
 import { useUi } from "../src/store/ui";
-import { applyEvent, emptyTranscript, fold, settle, splitContext, type Transcript } from "../src/agent/transcript";
-import type { AgentEvent } from "../src/agent/events";
+import { applyEvent, emptyTranscript, setToolInput, setToolResult, settle, splitContext, type Transcript } from "../src/agent/transcript";
+import type { AiEvent, AiEventBody } from "@edukors/ai-cli";
 import { splitUsage } from "../src/agent/usageReport";
 import { diagnose } from "../src/validate";
 import type { Course } from "../src/schema/types";
@@ -262,78 +262,55 @@ describe("agent context", () => {
 });
 
 describe("agent transcript", () => {
-  const fold1 = (events: AgentEvent[]) => events.reduce((t: Transcript, ev) => applyEvent(t, ev), emptyTranscript());
+  const scope = { appId: "graph", documentId: "c1", accountId: "a1", providerId: "claude", sessionId: "s1", requestId: "r1", seq: 0, at: "" };
+  const ev = (body: AiEventBody) => ({ ...scope, ...body }) as AiEvent;
+  const fold1 = (events: AiEventBody[]) => events.reduce((t: Transcript, e) => applyEvent(t, ev(e)), emptyTranscript());
 
-  it("streams a block and replaces it with the finished one", () => {
-    let t = fold1([
-      { ev: "msg_start", messageId: "m1" },
-      { ev: "block_start", index: 0, type: "text", text: "" },
-      { ev: "block_delta", index: 0, text: "Olá, " },
-      { ev: "block_delta", index: 0, text: "mundo" },
-    ]);
+  it("streams the answer and keeps it when the turn ends", () => {
+    let t = fold1([{ type: "textDelta", text: "Olá, " }, { type: "textDelta", text: "mundo" }]);
     expect(t.live!.blocks[0].text).toBe("Olá, mundo");
     expect(t.items).toHaveLength(0);
-    t = applyEvent(applyEvent(t, { ev: "block_stop", index: 0 }), { ev: "assistant", uuid: "a1", messageId: "m1", blocks: [{ type: "text", index: 0, text: "Olá, mundo" }] });
-    expect(t.live!.blocks).toHaveLength(0);
-    expect(t.items).toEqual([{ kind: "text", key: "a1:0", text: "Olá, mundo" }]);
+    t = applyEvent(t, ev({ type: "turnCompleted" }));
+    expect(t.live).toBeNull();
+    expect(t.items).toEqual([{ kind: "text", key: "r1:0", text: "Olá, mundo" }]);
   });
 
-  it("follows a tool call to its result, and counts a denial as an error", () => {
+  it("puts a tool card after the words that led to it, with the input and result the panel gives", () => {
+    let t = fold1([{ type: "textDelta", text: "Vou ler o curso." }, { type: "toolStarted", callId: "c1", tool: "read_course" }]);
+    t = setToolResult(setToolInput(t, "c1", { nodes: ["q1"] }), "c1", "outline");
+    t = [ev({ type: "toolCompleted", callId: "c1", tool: "read_course", ok: true }), ev({ type: "textDelta", text: "Pronto." }), ev({ type: "turnCompleted" })].reduce(applyEvent, t);
+    expect(t.items.map((i) => i.kind)).toEqual(["text", "tool", "text"]);
+    expect(t.items[1]).toMatchObject({ id: "c1", name: "read_course", input: { nodes: ["q1"] }, status: "done", result: "outline" });
+  });
+
+  it("counts a refused or invalid call as an error, and shows a card once", () => {
     const t = fold1([
-      { ev: "assistant", uuid: "a1", blocks: [{ type: "tool_use", index: 0, id: "tu1", name: "mcp__edukors__read_course", input: {} }] },
-      { ev: "tool_result", toolUseId: "tu1", text: "outline" },
-      { ev: "assistant", uuid: "a2", blocks: [{ type: "tool_use", index: 0, id: "tu2", name: "mcp__edukors__edit_course", input: { summary: "x" } }] },
-      { ev: "tool_result", toolUseId: "tu2", text: "The person declined this action.", isError: true },
+      { type: "toolStarted", callId: "c1", tool: "edit_course" },
+      { type: "toolStarted", callId: "c1", tool: "edit_course" },
+      { type: "toolCompleted", callId: "c1", tool: "edit_course", ok: false, errorCode: "TOOL_INVALID_ARGUMENTS" },
     ]);
-    expect(t.items.map((i) => i.kind)).toEqual(["tool", "tool"]);
-    expect(t.items[0]).toMatchObject({ status: "done", result: "outline" });
-    expect(t.items[1]).toMatchObject({ status: "error" });
-  });
-
-  it("shows a tool call once, however many times it is announced", () => {
-    const call: AgentEvent = { ev: "assistant", uuid: "a1", blocks: [{ type: "tool_use", index: 0, id: "tu1", name: "x", input: {} }] };
-    expect(fold1([call, call]).items).toHaveLength(1);
-  });
-
-  it("notes an error, a divider and a notice, and starts over on a reset", () => {
-    const t = fold1([
-      { ev: "turn_end", status: "error", code: "error_max_turns", text: "too many" },
-      { ev: "divider", text: "compacted" },
-      { ev: "notice", level: "warning", text: "perto do limite", code: "rate_warning" },
-    ]);
-    expect(t.items.map((i) => (i.kind === "notice" ? i.code : i.kind))).toEqual(["error_max_turns", "divider", "rate_warning"]);
-    expect(applyEvent(t, { ev: "reset" })).toEqual(emptyTranscript());
+    expect(t.items).toHaveLength(1);
+    expect(t.items[0]).toMatchObject({ status: "error", result: "TOOL_INVALID_ARGUMENTS" });
   });
 
   it("keeps what was written when the person interrupts, and does not call it an error", () => {
-    const t = fold1([
-      { ev: "msg_start", messageId: "m1" },
-      { ev: "block_start", index: 0, type: "text", text: "" },
-      { ev: "block_delta", index: 0, text: "Os gatos são" },
-      { ev: "interrupted" },
-      { ev: "turn_end", status: "interrupted" },
-    ]);
+    const t = fold1([{ type: "textDelta", text: "Os gatos são" }, { type: "cancelled" }]);
     expect(t.live).toBeNull();
-    expect(t.items).toEqual([{ kind: "text", key: "m1:0", text: "Os gatos são" }, expect.objectContaining({ kind: "notice", level: "info", code: "interrupted" })]);
+    expect(t.items).toEqual([{ kind: "text", key: "r1:0", text: "Os gatos são" }, expect.objectContaining({ kind: "notice", level: "info", code: "interrupted" })]);
+  });
+
+  it("notes a failed turn with the library's code", () => {
+    const t = fold1([{ type: "error", error: { code: "RATE_LIMITED", message: "limit", retryable: true } }]);
+    expect(t.items).toEqual([expect.objectContaining({ kind: "notice", level: "error", code: "RATE_LIMITED", text: "limit" })]);
   });
 
   it("stops the tool calls a finished turn left running", () => {
-    const t = settle(fold1([{ ev: "assistant", uuid: "a1", blocks: [{ type: "tool_use", index: 0, id: "tu1", name: "Read", input: {} }] }]));
+    const t = settle(fold1([{ type: "toolStarted", callId: "c1", tool: "read_course" }]));
     expect(t.items[0]).toMatchObject({ status: "error" });
   });
 
-  it("reads a conversation back as it was on screen, without the context block", () => {
-    const t = fold([
-      { ev: "user", key: "u1", text: '<editor-context>\nCourse on screen: "Gatos"\nSelected: q1 (quiz) "Quiz".\nMode: ask.\n</editor-context>\n\nQuantos passos?' },
-      { ev: "assistant", uuid: "a1", blocks: [{ type: "tool_use", index: 0, id: "tu1", name: "mcp__edukors__read_course", input: {} }] },
-      { ev: "tool_result", toolUseId: "tu1", text: "{}" },
-      { ev: "assistant", uuid: "a2", blocks: [{ type: "text", index: 0, text: "Dois passos." }] },
-      { ev: "assistant", uuid: "a3", blocks: [{ type: "tool_use", index: 0, id: "tu9", name: "x", input: {} }] },
-    ]);
-    expect(t.items.map((i) => i.kind)).toEqual(["user", "tool", "text", "tool"]);
-    expect(t.items[0]).toEqual({ kind: "user", key: "u1", text: "Quantos passos?", context: "q1 · Quiz" });
-    // A call with no result was cut short when the conversation stopped.
-    expect(t.items[3]).toMatchObject({ status: "error" });
+  it("takes the context block off a message read back", () => {
+    expect(splitContext('<editor-context>\nCourse on screen: "Gatos"\nSelected: q1 (quiz) "Quiz".\nMode: ask.\n</editor-context>\n\nQuantos passos?')).toEqual({ text: "Quantos passos?", context: "q1 · Quiz" });
   });
 });
 

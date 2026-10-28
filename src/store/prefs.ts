@@ -6,7 +6,6 @@
  */
 import { create } from "zustand";
 import { native } from "../app/platform";
-import { PROVIDER_IDS, type ProviderId } from "../agent/events";
 import { syncMenu } from "../app/menu";
 import { setUiLang, type UiLang } from "../i18n";
 
@@ -16,16 +15,13 @@ export interface Prefs {
   ai: { model: string; maxTokens: number; timeout: number; url: string };
   judge: { model: string; minConfidence: number; strictModel: boolean; url: string; timeout: number };
   /**
-   * the AI agent of the side panel: which provider runs it and what its composer was left with for
-   * each one, the panel's width, the person's standing instructions, and their MCP servers (the text
-   * of a .mcp.json, see src/agent/mcpConfig.ts). `model` and `effort` are Claude's, kept beside
-   * `providers` so that an older build still finds them.
+   * the AI agent of the side panel: the account it runs on (an id in the shared EDUKORS registry,
+   * see @edukors/ai-cli), the model and effort chosen for each account, the mode, the panel's width,
+   * the person's standing instructions, and their MCP servers (the text of a .mcp.json).
    */
   agent: {
-    provider: ProviderId;
-    providers: Record<ProviderId, { model: string; effort: string }>;
-    model: string;
-    effort: string;
+    account: string | null;
+    accounts: Record<string, { model: string; effort: string }>;
     mode: "ask" | "auto";
     width: number;
     instructions: string;
@@ -59,17 +55,8 @@ export const DEFAULT_PREFS: Prefs = {
     timeout: 45,
   },
   agent: {
-    provider: "claude",
-    providers: {
-      claude: { model: "default", effort: "auto" },
-      codex: { model: "default", effort: "auto" },
-      antigravity: { model: "default", effort: "auto" },
-      kiro: { model: "default", effort: "auto" },
-      kimi: { model: "default", effort: "auto" },
-      opencode: { model: "default", effort: "auto" },
-    },
-    model: "default",
-    effort: "auto",
+    account: null,
+    accounts: {},
     mode: "ask",
     width: 420,
     instructions: "",
@@ -92,17 +79,24 @@ interface PrefsState extends Prefs {
 }
 
 /**
- * The agent's settings, with one model and effort per provider. Before the
- * provider choice there was one pair, which was Claude's: it seeds Claude's.
- * A new install starts on Claude Code, which comes inside the editor; so does
- * one whose agent settings predate the choice, since that was its only agent.
+ * The agent's settings. Accounts replaced the provider choice: what an older
+ * version kept per provider is dropped, and the instructions, MCP servers,
+ * mode and width carry over.
  */
 function mergeAgent(raw: Partial<Prefs["agent"]> | undefined): Prefs["agent"] {
-  const agent = { ...DEFAULT_PREFS.agent, ...(raw ?? {}) };
-  const providers = { ...DEFAULT_PREFS.agent.providers };
-  for (const id of PROVIDER_IDS) providers[id] = { ...providers[id], ...(raw?.providers?.[id] ?? {}) };
-  if (!raw?.providers?.claude) providers.claude = { model: agent.model, effort: agent.effort };
-  return { ...agent, provider: raw?.provider && PROVIDER_IDS.includes(raw.provider) ? raw.provider : DEFAULT_PREFS.agent.provider, providers };
+  const d = DEFAULT_PREFS.agent;
+  const r = (raw ?? {}) as Partial<Prefs["agent"]>;
+  const accounts: Prefs["agent"]["accounts"] = {};
+  for (const [id, v] of Object.entries(r.accounts && typeof r.accounts === "object" ? r.accounts : {}))
+    if (v && typeof v.model === "string" && typeof v.effort === "string") accounts[id] = { model: v.model, effort: v.effort };
+  return {
+    account: typeof r.account === "string" ? r.account : null,
+    accounts,
+    mode: r.mode === "auto" ? "auto" : "ask",
+    width: typeof r.width === "number" ? r.width : d.width,
+    instructions: typeof r.instructions === "string" ? r.instructions : d.instructions,
+    mcp: typeof r.mcp === "string" ? r.mcp : d.mcp,
+  };
 }
 
 const merge = (raw: Record<string, unknown>): Prefs => {

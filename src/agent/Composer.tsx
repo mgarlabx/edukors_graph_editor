@@ -11,7 +11,6 @@ import { fileName, shortName } from "./attachments";
 import { selectionLabel } from "./context";
 import { Usage } from "./Usage";
 import { useEditor } from "../store/editor";
-import { usePrefs } from "../store/prefs";
 import { isTauri, pickOpen } from "../app/platform";
 import { t } from "../i18n";
 import { BoltIcon, CheckIcon, ChevronDownIcon, CloseIcon, HandIcon, PaperclipIcon, PlanIcon, SendIcon, StopIcon, TargetIcon } from "../ui/icons";
@@ -157,10 +156,13 @@ function ModelMenu() {
   const models = useAgent((s) => s.models);
   const model = useAgent((s) => s.model);
   const effort = useAgent((s) => s.effort);
-  const account = useAgent((s) => s.account);
+  const account = useAgent((s) => s.accounts.find((a) => a.id === s.accountId));
+  const status = useAgent((s) => s.status);
   const setModel = useAgent((s) => s.setModel);
   const setEffort = useAgent((s) => s.setEffort);
   const capabilities = useAgent((s) => s.capabilities);
+  // Claude reports its limits during a conversation, without a way to read them on demand.
+  const hasUsage = useAgent((s) => !!s.usage?.limits?.length);
   const info = models.find((m) => m.value === model);
   const levels = capabilities?.efforts ? info?.efforts : undefined;
   const label = modelName(models, model);
@@ -189,14 +191,14 @@ function ModelMenu() {
             ))}
           </div>
           {levels?.length ? <EffortSlider levels={levels} effort={effort} onChange={setEffort} /> : null}
-          {account?.email && (
+          {account && (
             <div className="agent-menu-account">
-              {t("agent.signedIn", { email: account.email })}
-              {account.plan ? ` · ${account.plan}` : ""}
+              {account.label} · {t(`agent.provider.${account.providerId}`)}
+              {status?.identity ? ` · ${status.identity}` : ""}
             </div>
           )}
           <Extensions />
-          {capabilities?.usage && <Usage />}
+          {(capabilities?.usage || hasUsage) && <Usage />}
         </>
       )}
     </Popover>
@@ -207,15 +209,10 @@ function ModelMenu() {
 function Extensions() {
   const skills = useAgent((s) => s.skills);
   const mcp = useAgent((s) => s.mcp);
-  const capabilities = useAgent((s) => s.capabilities);
-  const hasOwnMcp = !!usePrefs.getState().agent.mcp.trim();
-  const unsupported = capabilities && ((!capabilities.mcp && hasOwnMcp) || (!capabilities.skills && !!skills.length));
-  if (!skills.length && !mcp.length && !unsupported) return null;
+  if (!skills.length && !mcp.length) return null;
   return (
     <div className="agent-menu-ext">
-      {capabilities && !capabilities.mcp && hasOwnMcp && <div className="agent-menu-hint">{t("agent.mcp.unsupported")}</div>}
-      {capabilities && !capabilities.skills && skills.length > 0 && <div className="agent-menu-hint">{t("agent.skills.unsupported")}</div>}
-      {capabilities?.skills !== false && skills.length > 0 && (
+      {skills.length > 0 && (
         <div title={skills.map((s) => s.name).join("\n")}>
           {t("agent.skills", { n: String(skills.length) })}: {skills.map((s) => s.name).join(", ")}
         </div>

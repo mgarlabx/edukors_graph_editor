@@ -1,41 +1,120 @@
 // The AI agent panel, in WebKit (the engine Tauri uses on macOS), against `npm run dev`.
 //
-// By default the agent's process is played by a script in the page, so the run
-// is the same every time and costs nothing: the panel opens from the toolbar,
-// a message goes out with the selection, an edit waits for approval and is
-// applied through the editor's own tools, a question and a plan get answered,
-// past sessions are listed and reopened.
+// The page talks to the real EDUKORS AI library host (@edukors/ai-cli), the
+// program the app starts, through a small bridge here that stands in for the
+// app's Rust side (src-tauri/src/agent.rs). By default the host runs the
+// library's fake provider, so the run is the same every time and costs
+// nothing: no account, then one added and signed in; a message with the
+// selection; an edit approved and applied as one undo step; a question, a
+// plan, a stop; a user's MCP server called after approval; the conversations
+// listed and reopened.
 //
-// With --live, the page talks to the real agent/sidecar.mjs (through a small
-// bridge here, standing in for the app's Rust side) and so to the provider,
-// with the account logged in on this Mac: one short edit of a course.
-//   node tests/e2e/agent.mjs [outDir] [--live] [--provider=claude|codex|antigravity|kiro|kimi|opencode] [--fake-agy]
-//
-// --fake-agy, --fake-codex and --fake-opencode put tests/fake-agy.mjs,
-// tests/fake-codex.mjs and tests/fake-opencode.mjs in the place of the vendors' CLIs, so those providers can be driven on a
-// machine that does not have them.
+// With --live the host runs the real providers on the accounts of the data
+// directory given (one short edit of a course, after approval):
+//   node tests/e2e/agent.mjs [outDir] [--live --data-dir=<dir> --account=<label>]
 import http from "node:http";
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
 import { mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
-import { homedir, tmpdir } from "node:os";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { webkit } from "playwright";
 
 const args = process.argv.slice(2);
 const live = args.includes("--live");
-const liveProvider = args.find((a) => a.startsWith("--provider="))?.slice("--provider=".length) ?? "claude";
+const option = (name) => args.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
 const out = args.find((a) => !a.startsWith("--")) ?? "/tmp";
 const url = process.env.EDITOR_URL ?? "http://localhost:1420/";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const course = JSON.parse(readFileSync(join(root, "samples/world-cats-1-mini-course.json"), "utf8"));
+const LIBRARY = realpathSync(join(root, "node_modules", "@edukors", "ai-cli"));
+const HOST = join(LIBRARY, "dist", "host", "main.js");
+const FAKE_MCP = join(LIBRARY, "fixtures", "fake-mcp-server.mjs");
+const dataDir = live ? option("data-dir") : mkdtempSync(join(tmpdir(), "graph-e2e-agent-"));
+if (live && !dataDir) throw new Error("--live needs --data-dir=<the accounts' data directory>");
 
+// ------------------------------------------------- the app's side, here ----
+
+/** What src-tauri/src/agent.rs does: one host process, its lines out to the page, the page's lines in. */
+function startBridge() {
+  let child = null;
+  let generation = 0;
+  const clients = new Set();
+  const broadcast = (msg) => {
+    for (const res of clients) res.write(`data: ${JSON.stringify(msg)}\n\n`);
+  };
+  const server = http.createServer((req, res) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Headers", "content-type");
+    if (req.method === "OPTIONS") return res.end();
+    if (req.url === "/events") {
+      res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache" });
+      // Sent at once, so the page knows the stream is open before the host says anything.
+      res.flushHeaders();
+      res.write(": open\n\n");
+      clients.add(res);
+      req.on("close", () => clients.delete(res));
+      return;
+    }
+    let body = "";
+    req.on("data", (c) => (body += c));
+    req.on("end", () => {
+      if (req.url === "/start") {
+        if (child && child.exitCode === null) return res.end(JSON.stringify({ generation, fresh: false }));
+        const gen = ++generation;
+        child = spawn(process.execPath, [HOST, "--app-id", "graph-e2e", "--data-dir", dataDir, ...(live ? [] : ["--fake"])], { stdio: ["pipe", "pipe", "pipe"] });
+        createInterface({ input: child.stdout }).on("line", (line) => {
+          let msg;
+          try {
+            msg = JSON.parse(line);
+          } catch {
+            msg = { t: "log", text: line };
+          }
+          broadcast({ ...msg, gen });
+        });
+        child.stderr.on("data", (d) => process.env.E2E_VERBOSE && process.stderr.write(d));
+        child.on("exit", () => broadcast({ t: "exit", gen, stderr: "" }));
+        return res.end(JSON.stringify({ generation: gen, fresh: true }));
+      }
+      if (req.url === "/send") {
+        child?.stdin.write(body + "\n");
+        return res.end("{}");
+      }
+      if (req.url === "/stop") {
+        child?.kill();
+        child = null;
+        return res.end("{}");
+      }
+      res.writeHead(404).end();
+    });
+  });
+  return new Promise((resolve) => server.listen(0, "127.0.0.1", () => resolve({ base: `http://127.0.0.1:${server.address().port}`, close: () => (child?.kill(), server.close()) })));
+}
+
+/** The page's transport (src/agent/client.ts), over the bridge. */
+function bridgeTransport(base) {
+  window.__edukorsAgentTransport = {
+    start: async () => (await fetch(`${base}/start`, { method: "POST" })).json(),
+    send: async (msg) => void (await fetch(`${base}/send`, { method: "POST", body: JSON.stringify(msg) })),
+    stop: async () => void (await fetch(`${base}/stop`, { method: "POST" })),
+    listen: async (cb) => {
+      const source = new EventSource(`${base}/events`);
+      await new Promise((resolve) => (source.onopen = resolve));
+      source.onmessage = (e) => cb(JSON.parse(e.data));
+      return () => source.close();
+    },
+  };
+}
+
+// ------------------------------------------------------------ the run ----
+
+const bridge = await startBridge();
 const browser = await webkit.launch();
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 const problems = [];
 page.on("console", (m) => m.type() === "error" && problems.push(`console: ${m.text()}`));
-page.on("pageerror", (e) => !/ResizeObserver loop/.test(e.message) && !String(e.stack).includes("web-inspector://") && problems.push(`pageerror: ${e.message}`));
+page.on("pageerror", (e) => !/ResizeObserver loop/.test(e.message) && problems.push(`pageerror: ${e.message}`));
 const shot = async (name) => page.screenshot({ path: `${out}/${name}.png` });
 const step = async (name, fn) => {
   try {
@@ -49,619 +128,158 @@ const step = async (name, fn) => {
 const expect = (cond, message) => {
   if (!cond) throw new Error(message);
 };
+const agent = () =>
+  page.evaluate(() => {
+    const s = window.__agent.getState();
+    return { busy: s.busy, asks: s.asks.length, items: s.items.map((i) => i.kind), connection: s.connection, accountId: s.accountId, sessionId: s.sessionId };
+  });
 const editor = () =>
   page.evaluate(() => {
     const s = window.__editor.getState();
-    return { ids: s.course?.nodes.map((n) => n.id) ?? [], edges: s.course?.edges ?? [], selection: s.selection.nodes, past: s.past.length };
+    return { ids: s.course?.nodes.map((n) => n.id) ?? [], past: s.past.length };
   });
-const agent = () => page.evaluate(() => {
-  const s = window.__agent.getState();
-  return { busy: s.busy, asks: s.asks.length, items: s.items.map((i) => i.kind), mode: s.mode, model: s.model, effort: s.effort, sessionId: s.sessionId, connection: s.connection, provider: s.provider, capabilities: s.capabilities };
-});
-
-// ------------------------------------------------- the process, scripted ----
-
-/** Plays the agent's process in the page: replies to requests and, for each message, one scripted turn. */
-function scriptedTransport() {
-  const listeners = [];
-  const sent = [];
-  const emit = (msg) => setTimeout(() => listeners.forEach((cb) => cb({ ...msg, gen: 1 })), 15);
-  let sid = "s-new";
-  const ev = (e) => emit({ t: "ev", sid, ev: e });
-  const text = (uuid, messageId, body) => {
-    ev({ ev: "msg_start", messageId });
-    ev({ ev: "block_start", index: 0, type: "text", text: "" });
-    ev({ ev: "block_delta", index: 0, text: body });
-    ev({ ev: "block_stop", index: 0 });
-    ev({ ev: "assistant", uuid, messageId, blocks: [{ type: "text", index: 0, text: body }] });
-  };
-  const CAPS = {
-    claude: { efforts: true, usage: true, bash: true, skills: true, mcp: true, login: "external", ownQuestions: true },
-    antigravity: { efforts: false, usage: true, bash: false, skills: true, mcp: false, login: "external", ownQuestions: false },
-    codex: { efforts: true, usage: true, bash: true, skills: true, mcp: false, login: "browser", ownQuestions: false },
-  };
-  const MODELS = {
-    claude: [
-      { value: "default", resolved: "claude-opus-5-5", displayName: "Default (recommended)", efforts: ["low", "medium", "high", "xhigh", "max"] },
-      { value: "opus", resolved: "claude-opus-5-5", displayName: "Opus 5.5", efforts: ["low", "medium", "high", "xhigh", "max"] },
-      { value: "haiku", resolved: "claude-haiku-4-5", displayName: "Haiku 4.5" },
-    ],
-    antigravity: [
-      { value: "default", displayName: "Padrão" },
-      { value: "gemini-3.8-flash-high", displayName: "gemini-3.8-flash-high" },
-    ],
-    codex: [{ value: "default", displayName: "GPT-6.1 Sol", efforts: ["low", "medium", "high"] }],
-  };
-  const ACCOUNTS = {
-    claude: { provider: "claude", signedIn: true, email: "professora@exemplo.org", plan: "Claude Pro" },
-    antigravity: { provider: "antigravity", signedIn: true, email: "professora@gmail.com", plan: "Google AI Pro" },
-    codex: { provider: "codex", signedIn: false },
-  };
-  const SESSIONS = {
-    claude: [{ id: "s-old", title: "Revisar o quiz", lastModified: Date.now() - 3600_000, firstPrompt: "Revise o quiz" }],
-    antigravity: [{ id: "a-old", title: "Curso de frações", lastModified: Date.now() - 7200_000, firstPrompt: "Monte um curso de frações" }],
-    codex: [],
-  };
-  let provider = "claude";
-  let turn = 0;
-  const pendingTool = {};
-  window.__agentSent = sent;
-  const reply = (id, data) => emit({ t: "reply", id, ok: true, data });
-  window.__edukorsAgentTransport = {
-    async start() {
-      emit({
-        t: "ready",
-        cwd: "/tmp",
-        providers: [
-          { id: "claude", available: true, version: "test" },
-          { id: "codex", available: false, reason: "missing" },
-          { id: "antigravity", available: true, version: "1.2.2" },
-          { id: "kiro", available: false, reason: "missing" },
-          { id: "kimi", available: false, reason: "missing" },
-          { id: "opencode", available: false, reason: "missing" },
-        ],
-      });
-      return { generation: 1, fresh: true };
-    },
-    async stop() {},
-    async listen(cb) {
-      listeners.push(cb);
-      return () => undefined;
-    },
-    async send(msg) {
-      sent.push(msg);
-      switch (msg.t) {
-        case "open":
-          provider = msg.provider ?? "claude";
-          sid = msg.resume ?? (provider === "claude" ? "s-new" : `${provider}-new`);
-          turn = 0;
-          return reply(msg.id, {
-            sessionId: sid,
-            resumed: !!msg.resume,
-            provider,
-            account: ACCOUNTS[provider],
-            models: MODELS[provider],
-            capabilities: CAPS[provider],
-          });
-        case "list":
-          return reply(msg.id, SESSIONS[msg.provider ?? provider] ?? []);
-        case "usage":
-          if ((msg.provider ?? provider) === "antigravity")
-            return reply(msg.id, {
-              at: Date.now(),
-              text: "Within each group, models share a weekly limit and a 5-hour limit.",
-              limits: [
-                { group: "Gemini Models", window: "weekly", percent: 10, resetsAt: Date.now() + 3 * 86400_000 },
-                { group: "Gemini Models", window: "5h", percent: 40, resetsAt: Date.now() + 2 * 3600_000 },
-                { group: "Claude and GPT models", window: "5h", percent: 0, resetsAt: Date.now() + 4 * 3600_000 },
-              ],
-            });
-          return reply(msg.id, {
-            at: Date.now(),
-            text: "You are currently using your subscription to power your Claude Code usage\n\nCurrent session: 22% used · resets Oct 2 at 1:39pm (America/Sao_Paulo)\nCurrent week (all models): 4% used · resets Oct 8 at 6:59am (America/Sao_Paulo)\n\nWhat's contributing to your limits usage?\nLast 24h · 751 requests · 23 sessions",
-          });
-        case "history":
-          return reply(msg.id, [
-            { ev: "user", key: "h1", text: '<editor-context>\nCourse on screen: "x"\nMode: ask.\n</editor-context>\n\nRevise o quiz' },
-            { ev: "assistant", uuid: "h2", messageId: "m0", blocks: [{ type: "text", index: 0, text: "O quiz está **bom**." }] },
-          ]);
-        case "send": {
-          reply(msg.id, { sessionId: sid });
-          turn += 1;
-          if (turn === 1) {
-            // Streams a sentence, asks to edit, and waits for the answer.
-            text("a1", "m1", "Vou adicionar uma pergunta de sim ou não depois de **sm5**.");
-            const input = {
-              summary: "Adiciona uma pergunta sim/não depois de sm5",
-              operations: [
-                { op: "add_node", node: { id: "b1", type: "bool", title: [{ lang: "en", text: "More?" }], content: { question: [{ lang: "en", text: "Do you want to know more?" }] } }, near: "sm5" },
-                { op: "set_edges", from: "sm5", edges: [{ to: "b1" }] },
-              ],
-            };
-            pendingTool.input = input;
-            ev({ ev: "assistant", uuid: "a2", messageId: "m1", blocks: [{ type: "tool_use", index: 0, id: "tu1", name: "mcp__edukors__edit_course", input }] });
-            emit({ t: "ask", id: "ask1", sid, kind: "permission", tool: "mcp__edukors__edit_course", input, toolUseId: "tu1", reason: null });
-          } else if (turn === 2) {
-            emit({
-              t: "ask",
-              id: "ask2",
-              sid,
-              kind: "question",
-              tool: CAPS[provider].ownQuestions ? "AskUserQuestion" : "ask_user",
-              toolUseId: "tu2",
-              reason: null,
-              input: { questions: [{ question: "Para qual ano?", header: "Ano", multiSelect: false, options: [{ label: "6º ano", description: "11–12 anos" }, { label: "9º ano", description: "14–15 anos" }] }] },
-            });
-          } else if (turn === 3) {
-            emit({ t: "ask", id: "ask3", sid, kind: "plan", tool: CAPS[provider].ownQuestions ? "ExitPlanMode" : "plan_ready", toolUseId: "tu3", reason: null, input: { plan: "1. Ler o curso\n2. Adicionar um quiz no fim" } });
-          } else if (turn === 4) {
-            // A plan written as the reply, with no plan tool after it.
-            ev({ ev: "assistant", uuid: "a4", messageId: "m4", blocks: [{ type: "text", index: 0, text: "## Plano\n1. Adicionar **q1** depois de sm5." }] });
-            ev({ ev: "turn_end", status: "success" });
-          } else {
-            ev({ ev: "assistant", uuid: `a${turn}`, messageId: `m${turn}`, blocks: [{ type: "text", index: 0, text: "Feito." }] });
-            ev({ ev: "turn_end", status: "success" });
-          }
-          return;
-        }
-        case "answer":
-          if (msg.id === "ask1") {
-            if (msg.behavior !== "allow") return;
-            // The approved edit runs in the editor, as the real process asks it to.
-            emit({ t: "tool", id: "call1", name: "edit_course", args: pendingTool.input });
-          } else {
-            ev({ ev: "assistant", uuid: `a${turn}x`, messageId: `m${turn}x`, blocks: [{ type: "text", index: 0, text: "Entendido." }] });
-            ev({ ev: "turn_end", status: "success" });
-          }
-          return;
-        case "tool_reply":
-          window.__agentToolReply = msg;
-          ev({ ev: "tool_result", toolUseId: "tu1", text: msg.text, isError: !!msg.isError });
-          ev({ ev: "assistant", uuid: "a3", messageId: "m2", blocks: [{ type: "text", index: 0, text: "Pronto: **b1** pergunta se o estudante quer saber mais." }] });
-          ev({ ev: "turn_end", status: "success" });
-          return;
-        default:
-          if (msg.id) reply(msg.id, null);
-      }
-    },
-  };
-}
-
-// ---------------------------------------------- the process, for real ----
-
-/** Spawns agent/sidecar.mjs and relays it over HTTP, as src-tauri/src/agent.rs does over Tauri events. */
-function startBridge() {
-  let child = null;
-  let generation = 0;
-  const clients = new Set();
-  const emit = (obj) => clients.forEach((res) => res.write(`data: ${JSON.stringify(obj)}\n\n`));
-  const cwd = mkdtempSync(join(tmpdir(), "edukors-agent-e2e-"));
-  const server = http.createServer((req, res) => {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Headers", "content-type");
-    if (req.method === "OPTIONS") return res.end();
-    if (req.url === "/events") {
-      res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache" });
-      res.write(": open\n\n");
-      clients.add(res);
-      req.on("close", () => clients.delete(res));
-      return;
-    }
-    let body = "";
-    req.on("data", (c) => (body += c));
-    req.on("end", () => {
-      if (req.url === "/start") {
-        if (child && child.exitCode === null) return res.end(JSON.stringify({ generation, fresh: false }));
-        const gen = ++generation;
-        child = spawn(process.execPath, [join(root, "agent", "sidecar.mjs")], {
-          env: {
-            ...process.env,
-            EDUKORS_AGENT_CWD: cwd,
-            ...(args.includes("--fake-agy") ? { EDUKORS_AGY: join(root, "tests", "fake-agy.mjs") } : {}),
-            ...(args.includes("--fake-codex") ? { EDUKORS_CODEX: join(root, "tests", "fake-codex.mjs") } : {}),
-            ...(args.includes("--fake-opencode") ? { EDUKORS_OPENCODE: join(root, "tests", "fake-opencode.mjs") } : {}),
-          },
-          stdio: ["pipe", "pipe", "pipe"],
-        });
-        createInterface({ input: child.stdout }).on("line", (line) => {
-          try {
-            emit({ ...JSON.parse(line), gen });
-          } catch {
-            /* not a protocol line */
-          }
-        });
-        child.stderr.on("data", () => undefined);
-        child.on("exit", () => emit({ t: "exit", gen, stderr: "" }));
-        return res.end(JSON.stringify({ generation: gen, fresh: true }));
-      }
-      if (req.url === "/send") {
-        child?.stdin.write(body + "\n");
-        return res.end("{}");
-      }
-      if (req.url === "/stop") {
-        child?.stdin.end();
-        return res.end("{}");
-      }
-      res.statusCode = 404;
-      res.end();
-    });
+const idle = () => page.waitForFunction(() => !window.__agent.getState().busy, null, { timeout: 120_000 });
+const say = async (text) => {
+  await page.locator(".agent-input").fill(text);
+  await page.keyboard.press("Enter");
+};
+const lastAnswer = () =>
+  page.evaluate(() => {
+    const items = window.__agent.getState().items;
+    const at = items.map((i) => i.kind).lastIndexOf("user");
+    return items.slice(at + 1).filter((i) => i.kind === "text").map((i) => i.text).join("");
   });
-  return new Promise((resolve) =>
-    server.listen(0, "127.0.0.1", () =>
-      resolve({
-        base: `http://127.0.0.1:${server.address().port}`,
-        close: async () => {
-          child?.stdin.end();
-          if (child && child.exitCode === null) await new Promise((r) => child.on("exit", r));
-          server.closeAllConnections();
-          server.close();
-          // The conversations this run left in Claude Code's own folder go with it.
-          rmSync(join(homedir(), ".claude", "projects", realpathSync(cwd).replace(/[^a-zA-Z0-9]/g, "-")), { recursive: true, force: true });
-          rmSync(cwd, { recursive: true, force: true });
-        },
-      }),
-    ),
-  );
-}
 
-function bridgeTransport(base) {
-  window.__edukorsAgentTransport = {
-    start: () => fetch(`${base}/start`, { method: "POST" }).then((r) => r.json()),
-    send: (msg) => fetch(`${base}/send`, { method: "POST", body: JSON.stringify(msg) }).then(() => undefined),
-    stop: () => fetch(`${base}/stop`, { method: "POST" }).then(() => undefined),
-    listen: (cb) =>
-      new Promise((resolve) => {
-        const events = new EventSource(`${base}/events`);
-        events.onmessage = (e) => cb(JSON.parse(e.data));
-        events.onopen = () => resolve(() => events.close());
-      }),
-  };
-}
-
-const bridge = live ? await startBridge() : null;
-if (bridge) await page.addInitScript(bridgeTransport, bridge.base);
-else await page.addInitScript(scriptedTransport);
-// The run starts on the provider it is about, chosen in the preferences: a new
-// install would start on OpenCode, which the scripted run does not play.
-await page.addInitScript((provider) => localStorage.setItem("edukors-editor.prefs", JSON.stringify({ agent: { provider } })), liveProvider);
-
+await page.addInitScript(bridgeTransport, bridge.base);
 await page.goto(url);
-// The terms of use come first, on a fresh profile.
 await page.getByRole("button", { name: "Aceito os termos" }).click();
-// then the opening, with the version
 await page.getByRole("button", { name: "Começar" }).click();
 
 await step("open a sample course", async () => {
-  // The welcome screen no longer lists the samples: the course is opened as a file would be.
   await page.evaluate(async (c) => (await import("/src/store/docs.ts")).openDoc(c, { path: null, saved: true }), course);
   await page.locator(".card-node").first().waitFor();
-  await page.waitForTimeout(800);
 });
 
-await step("the AI button sits at the right end of the toolbar and opens the agent beside the inspector", async () => {
-  const button = page.locator(".toolbar .tool-agent");
-  const box = await button.boundingBox();
-  const bar = await page.locator(".toolbar").boundingBox();
-  expect(box && bar && bar.x + bar.width - (box.x + box.width) < 24, "the AI button is not at the right end");
-  // the inspector starts closed on a file just opened; the sidebar button brings it out
-  if (!(await page.locator(".inspector").count())) await page.locator(".toolbar .tool-group-end .icon-btn").first().click();
-  await page.locator(".inspector").waitFor();
-  await button.click();
+await step("the AI button opens the agent, which asks for an account when there is none", async () => {
+  await page.locator(".toolbar .tool-agent").click();
   await page.locator(".agent-panel").waitFor();
-  expect(await page.locator(".inspector").count() === 1, "the inspector should stay beside the agent");
-  // the sidebar button closes the inspector only, and brings it back
-  await page.locator(".toolbar .tool-group-end .icon-btn").first().click();
-  expect(await page.locator(".inspector").count() === 0, "the sidebar button did not close the inspector");
-  expect(await page.locator(".agent-panel").count() === 1, "the sidebar button closed the agent");
-  await page.locator(".toolbar .tool-group-end .icon-btn").first().click();
-  await page.locator(".inspector").waitFor();
-  await page.locator(".agent-hello, .agent-account").first().waitFor({ timeout: 60_000 });
-  expect((await agent()).connection === "ready", "not connected");
-  // The start of a conversation shows the usage windows under the account, where the provider reports them.
-  if (liveProvider === "claude") await page.locator(".agent-usage.is-compact .agent-usage-line").first().waitFor({ timeout: 60_000 });
-  await shot("a01-panel-open");
+  if (live) return;
+  await page.getByText("Nenhuma conta de IA conectada").waitFor({ timeout: 30_000 });
+  expect((await agent()).connection === "ready", "not connected to the host");
+  await shot("b01-no-account");
+});
+
+await step("the preferences show Accounts first and, under Advanced, instructions, MCP servers and skills", async () => {
+  if (live) return;
+  await page.getByRole("button", { name: "Abrir contas" }).click();
+  await page.getByRole("button", { name: "Agente de IA (CLI)" }).click();
+  await page.getByText("Contas de IA", { exact: true }).waitFor();
+  await page.getByText("Nenhuma conta ainda. Adicione uma para usar o agente.").waitFor();
+  const order = await page.evaluate(() => [...document.querySelectorAll(".prefs-card label, .prefs-card .field-label, h3.prefs-group")].map((e) => e.textContent?.trim()).filter(Boolean));
+  const at = (text) => order.findIndex((t) => t.startsWith(text));
+  expect(at("Contas de IA") < at("Avançado") && at("Avançado") < at("Instruções para o agente") && at("Instruções para o agente") < at("Servidores MCP") && at("Servidores MCP") < at("Skills"), `wrong order: ${order.join(" | ")}`);
+  // An account of the library's fake provider, which the Add form does not offer: added as the form would.
+  await page.evaluate(async () => {
+    const a = window.__agent.getState();
+    const id = await a.addAccount("fake", "Escola");
+    await a.connectAccount(id);
+  });
+  await page.locator(".agent-account", { hasText: "Escola" }).getByText("Em uso").waitFor({ timeout: 30_000 });
+  await page.locator(".agent-account", { hasText: "Escola" }).getByText("Conectada").waitFor();
+  await shot("b02-accounts");
+  await page.getByRole("button", { name: "Cancelar" }).click();
+});
+
+await step("the panel greets on the account, and a message goes out with the course and the selection", async () => {
+  await page.locator(".agent-hello").waitFor({ timeout: 60_000 });
+  if (!live) expect((await page.locator(".agent-account").first().innerText()).includes("Escola"), "the account line does not name the account");
+  await page.evaluate(() => window.__editor.getState().select({ nodes: ["sm2"], edge: null }));
+  await page.locator(".agent-selection").waitFor();
+  if (live) return;
+  await say("Olá");
+  await idle();
+  expect((await lastAnswer()).startsWith("Echo: Olá"), `unexpected answer: ${await lastAnswer()}`);
+  expect((await page.locator(".agent-user").last().innerText()).includes("sm2"), "the bubble does not show the selection");
+});
+
+await step("an edit waits for approval, and is applied by the editor as one undo step", async () => {
+  const before = (await editor()).past;
+  if (live) {
+    await say("Mude o título do passo sm2 para 'Gatos pequenos' com edit_course. Não faça mais nada.");
+  } else {
+    await say('tool edit_course {"summary":"Renomeia sm2","operations":[{"op":"update_node","id":"sm2","title":[{"lang":"en","text":"Small cats"}]}]}');
+  }
+  await page.getByRole("button", { name: "Permitir", exact: true }).waitFor({ timeout: 180_000 });
+  await shot("b03-permission");
+  await page.getByRole("button", { name: "Permitir", exact: true }).click();
+  await idle();
+  const e = await editor();
+  expect(e.past === before + 1, `expected one undo step, got ${e.past - before}`);
+  await page.locator(".agent-tool .agent-tool-head").last().click();
+  await shot("b04-edited");
 });
 
 if (!live) {
-  await step("a message goes out with the course and the selection", async () => {
-    await page.evaluate(() => window.__editor.getState().select({ nodes: ["sm5"], edge: null }));
-    await page.locator(".agent-selection").waitFor();
-    await page.locator(".agent-input").fill("Adicione uma pergunta sim/não depois deste passo");
-    await page.keyboard.press("Enter");
-    await page.locator(".agent-ask").waitFor();
-    const sent = await page.evaluate(() => window.__agentSent.find((m) => m.t === "send"));
-    expect(sent.text.includes("<editor-context>") && sent.text.includes('Selected: sm5 (static-md)'), "the context did not go along");
-    expect(sent.text.endsWith("Adicione uma pergunta sim/não depois deste passo"), "the message is not at the end");
-    expect((await page.locator(".agent-user").innerText()).includes("sm5 ·"), "the bubble does not show the selection");
-    await shot("a02-permission");
-  });
-
-  await step("an approved edit is applied by the editor as one undo step", async () => {
-    expect((await page.locator(".agent-ask .agent-ops li").count()) === 2, "the card should list the two operations");
-    await page.getByRole("button", { name: "Permitir", exact: true }).click();
-    await page.getByText("Pronto:").waitFor();
-    const e = await editor();
-    expect(e.ids.includes("b1"), "b1 was not added");
-    expect(e.edges.some((x) => x.from === "sm5" && x.to === "b1"), "no edge sm5 → b1");
-    expect(e.past === 1, `expected one undo step, got ${e.past}`);
-    const reply = await page.evaluate(() => window.__agentToolReply);
-    expect(reply && !reply.isError && reply.text.includes("applied 2 operations"), "the tool reply is wrong");
-    expect(!(await agent()).busy, "still busy after the result");
-    await page.locator(".agent-tool .agent-tool-head").first().click();
-    await shot("a03-edited");
-  });
-
   await step("a question from the agent is answered from the panel", async () => {
-    await page.locator(".agent-input").fill("Crie um curso de frações");
-    await page.keyboard.press("Enter");
-    await page.getByRole("button", { name: /6º ano/ }).click();
-    await shot("a04-question");
+    await say("ask");
+    await page.getByRole("button", { name: "blue" }).click();
+    await shot("b05-question");
     await page.getByRole("button", { name: "Responder" }).click();
-    const answer = await page.evaluate(() => window.__agentSent.find((m) => m.t === "answer" && m.id === "ask2"));
-    expect(answer.behavior === "allow" && answer.updatedInput.answers["Para qual ano?"] === "6º ano", "the answer is wrong");
-  });
-
-  await step("the model menu shows the account's usage windows as Claude Code words them", async () => {
-    await page.locator(".agent-model > .agent-chip").click();
-    const lines = page.locator(".agent-menu .agent-usage-line");
-    await lines.first().waitFor();
-    expect((await lines.count()) === 2, "expected the session and week windows");
-    expect((await lines.first().innerText()).startsWith("Current session: 22% used"), "the line was changed");
-    const width = await page.locator(".agent-menu .agent-usage-bar > span").first().evaluate((el) => el.style.width);
-    expect(width === "22%", `bar at ${width}`);
-    expect((await page.locator(".agent-menu .agent-usage-more, .agent-menu .agent-usage-text").count()) === 0, "the rest of the report is shown");
-    const before = await page.evaluate(() => window.__agentSent.filter((m) => m.t === "usage").length);
-    await page.getByRole("button", { name: "Atualizar o uso" }).click();
-    await page.waitForFunction((n) => window.__agentSent.filter((m) => m.t === "usage").length > n, before);
-    await shot("a04b-usage");
-    await page.keyboard.press("Escape");
-    expect((await page.locator(".agent-usage.is-compact").count()) === 0, "no compact usage once the conversation has started");
-  });
-
-  await step("the effort is a slider, and the agent is told what it is set to", async () => {
-    await page.locator(".agent-model > .agent-chip").click();
-    const range = page.locator(".agent-menu .agent-effort-range");
-    await range.waitFor();
-    expect((await page.locator(".agent-menu .agent-effort button").count()) === 0, "the effort is still buttons");
-    expect((await range.getAttribute("max")) === "5", "expected the default and five levels");
-    await range.focus();
-    await page.keyboard.press("ArrowRight");
-    await page.keyboard.press("ArrowRight");
-    await page.keyboard.press("ArrowRight");
-    expect((await agent()).effort === "high", `effort ${(await agent()).effort}`);
-    expect((await page.locator(".agent-menu .agent-effort-value").innerText()) === "Alto", "the level is not named over the slider");
-    const sets = await page.evaluate(() => window.__agentSent.filter((m) => m.t === "set" && m.effort));
-    expect(sets.at(-1)?.effort === "high", "the process was not told");
-    expect((await page.locator(".agent-model > .agent-chip").innerText()).includes("Alto"), "the chip does not show the effort");
-    await shot("a04c-effort");
-    await page.keyboard.press("Home");
-    expect((await agent()).effort === "auto", "Home should go back to the default");
-    // Which provider runs the agent is a preference, not a choice in this menu.
-    expect((await page.locator(".agent-menu").getByText("Provedor").count()) === 0, "the menu still offers the provider");
-    expect((await page.getByRole("menuitemradio", { name: /Antigravity|Codex/ }).count()) === 0, "the menu still lists providers");
-    await page.keyboard.press("Escape");
-  });
-
-  await step("the mode and the model change from the composer", async () => {
-    await page.locator(".agent-mode-ask > .agent-chip").click();
-    await page.getByRole("menuitemradio", { name: /Planejar/ }).click();
-    await page.locator(".agent-model > .agent-chip").click();
-    await page.getByRole("menuitemradio", { name: /Haiku/ }).first().click();
-    await page.keyboard.press("Escape");
-    const s = await agent();
-    expect(s.mode === "plan" && s.model === "haiku", `mode ${s.mode}, model ${s.model}`);
-    const sets = await page.evaluate(() => window.__agentSent.filter((m) => m.t === "set"));
-    expect(sets.some((m) => m.mode === "plan") && sets.some((m) => m.model === "haiku"), "the process was not told");
+    await idle();
+    expect((await lastAnswer()) === "You chose blue", `unexpected answer: ${await lastAnswer()}`);
   });
 
   await step("a plan is approved with the mode to go on in", async () => {
-    await page.locator(".agent-input").fill("Planeje um quiz no fim");
-    await page.keyboard.press("Enter");
-    await page.locator(".agent-plan").waitFor();
-    await shot("a05-plan");
-    await page.getByRole("button", { name: "Aprovar e pedir antes de editar" }).click();
-    const answer = await page.evaluate(() => window.__agentSent.find((m) => m.t === "answer" && m.id === "ask3"));
-    expect(answer.behavior === "allow" && answer.mode === "ask", "the plan answer is wrong");
-    expect((await agent()).mode === "ask", "the mode did not follow the approval");
+    await say('tool plan_ready {"plan":"1. Renomear o passo sm2."}');
+    await page.getByRole("button", { name: "Aprovar e editar automaticamente" }).waitFor();
+    await shot("b06-plan");
+    await page.getByRole("button", { name: "Aprovar e editar automaticamente" }).click();
+    await idle();
+    expect((await page.evaluate(() => window.__agent.getState().mode)) === "auto", "the mode did not change");
+    await page.evaluate(() => window.__agent.getState().setMode("ask"));
   });
 
-  await step("a plan given as a reply can be approved too", async () => {
-    await page.locator(".agent-mode-ask > .agent-chip").click();
-    await page.getByRole("menuitemradio", { name: /Planejar/ }).click();
-    await page.locator(".agent-input").fill("Planeje outro quiz");
-    await page.keyboard.press("Enter");
-    await page.locator(".agent-plan-bar").waitFor();
-    await shot("a05b-plan-bar");
-    await page.locator(".agent-plan-bar").getByRole("button", { name: "Aprovar e editar automaticamente" }).click();
-    await page.getByText("Feito.").waitFor();
-    const s = await agent();
-    expect(s.mode === "auto", `mode ${s.mode}`);
-    const sends = await page.evaluate(() => window.__agentSent.filter((m) => m.t === "send").map((m) => m.text));
-    expect(sends.at(-1).endsWith("Plano aprovado: pode executar."), "the approval was not sent");
-    expect(!(await page.locator(".agent-plan-bar").count()), "the bar should go once the mode is not plan");
+  await step("Stop interrupts a turn and keeps what was written", async () => {
+    await say("slow");
+    await page.locator(".agent-send.is-stop").click({ timeout: 10_000 });
+    await idle();
+    await page.getByText("Interrompido.").last().waitFor();
   });
 
-  await step("⇧⌘A closes and opens the panel, and the inspector stays", async () => {
-    await page.locator(".react-flow__pane").click({ position: { x: 40, y: 40 } });
-    await page.keyboard.press("Meta+Shift+A");
-    await page.locator(".agent-panel").waitFor({ state: "detached" });
-    expect((await page.locator(".inspector").count()) === 1, "the inspector went with the agent");
-    await page.keyboard.press("Meta+Shift+A");
-    await page.locator(".agent-panel").waitFor();
-    expect((await page.locator(".inspector").count()) === 1, "the inspector went when the agent came back");
-    expect((await page.locator(".agent-user").count()) > 0, "the conversation did not survive closing the panel");
+  await step("a user's MCP server, from the preferences, is called after approval", async () => {
+    await page.evaluate(async (server) => {
+      const prefs = window.__prefs.getState();
+      await prefs.save({ agent: { ...prefs.agent, mcp: JSON.stringify({ mcpServers: { glossary: { command: server.node, args: [server.script] } } }) } });
+      await window.__agent.getState().newSession();
+    }, { node: process.execPath, script: FAKE_MCP });
+    await page.waitForFunction(() => window.__agent.getState().mcp.some((m) => m.name === "glossary" && m.status === "connected"), null, { timeout: 30_000 });
+    await say('mcp glossary lookup {"term":"vetor"}');
+    await page.getByRole("button", { name: "Permitir", exact: true }).click({ timeout: 30_000 });
+    await idle();
+    expect((await lastAnswer()).includes("vetor: a term from the glossary"), `unexpected answer: ${await lastAnswer()}`);
+    await shot("b07-mcp");
   });
 
-  await step("the provider changes from the preferences, with its own models, sessions and usage", async () => {
-    // What the preferences do when they are saved with another provider.
-    await page.evaluate(() => window.__agent.getState().setProvider("antigravity"));
-    // The provider changes at once; the conversation on the other side takes a round trip.
-    await page.waitForFunction(() => window.__agent.getState().sessionId === "antigravity-new");
-    const opened = await page.evaluate(() => window.__agentSent.filter((m) => m.t === "open").at(-1));
-    expect(opened.provider === "antigravity", `opened on ${opened.provider}`);
-    const s = await agent();
-    expect(s.items.length === 0 && s.sessionId === "antigravity-new", `the conversation did not change: ${s.sessionId}`);
-    // The sessions are the other provider's, read when the list opens.
-    await page.locator(".agent-head .agent-title").click();
-    await page.getByText("Curso de frações").waitFor();
-    const listed = await page.evaluate(() => window.__agentSent.filter((m) => m.t === "list").at(-1));
-    expect(listed.provider === "antigravity", "the session list did not follow the provider");
-    await page.keyboard.press("Escape");
-    await page.locator(".agent-sessions").waitFor({ state: "detached" });
-    // Antigravity takes no effort level, and its quotas show by group of models, the five hours first.
-    await page.locator(".agent-model > .agent-chip").click();
-    expect((await page.locator(".agent-menu .agent-effort").count()) === 0, "the effort levels should not show");
-    const lines = page.locator(".agent-menu .agent-usage-line");
-    await lines.first().waitFor();
-    expect((await lines.count()) === 3, `expected three limits, got ${await lines.count()}`);
-    expect((await lines.first().innerText()).startsWith("Limite de 5 horas: 40% usado · renova"), `the line reads ${await lines.first().innerText()}`);
-    expect((await lines.nth(1).innerText()).startsWith("Limite semanal: 10% usado"), "the weekly limit should come second");
-    expect((await page.locator(".agent-menu .agent-usage-group-name").allInnerTexts()).join() === "Gemini Models,Claude and GPT models", "the groups are not named");
-    expect((await page.locator(".agent-menu .agent-usage-bar > span").first().evaluate((el) => el.style.width)) === "40%", "the bar is wrong");
-    expect((await page.locator(".agent-menu .agent-usage-when").innerText()).includes("Antigravity"), "the source is not named");
-    expect((await page.getByText("Conta Google: professora@gmail.com").count()) === 1, "the Google account is not shown");
-    await shot("a07-provider");
-    await page.keyboard.press("Escape");
-    // Back to Claude Code, with its own conversation.
-    await page.evaluate(() => window.__agent.getState().setProvider("claude"));
-    await page.waitForFunction(() => window.__agent.getState().sessionId === "s-new" && window.__agent.getState().models.length === 3);
-  });
-
-  await step("past sessions are listed and reopened with their history", async () => {
-    await page.locator(".agent-head .agent-title").click();
-    await page.getByText("Revisar o quiz").waitFor();
-    await shot("a06-sessions");
-    await page.getByText("Revisar o quiz").click();
-    await page.getByText("O quiz está").waitFor();
-    const s = await agent();
-    expect(s.sessionId === "s-old" && s.items.join() === "user,text", `reopened ${s.sessionId}: ${s.items}`);
-    expect((await page.locator(".agent-title-text").innerText()) === "Revisar o quiz", "the title did not follow");
-  });
-
-  await step("a new session starts empty", async () => {
-    await page.getByRole("button", { name: "Nova sessão" }).click();
-    await page.locator(".agent-hello").waitFor();
-    expect((await agent()).items.length === 0, "not empty");
-  });
-
-  await step("attached files are cards over the text, with a shortened name and an ×", async () => {
-    // The app's file dialog, played for this step only: each pick gives the next path.
-    await page.evaluate(() => {
-      const picks = ["/Users/ana/Documents/relatorio-final-do-semestre-de-2026.pdf", "/Users/ana/notas.txt"];
-      window.__TAURI_INTERNALS__ = { invoke: async (cmd) => (cmd === "plugin:dialog|open" ? picks.shift() ?? null : null), transformCallback: () => 0 };
-    });
-    await page.locator(".agent-input").fill("Resuma ");
-    const clip = page.getByRole("button", { name: /Anexar arquivo/ });
-    await clip.click();
-    await page.locator(".agent-composer .agent-attachment").waitFor();
-    await clip.click();
-    await page.locator(".agent-composer .agent-attachment").nth(1).waitFor();
-    const names = await page.locator(".agent-composer .agent-attachment-name").allInnerTexts();
-    expect(names.join("|") === "relatorio-final-do-….pdf|notas.txt", `the cards read ${names.join("|")}`);
-    expect((await page.locator(".agent-input").inputValue()) === "Resuma ", "the path went into the text");
-    await shot("a08-attachments");
-    await page.getByRole("button", { name: "Remover notas.txt" }).click();
-    expect((await page.locator(".agent-composer .agent-attachment").count()) === 1, "the × did not take the file off");
-    await page.keyboard.press("Enter");
-    await page.locator(".agent-user .agent-attachment").waitFor();
-    const sent = await page.evaluate(() => window.__agentSent.filter((m) => m.t === "send").at(-1).text);
-    expect(sent.endsWith("Resuma\n\n<attached-files>\n/Users/ana/Documents/relatorio-final-do-semestre-de-2026.pdf\n</attached-files>"), "the path did not go along");
-    expect((await page.locator(".agent-composer .agent-attachment").count()) === 0, "the cards stayed after sending");
-    expect((await page.locator(".agent-user").last().innerText()).includes("relatorio-final-do-….pdf"), "the bubble does not show the file");
-    await page.getByText("Feito.").last().waitFor().catch(() => undefined);
-    await shot("a09-attachment-sent");
-    await page.evaluate(() => delete window.__TAURI_INTERNALS__);
-  });
-
-  await step("in a plain browser the panel says the agent needs the app", async () => {
-    const plain = await browser.newPage({ viewport: { width: 1200, height: 800 } });
-    await plain.goto(url);
-    await plain.getByRole("button", { name: "Aceito os termos" }).click();
-    // then the opening, with the version
-    await plain.getByRole("button", { name: "Começar" }).click();
-    await plain.evaluate(async (c) => (await import("/src/store/docs.ts")).openDoc(c, { path: null, saved: true }), course);
-    await plain.locator(".toolbar .tool-agent").click();
-    await plain.getByText("O agente funciona dentro do app").waitFor();
-    expect((await plain.getByRole("button", { name: "Tentar de novo" }).count()) === 0, "no retry without the app");
-    await plain.close();
-  });
-
-  await step("a provider that cannot start says so, and the message stays", async () => {
-    const broken = await browser.newPage({ viewport: { width: 1200, height: 800 } });
-    await broken.addInitScript(() => {
-      const listeners = [];
-      window.__edukorsAgentTransport = {
-        async start() {
-          setTimeout(() => listeners.forEach((cb) => cb({ t: "ready", cwd: "/tmp", providers: [{ id: "claude", available: false, reason: "sdk-missing" }], gen: 1 })), 10);
-          return { generation: 1, fresh: true };
-        },
-        async stop() {},
-        async listen(cb) {
-          listeners.push(cb);
-          return () => undefined;
-        },
-        async send(msg) {
-          if (msg.t === "open") setTimeout(() => listeners.forEach((cb) => cb({ t: "reply", id: msg.id, ok: false, error: "Cannot find package", code: "sdk-missing", gen: 1 })), 10);
-          else if (msg.id) setTimeout(() => listeners.forEach((cb) => cb({ t: "reply", id: msg.id, ok: true, data: null, gen: 1 })), 10);
-        },
-      };
-    });
-    await broken.goto(url);
-    await broken.getByRole("button", { name: "Aceito os termos" }).click();
-    // then the opening, with the version
-    await broken.getByRole("button", { name: "Começar" }).click();
-    await broken.evaluate(async (c) => (await import("/src/store/docs.ts")).openDoc(c, { path: null, saved: true }), course);
-    await broken.locator(".toolbar .tool-agent").click();
-    await broken.getByText("O Claude Agent SDK não está instalado").waitFor();
-    await broken.waitForTimeout(600);
-    expect((await broken.getByText("O Claude Agent SDK não está instalado").count()) === 1, "the error did not stay");
-    expect((await broken.evaluate(() => window.__agent.getState().connection)) === "error", "not in error");
-    await broken.close();
-  });
-
-} else {
-  await step(`${liveProvider} edits the course through the editor, after approval`, async () => {
-    expect((await agent()).provider === liveProvider, `the panel is on ${(await agent()).provider}`);
-    if (liveProvider === "claude") {
-      await page.locator(".agent-model > .agent-chip").click();
-      await page.getByRole("menuitemradio", { name: /Haiku/ }).first().click();
-      await page.keyboard.press("Escape");
-    }
-    await page.evaluate(() => window.__editor.getState().select({ nodes: ["sm5"], edge: null }));
-    await page.locator(".agent-input").fill("Adicione depois do passo selecionado um passo do tipo sim/não (bool) que pergunta, em inglês, se o estudante quer saber mais, com uma seta do passo selecionado para ele. Faça só isso, numa única edição.");
-    await page.keyboard.press("Enter");
-    await page.locator(".agent-ask").waitFor({ timeout: 180_000 });
-    await shot("a02-live-permission");
-    // Each edit waits for approval; the agent may make a second one to fix what validation found.
-    const deadline = Date.now() + 300_000;
-    let approved = 0;
-    while (Date.now() < deadline) {
-      const s = await agent();
-      if (s.asks) {
-        await page.getByRole("button", { name: "Permitir", exact: true }).first().click();
-        approved += 1;
-      } else if (!s.busy) break;
-      await page.waitForTimeout(500);
-    }
-    expect(approved >= 1, "nothing was approved");
-    expect(!(await agent()).busy, "the turn did not end");
-    const e = await editor();
-    const added = e.ids.filter((id) => /^b\d+$/.test(id));
-    expect(added.length === 1, `expected one bool step, got ${e.ids}`);
-    expect(e.edges.some((x) => x.from === "sm5" && x.to === added[0]), "no edge from sm5");
-    expect(e.past === approved, `expected ${approved} undo steps, got ${e.past}`);
-    await shot("a03-live-edited");
-  });
-
-  await step("the conversation is in the session list", async () => {
-    await page.locator(".agent-head .agent-title").click();
-    await page.locator(".agent-session").first().waitFor({ timeout: 30_000 });
-    await shot("a04-live-sessions");
+  await step("the conversations are listed and one is reopened with what was on screen", async () => {
+    const first = await page.evaluate(() => window.__agent.getState().conversationId);
+    await page.locator(".agent-title").click();
+    const rows = page.locator(".agent-session");
+    await rows.first().waitFor();
+    expect((await rows.count()) >= 2, `expected two conversations, got ${await rows.count()}`);
+    await shot("b08-sessions");
+    await page.locator(".agent-session-open", { hasText: "Olá" }).click();
+    await page.waitForFunction((id) => window.__agent.getState().conversationId !== id && window.__agent.getState().items.length > 0, first);
+    expect((await agent()).items.includes("tool"), "the reopened conversation lost its tool cards");
+    await page.waitForFunction(() => !!window.__agent.getState().sessionId, null, { timeout: 30_000 });
+    await say("again");
+    await idle();
+    expect((await lastAnswer()).includes("[history "), `the reopened conversation did not answer: ${await lastAnswer()}`);
   });
 }
 
 await browser.close();
-await bridge?.close();
+bridge.close();
+if (!live) rmSync(dataDir, { recursive: true, force: true });
 if (problems.length) {
   console.log("\nProblems:\n" + problems.map((p) => `- ${p}`).join("\n"));
   process.exit(1);
