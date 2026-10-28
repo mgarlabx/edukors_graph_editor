@@ -2,7 +2,7 @@
 
 Each version has its own section, written before the tag, **always in English**: its text goes to the release page on GitHub and to the update notice inside the app (`scripts/release-notes.mjs`). A section changed after the build does not reach the app.
 
-## Unreleased
+## 2.19.0
 
 - **AI accounts:** the agent now runs on an AI account you add in **Preferences → AI agent → AI accounts** (Claude Code or Codex), with its own sign-in, separate from the one you may use in a terminal. Accounts are shared with the other EDUKORS apps on this computer. When the browser does not open for the sign-in, the editor shows the address and, for Claude, a field for the code shown after you authorize.
 - **Same agent everywhere:** the providers, accounts and sessions are handled by the shared EDUKORS AI library (`@edukors/ai-cli`), which the Slides editor will use too.
