@@ -31,9 +31,9 @@ jobs:
       release_id: ${{ steps.create.outputs.result }}
       version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
 
@@ -57,7 +57,7 @@ jobs:
       - run: node scripts/release-notes.mjs ${{ steps.version.outputs.version }} > release-notes.md
 
       - id: create
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           VERSION: ${{ steps.version.outputs.version }}
         with:
@@ -96,9 +96,9 @@ jobs:
             download: Edukors-Graph-Editor-linux.AppImage
     runs-on: ${{ matrix.platform }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -217,7 +217,7 @@ jobs:
         run: node scripts/make-msix.mjs
 
       - if: matrix.platform == 'windows-latest'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: microsoft-store-msix
           path: src-tauri/target/Edukors-Graph-Editor-${{ needs.prepare.outputs.version }}.msix
@@ -274,15 +274,15 @@ jobs:
     needs: [prepare, build]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
 
       - run: node scripts/release-notes.mjs ${{ needs.prepare.outputs.version }} > release-notes.md
 
-      - uses: actions/github-script@v7
+      - uses: actions/github-script@v9
         env:
           VERSION: ${{ needs.prepare.outputs.version }}
           RELEASE_ID: ${{ needs.prepare.outputs.release_id }}

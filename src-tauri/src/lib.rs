@@ -36,6 +36,12 @@ fn read_text(path: String) -> Result<String, String> {
     std::fs::read_to_string(&path).map_err(|e| format!("{path}: {e}"))
 }
 
+/// A recent file may have been moved or deleted since: the webview asks before opening it.
+#[tauri::command]
+fn file_exists(path: String) -> bool {
+    std::path::Path::new(&path).is_file()
+}
+
 /// Written beside the target and renamed over it, so a crash mid-write never
 /// leaves half a course on disk.
 #[tauri::command]
@@ -581,6 +587,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             read_text,
+            file_exists,
             write_text,
             take_opened_files,
             from_store,

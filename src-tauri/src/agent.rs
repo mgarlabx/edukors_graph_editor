@@ -25,7 +25,7 @@ use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter, Manager, State};
 
 /// Node versions older than this cannot run the agent.
-const MIN_NODE: u32 = 18;
+const MIN_NODE: u32 = 22;
 
 #[derive(Default)]
 pub struct Agent {
@@ -273,12 +273,23 @@ fn quiet(program: &Path) -> Command {
     command
 }
 
+#[cfg(test)]
 fn node_major(path: &Path) -> Option<u32> {
     let out = quiet(path).arg("--version").stdin(Stdio::null()).output().ok()?;
     if !out.status.success() {
         return None;
     }
     String::from_utf8_lossy(&out.stdout).trim().trim_start_matches('v').split('.').next()?.parse().ok()
+}
+
+fn node_compatible(path: &Path) -> bool {
+    let Ok(out) = quiet(path).arg("--version").stdin(Stdio::null()).output() else { return false; };
+    if !out.status.success() { return false; }
+    let text = String::from_utf8_lossy(&out.stdout);
+    let mut parts = text.trim().trim_start_matches('v').split('.');
+    let major = parts.next().and_then(|v| v.parse::<u32>().ok()).unwrap_or(0);
+    let minor = parts.next().and_then(|v| v.parse::<u32>().ok()).unwrap_or(0);
+    major > MIN_NODE || (major == MIN_NODE && minor >= 12)
 }
 
 #[cfg(not(windows))]
@@ -289,7 +300,7 @@ const NODE: &str = "node.exe";
 /// A Node the SDK can run on. An app opened from the Finder does not get the
 /// shell's PATH, so the usual places are tried too, and the login shell last.
 pub fn find_node() -> Option<PathBuf> {
-    let usable = |p: &Path| p.is_file() && node_major(p).is_some_and(|v| v >= MIN_NODE);
+    let usable = |p: &Path| p.is_file() && node_compatible(p);
     let mut candidates: Vec<PathBuf> = Vec::new();
     if let Some(p) = std::env::var_os("EDUKORS_NODE") {
         candidates.push(PathBuf::from(p));

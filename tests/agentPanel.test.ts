@@ -51,7 +51,7 @@ Object.assign(globalThis, {
 });
 
 const { useAgent } = await import("../src/agent/store");
-const { openDoc, dropDoc, useDocs } = await import("../src/store/docs");
+const { openDoc, dropDoc, useDocs, activateDoc } = await import("../src/store/docs");
 const { useEditor } = await import("../src/store/editor");
 const { toolSpecs } = await import("../src/agent/toolSpecs");
 
@@ -186,4 +186,25 @@ describe("agent panel over the library", () => {
     await sendAndWait("again");
     expect(lastText()).toContain("[history 0,");
   });
+  it("keeps separate conversations when changing documents", async()=>{
+    const first=useEditor.getState().docId!,firstConversation=agent().conversationId;
+    const second=openDoc(mini(),{path:'/courses/second.json',saved:true});
+    await agent().focusDocument(second);expect(agent().items).toEqual([]);
+    await sendAndWait('second document');expect(lastText()).toContain('history 0');
+    activateDoc(first);await agent().focusDocument(first);expect(agent().conversationId).toBe(firstConversation);
+    expect(agent().items.some(i=>i.kind==='user'&&i.text==='again')).toBe(true);
+  });
+  it("keeps the application default when switching conversation accounts",async()=>{
+    const {usePrefs}=await import('../src/store/prefs');const first=agent().accountId!,original=usePrefs.getState().agent.account;
+    const other=await agent().addAccount('fake' as never,'Another');await agent().connectAccount(other);await agent().selectAccount(other);
+    expect(agent().accountId).toBe(other);expect(usePrefs.getState().agent.account).toBe(original);await agent().selectAccount(first);
+  });
+  it("locks account, mode and model while a turn is running",async()=>{
+    const sending=agent().send('slow');await until(()=>agent().busy&&!!agent().live);
+    const before={account:agent().accountId,model:agent().model,mode:agent().mode};agent().setModel('unwanted');agent().setMode('auto');
+    await agent().selectAccount(agent().accounts.find(a=>a.id!==before.account)!.id);
+    expect({account:agent().accountId,model:agent().model,mode:agent().mode}).toEqual(before);
+    agent().interrupt();await sending;await until(()=>!agent().busy);
+  });
+
 });

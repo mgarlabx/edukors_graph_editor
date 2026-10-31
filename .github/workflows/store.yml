@@ -69,7 +69,7 @@ jobs:
 
       # The package of this release's run, or of the run given by hand.
       - if: steps.ready.outputs.go == 'true' && env.CHECK_ONLY != 'true'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: microsoft-store-msix
           path: msix

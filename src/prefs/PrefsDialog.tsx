@@ -5,6 +5,7 @@
  * judgeSettings); the agent's instructions, MCP servers and skills.
  */
 import { useEffect, useState, type ReactNode } from "react";
+import {AdvancedSettings,uiText} from "@edukors/ai-ui";
 import { native } from "../app/platform";
 import { fromStore } from "../app/updates";
 import { usePrefs, DEFAULT_PREFS, type Prefs } from "../store/prefs";
@@ -29,12 +30,12 @@ const MCP_EXAMPLE = `{
 }`;
 
 export function PrefsDialog() {
-  const close = useUi((s) => s.close);
+  const rawClose = useUi((s) => s.close);
   const prefs = usePrefs();
   const [key, setKey] = useState("");
   const [keyMessage, setKeyMessage] = useState("");
   const [models, setModels] = useState<string[]>([]);
-  const [section, setSection] = useState<SectionId>("app");
+  const [section, setSection] = useState<SectionId>(useUi.getState().prefsSection);
   // From the Microsoft Store the updates are the Store's: nothing to choose here.
   const [storeInstall, setStoreInstall] = useState(false);
   const [draft, setDraft] = useState<Prefs>({
@@ -63,12 +64,15 @@ export function PrefsDialog() {
   }
   const mcpProblem = parseMcpConfig(draft.agent.mcp).problem;
 
+  const aiDirty=draft.agent.instructions!==prefs.agent.instructions||draft.agent.mcp!==prefs.agent.mcp;
+  const saveAi=async()=>{if(mcpProblem)return;await prefs.save({agent:{...usePrefs.getState().agent,instructions:draft.agent.instructions,mcp:draft.agent.mcp}});};
+  const close=()=>{if(aiDirty&&confirm(uiText(prefs.uiLang,'dirty'))){if(mcpProblem)return;void saveAi().then(rawClose);return;}rawClose();};
   const save = async () => {
     // The agent panel keeps its own settings (account, model, mode), and the content editor its line wrapping; they may have changed while this was open. The instructions and the MCP servers are this dialog's; accounts are saved as they change.
     const live = usePrefs.getState().agent;
     // The last check is the app's, and may have happened while this was open.
     await prefs.save({ ...draft, sidebar: usePrefs.getState().sidebar, editorWrap: usePrefs.getState().editorWrap, updates: { ...usePrefs.getState().updates, auto: draft.updates.auto }, agent: { ...live, instructions: draft.agent.instructions, mcp: draft.agent.mcp } });
-    close();
+    rawClose();
   };
 
   const sections: { id: SectionId; label: string; icon: ReactNode; alert?: "warning" | "error" }[] = [
@@ -93,11 +97,11 @@ export function PrefsDialog() {
           </button>
           <span className="spacer" />
           <button className="btn" onClick={close}>
-            {t("common.cancel")}
+            {section==="agent"?t("common.close"):t("common.cancel")}
           </button>
-          <button className="btn btn-primary" onClick={save} disabled={!!mcpProblem}>
+          {section!=="agent"&&<button className="btn btn-primary" onClick={save} disabled={!!mcpProblem}>
             {t("common.save")}
-          </button>
+          </button>}
         </>
       }
     >
@@ -235,7 +239,7 @@ export function PrefsDialog() {
                   <AccountsSection />
                 </Field>
               </div>
-              <h3 className="prefs-group">{t("prefs.agentAdvanced")}</h3>
+              <AdvancedSettings lang={prefs.uiLang} dirty={aiDirty} error={mcpProblem?t(mcpProblem.key,mcpProblem.params):undefined} onSave={()=>void saveAi()} onDiscard={()=>setDraft(d=>({...d,agent:{...d.agent,instructions:prefs.agent.instructions,mcp:prefs.agent.mcp}}))}>
               <div className="prefs-card">
                 <Field label={t("prefs.agentInstructions")}>
                   <AutoTextarea
@@ -263,6 +267,7 @@ export function PrefsDialog() {
                   <AgentSkills />
                 </Field>
               </div>
+              </AdvancedSettings>
             </>
           )}
         </div>

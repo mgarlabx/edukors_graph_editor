@@ -10,7 +10,7 @@
  * Each course opens in a tab of its own (store/docs.ts); a file already open
  * is shown, not opened twice.
  */
-import { native, pickOpen, pickSave, alertDialog, COURSE_EXT } from "./platform";
+import { native, pickOpen, pickSave, alertDialog, confirmDialog, COURSE_EXT } from "./platform";
 import { baseName as fileName } from "./os";
 import { buildPlayer, titleOf } from "./export";
 import { askUnsaved } from "../ui/dialogs";
@@ -91,6 +91,16 @@ export async function openCourse(path?: string): Promise<void> {
   } finally {
     opening.delete(target);
   }
+}
+
+/** A recent file that is gone: "File not found", and the choice to drop it from the list. */
+export async function openRecent(path: string): Promise<void> {
+  if (!docWithPath(path) && !(await native.fileExists(path).catch(() => true))) {
+    if (await confirmDialog(`${path}\n\n${t("file.notFoundRemove")}`, t("file.notFound"), t("file.removeRecent"), t("file.keepRecent")))
+      await usePrefs.getState().save({ recent: usePrefs.getState().recent.filter((p) => p !== path) });
+    return;
+  }
+  return openCourse(path);
 }
 
 async function readCourse(target: string) {

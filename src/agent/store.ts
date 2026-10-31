@@ -23,6 +23,8 @@ import { messageContext, selectionLabel } from "./context";
 import { runTool } from "./editorTools";
 import { kindOf, SERVER, toolSpecs } from "./toolSpecs";
 import { DEFAULT_PREFS, usePrefs } from "../store/prefs";
+import {useEditor} from "../store/editor";
+import {docState} from "../store/docs";
 import { call } from "../app/platform";
 
 export type Mode = "ask" | "auto" | "plan";
@@ -85,6 +87,8 @@ export interface AgentState extends Transcript {
   provider: ProviderId | null;
   capabilities: Capabilities | null;
   models: ModelInfo[];
+  modelsState:"idle"|"loading"|"ready"|"error";
+  retryModels():Promise<void>;
   mcp: McpState[];
   skills: SkillInfo[];
   /** the library's session of the open conversation */
@@ -108,6 +112,9 @@ export interface AgentState extends Transcript {
   usageState: "idle" | "loading" | "error";
   signIn: SignIn | null;
 
+  focusDocument(docId:string|null):Promise<void>;
+  conversationDocument:string|null;
+  legacy:boolean;
   ensure(): Promise<void>;
   newSession(): Promise<void>;
   resume(conversationId: string): Promise<void>;
@@ -179,10 +186,13 @@ let allowed = new Set<string>();
 /** The question cards, by ask id: the library's question id. */
 const questions = new Map<string, string>();
 let opening: Promise<void> | null = null;
-let usageLoading: Promise<void> | null = null;
+const usageLoads=new Map<string,Promise<void>>();
 let skillsDir: string | null = null;
 /** A resume id to give the next session, when a saved conversation is reopened. */
 let pendingResume: string | undefined;
+let documentSwitch=0;
+
+const parked=new Map<string,{items:Transcript["items"];conversationId:string;title:string|null;accountId:string|null;provider:ProviderId|null;model:string;effort:Effort;resumeId?:string;legacy:boolean}>();
 
 export const useAgent = create<AgentState>()((set, get) => {
   const prefs = () => usePrefs.getState().agent;
@@ -196,7 +206,7 @@ export const useAgent = create<AgentState>()((set, get) => {
       .save({
         agent: {
           ...agent,
-          account: accountId,
+          account: agent.account,
           accounts: accountId ? { ...agent.accounts, [accountId]: { model, effort } } : agent.accounts,
           mode: mode === "plan" ? "ask" : mode,
         },
@@ -226,7 +236,7 @@ export const useAgent = create<AgentState>()((set, get) => {
   const save = () => {
     const s = get();
     const first = s.items.find((it) => it.kind === "user");
-    if (!first || !s.accountId || !s.provider) return;
+    if (!first || !s.accountId || !s.provider || s.legacy) return;
     void saveConversation({
       id: s.conversationId,
       title: s.title ?? firstLine(first.kind === "user" ? first.text : ""),
@@ -235,6 +245,8 @@ export const useAgent = create<AgentState>()((set, get) => {
       accountId: s.accountId,
       providerId: s.provider,
       ...(lastResumeId ? { resumeId: lastResumeId } : {}),
+      coursePath: s.conversationDocument ? docState(s.conversationDocument)?.path : null,
+      documentId:s.conversationDocument??undefined,
       items: settle(s).items,
     }).catch(() => undefined);
   };
@@ -246,7 +258,7 @@ export const useAgent = create<AgentState>()((set, get) => {
     const kind = external ? "external" : kindOf(tool);
     if (kind === "read" || kind === "view") return { allow: true };
     if (mode === "plan") return { allow: false, message: "Plan mode is on: do not change the course or call other servers yet. Present the plan and wait for the person to approve it." };
-    if (mode === "auto" || allowed.has(tool)) return { allow: true };
+    if ((!external && mode === "auto") || allowed.has(tool)) return { allow: true };
     const answer = await ask({ kind: "permission", tool, input, toolUseId: callId, reason: null });
     if (answer.behavior !== "allow") return { allow: false, message: answer.message || "The person declined this action." };
     if (answer.always) allowed.add(tool);
@@ -351,7 +363,7 @@ export const useAgent = create<AgentState>()((set, get) => {
   /** The account to run on: the one chosen, else the first this editor can use. */
   const chooseAccount = (accounts: AccountInfo[]) => {
     const chosen = prefs().account;
-    return accounts.find((a) => a.id === chosen && a.supported) ?? accounts.find((a) => a.supported) ?? null;
+    return chosen ? accounts.find((a) => a.id === chosen && a.supported) ?? null : null;
   };
 
   /** Opens a library session for the conversation on screen. */
@@ -386,11 +398,12 @@ export const useAgent = create<AgentState>()((set, get) => {
 
   async function loadModels(accountId: string) {
     if (!get().capabilities?.models) return;
+    set({modelsState:"loading"});
     try {
       const list = await request<{ id: string; label?: string; efforts?: string[]; default?: boolean }[]>("models.list", { accountId }, 60_000);
-      if (get().accountId === accountId) set({ models: modelsOf(list) });
+      if (get().accountId === accountId) set({ models: modelsOf(list),modelsState:"ready" });
     } catch {
-      /* the composer offers the default alone */
+      if(get().accountId===accountId)set({modelsState:"error"});
     }
   }
 
@@ -431,6 +444,7 @@ export const useAgent = create<AgentState>()((set, get) => {
       model: saved.model,
       effort: saved.effort as Effort,
       models: [],
+      modelsState:"idle",
       usage: null,
       usageState: "idle",
     });
@@ -438,6 +452,8 @@ export const useAgent = create<AgentState>()((set, get) => {
 
   return {
     ...emptyTranscript(),
+    conversationDocument:null,
+    legacy:false,
     connection: "idle",
     error: null,
     detections: [],
@@ -448,6 +464,8 @@ export const useAgent = create<AgentState>()((set, get) => {
     provider: null,
     capabilities: null,
     models: [],
+    modelsState:"idle",
+    retryModels:()=>get().accountId?loadModels(get().accountId!):Promise.resolve(),
     mcp: [],
     skills: [],
     sessionId: null,
@@ -477,7 +495,27 @@ export const useAgent = create<AgentState>()((set, get) => {
       return opening;
     },
 
+    async focusDocument(docId) {
+      const generation=++documentSwitch;
+      if(opening)await opening.catch(()=>undefined);
+      if(generation!==documentSwitch||get().busy||docId===get().conversationDocument)return;
+      save();
+      const previous=get();
+      if(previous.conversationDocument) parked.set(previous.conversationDocument,{items:previous.items,conversationId:previous.conversationId,title:previous.title,accountId:previous.accountId,provider:previous.provider,model:previous.model,effort:previous.effort,resumeId:lastResumeId,legacy:previous.legacy});
+      if(previous.sessionId)await request('session.close',{sessionId:previous.sessionId}).catch(()=>undefined);
+      if(generation!==documentSwitch)return;
+      dropAsks('The document changed.');allowed=new Set();
+      const candidate=docId?parked.get(docId):undefined;
+      const cached=candidate?.accountId===prefs().account?candidate:undefined;
+      lastResumeId=cached?.resumeId;pendingResume=lastResumeId;
+      set({...emptyTranscript(),conversationDocument:docId,docId,conversationId:cached?.conversationId??newId(),title:cached?.title??null,sessionId:null,legacy:cached?.legacy??false,usage:null,status:null});
+      if(cached){set({accountId:cached.accountId,provider:cached.provider,items:cached.items});const account=get().accounts.find(a=>a.id===cached.accountId);if(account)await useAccount(account);else set({status:{state:"disconnected"}});}
+      else {const account=chooseAccount(get().accounts);if(account)await useAccount(account);else set({accountId:null,provider:null});}
+    },
     async newSession() {
+      if(get().busy)return;
+      save();set({legacy:false});
+      const defaultAccount=chooseAccount(get().accounts);if(defaultAccount&&defaultAccount.id!==get().accountId)await useAccount(defaultAccount);
       const old = get().sessionId;
       dropAsks("The conversation was closed.");
       allowed = new Set();
@@ -495,9 +533,14 @@ export const useAgent = create<AgentState>()((set, get) => {
     },
 
     async resume(conversationId) {
+      if(get().busy)return;
+      save();
       if (conversationId === get().conversationId) return;
       try {
         const saved = await readConversation(conversationId);
+        const active=useEditor.getState();
+        const belongs=(saved.documentId===active.docId || (!!saved.coursePath && saved.coursePath===active.path))&&saved.accountId===prefs().account;
+        set({legacy:!belongs});
         const old = get().sessionId;
         dropAsks("The conversation was closed.");
         allowed = new Set();
@@ -507,17 +550,23 @@ export const useAgent = create<AgentState>()((set, get) => {
         pendingResume = saved.resumeId;
         const account = get().accounts.find((a) => a.id === saved.accountId && a.supported);
         if (!account) {
-          set({ items: [...get().items, notice("warning", "", "accountGone")] });
+          set({ accountId:saved.accountId,sessionId:null,status:{state:"disconnected"},items: [...get().items, notice("warning", "", "accountGone")] });
           return;
         }
         if (account.id !== get().accountId) await useAccount(account);
-        await openSession();
+        if(belongs)await openSession();
       } catch (e) {
         set({ items: [...get().items, notice("error", errorOf(e).detail ?? "", `err.${errorOf(e).code}`)] });
       }
     },
 
     async send(text, files = []) {
+      if(get().busy||get().legacy)return;
+      const activeDoc=useEditor.getState().docId;
+      if(get().conversationDocument!==activeDoc)await get().focusDocument(activeDoc);
+      if(!activeDoc)return;
+      try{await get().refreshAccounts();}catch(e){set(s=>({items:[...s.items,notice('error',errorOf(e).detail??'','err.failed')]}));return;}
+      if(get().accountId&&!get().accounts.some(a=>a.id===get().accountId)){set(s=>({status:{state:'disconnected'},items:[...s.items,notice('warning','','accountGone')]}));return;}
       const body = text.trim();
       if (!body && !files.length) return;
       const context = messageContext(get().withSelection, get().mode);
@@ -572,25 +621,30 @@ export const useAgent = create<AgentState>()((set, get) => {
     },
 
     setModel(model) {
+      if(get().busy)return;
       // A model without effort levels takes none: the effort chosen for another would not apply.
+      const previous=get().model,previousEffort=get().effort;
       const levels = get().models.find((m) => m.value === model)?.efforts;
       const effort = get().models.length && !levels?.length && get().effort !== "auto" ? "auto" : null;
       set({ model, ...(effort ? { effort } : {}) });
       persist();
       const sessionId = get().sessionId;
-      if (sessionId) void request("session.updateOptions", { sessionId, options: { model: model === "default" ? "" : model, ...(effort ? { effort: "" } : {}) } }).catch(() => undefined);
+      if (sessionId) void request("session.updateOptions", { sessionId, options: { model: model === "default" ? "" : model, ...(effort ? { effort: "" } : {}) } }).catch(e=>{if(get().model===model){set(s=>({model:previous,effort:previousEffort,items:[...s.items,notice("error",errorOf(e).detail??"","err.failed")]}));persist();}});
     },
 
     setMode(mode) {
+      if(get().busy)return;
       set({ mode });
       persist();
     },
 
     setEffort(effort) {
+      if(get().busy)return;
+      const previous=get().effort;
       set({ effort });
       persist();
       const sessionId = get().sessionId;
-      if (sessionId) void request("session.updateOptions", { sessionId, options: { effort: effort === "auto" ? "" : effort } }).catch(() => undefined);
+      if (sessionId) void request("session.updateOptions", { sessionId, options: { effort: effort === "auto" ? "" : effort } }).catch(e=>{if(get().effort===effort){set(s=>({effort:previous,items:[...s.items,notice("error",errorOf(e).detail??"","err.failed")]}));persist();}});
     },
 
     toggleSelection() {
@@ -615,14 +669,15 @@ export const useAgent = create<AgentState>()((set, get) => {
       const { capabilities, accountId, connection, usage } = get();
       if (!capabilities?.usage || !accountId || connection !== "ready") return;
       if (usage && Date.now() - usage.at < USAGE_FRESH_MS && !force) return;
-      if (!usageLoading) {
+      if (!usageLoads.has(accountId)) {
         set({ usageState: "loading" });
-        usageLoading = request<{ windows?: { name: string; used: number; resetsAt?: string }[]; observedAt: string } | null>("usage.read", { accountId }, 45_000)
-          .then((read) => set({ usage: read ? { text: "", at: Date.parse(read.observedAt) || Date.now(), limits: limitsOf(read.windows) } : null, usageState: "idle" }))
-          .catch(() => set({ usageState: "error" }))
-          .finally(() => (usageLoading = null));
+        const loading = request<{ windows?: { name: string; used: number; resetsAt?: string }[]; observedAt: string } | null>("usage.read", { accountId }, 45_000)
+          .then((read) => {if(get().accountId!==accountId)return;set({ usage: read ? { text: "", at: Date.parse(read.observedAt) || Date.now(), limits: limitsOf(read.windows) } : null, usageState: "idle" });})
+          .catch(() => {if(get().accountId===accountId)set({ usageState: "error" });})
+          .finally(() => {usageLoads.delete(accountId);});
+        usageLoads.set(accountId,loading);
       }
-      return usageLoading;
+      return usageLoads.get(accountId);
     },
 
     async retry() {
@@ -635,6 +690,11 @@ export const useAgent = create<AgentState>()((set, get) => {
         await connect();
         const [accounts, detections] = await Promise.all([request<AccountInfo[]>("accounts.list"), request<Detection[]>("providers.detect", { refresh: true })]);
         set({ accounts, detections, accountsError: null });
+        const selected=get().accountId;
+        if(selected&&!accounts.some(a=>a.id===selected)){
+          save();const sessionId=get().sessionId;set({...settle(get()),sessionId:null,busy:false,status:{state:'disconnected'}});
+          dropAsks('The account was removed.');if(sessionId)await request('session.close',{sessionId}).catch(()=>undefined);
+        }
       } catch (e) {
         set({ accountsError: errorOf(e) });
         throw e;
@@ -642,8 +702,11 @@ export const useAgent = create<AgentState>()((set, get) => {
     },
 
     async selectAccount(accountId) {
+      if(get().busy)return;
       const account = get().accounts.find((a) => a.id === accountId);
-      if (!account || accountId === get().accountId) return;
+      if(!account)return;
+      if(accountId===get().accountId){if(get().legacy)await get().newSession();return;}
+      save();set({legacy:false});
       const old = get().sessionId;
       dropAsks("The conversation was closed.");
       allowed = new Set();
@@ -660,6 +723,7 @@ export const useAgent = create<AgentState>()((set, get) => {
       await connect();
       const account = await request<AccountInfo>("accounts.create", { providerId, label });
       await get().refreshAccounts();
+      if(!prefs().account)await usePrefs.getState().save({agent:{...prefs(),account:account.id}});
       return account.id;
     },
 
@@ -711,14 +775,16 @@ export const useAgent = create<AgentState>()((set, get) => {
     },
 
     async removeAccount(accountId) {
+      save();
+      await request("accounts.logout",{accountId}).catch(()=>undefined);
       await request("accounts.remove", { accountId, deleteData: true });
       const agent = prefs();
       const { [accountId]: _, ...rest } = agent.accounts;
       await usePrefs.getState().save({ agent: { ...agent, accounts: rest, account: agent.account === accountId ? null : agent.account } }).catch(() => undefined);
       await get().refreshAccounts();
       if (accountId === get().accountId) {
+        save();
         set({ ...emptyTranscript(), accountId: null, provider: null, sessionId: null, status: null, conversationId: newId(), title: null });
-        await get().retry();
       }
     },
 

@@ -6,7 +6,8 @@ import { useState } from "react";
 import { useAgent, type Ask } from "./store";
 import { OpsList, shortTool, toolLabel } from "./Messages";
 import { Markdown } from "./Markdown";
-import { t } from "../i18n";
+import { t, useUiLang } from "../i18n";
+import {QuestionCard as SharedQuestionCard} from "@edukors/ai-ui";
 import { BoltIcon, HandIcon } from "../ui/icons";
 
 function Feedback({ placeholder, action, onSend, onCancel }: { placeholder: string; action: string; onSend: (text: string) => void; onCancel: () => void }) {
@@ -111,12 +112,14 @@ interface Question {
 }
 
 function QuestionCard({ ask }: { ask: Ask }) {
+  const lang=useUiLang();
   const answerAsk = useAgent((s) => s.answer);
   const questions = (Array.isArray(ask.input.questions) ? ask.input.questions : []) as Question[];
   const [picked, setPicked] = useState<Record<string, string[]>>({});
   const [other, setOther] = useState<Record<string, string>>({});
   const value = (q: Question) => (other[q.question]?.trim() ? [other[q.question].trim()] : picked[q.question] ?? []);
   const complete = questions.every((q) => value(q).length > 0);
+  if(questions.length===1&&!questions[0].multiSelect){const q=questions[0];return <SharedQuestionCard lang={lang} question={q.question} options={q.options.map(o=>o.label)} onAnswer={value=>answerAsk(ask.id,{behavior:'allow',updatedInput:{...ask.input,answers:{[q.question]:value}}})}/>;}
   const toggle = (q: Question, label: string) =>
     setPicked((p) => {
       const now = p[q.question] ?? [];

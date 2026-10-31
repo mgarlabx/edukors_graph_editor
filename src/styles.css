@@ -4668,3 +4668,8 @@ h3.prefs-group {
 .agent-accounts > .btn {
   align-self: flex-start;
 }
+
+/* Shared assistant controls wrap at narrow panel widths. */
+.agent-composer-bar{flex-wrap:wrap;align-items:end}.agent-composer-bar>.eai{margin:0}.agent-composer-bar>.eai-mode{flex:0 1 auto}.agent-panel>.eai-header,.agent-panel>.eai-usage{width:100%}
+
+.eai-account-picker{display:flex;flex-direction:column;gap:5px}

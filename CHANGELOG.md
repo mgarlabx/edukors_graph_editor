@@ -2,6 +2,15 @@
 
 Each version has its own section, written before the tag, **always in English**: its text goes to the release page on GitHub and to the update notice inside the app (`scripts/release-notes.mjs`). A section changed after the build does not reach the app.
 
+## 2.20.0
+
+- **AI assistant, same look as the Slides editor:** accounts, service setup, model and effort, usage, the conversation list and the panel header now come from the shared EDUKORS interface (`@edukors/ai-ui` 0.1.4, on `@edukors/ai-cli` 0.2.2), in Portuguese, English and Spanish. "AI agent" is now "AI assistant" and "Preferences" is now "Settings".
+- **Installing Claude Code or Codex:** when a service is missing, the settings show its official guide and the install command for your system, to copy; the editor never runs it.
+- **Conversations follow the document:** a new conversation belongs to the course open when it starts, and the list shows that course's conversations. Earlier conversations open for reading; start a new one to work on the current course. A request in progress stays on its course even if you switch tabs.
+- **Accounts refresh** when you come back to the editor, so an account added or removed in another EDUKORS app shows up.
+- **Recent files:** a recent file that was moved or deleted shows "File not found", with the choice to remove it from the list.
+- **Node.js 22.12 or later** is now required for the AI assistant (the shared library's minimum).
+
 ## 2.19.0
 
 - **AI accounts:** the agent now runs on an AI account you add in **Preferences → AI agent → AI accounts** (Claude Code or Codex), with its own sign-in, separate from the one you may use in a terminal. Accounts are shared with the other EDUKORS apps on this computer. When the browser does not open for the sign-in, the editor shows the address and, for Claude, a field for the code shown after you authorize.
