@@ -112,6 +112,7 @@ export async function call<T>(command: string, args: Record<string, unknown> = {
 
 export const native = {
   readText: (path: string) => call<string>("read_text", { path }),
+  fileExists: (path: string) => call<boolean>("file_exists", { path }),
   writeText: (path: string, contents: string) => call<void>("write_text", { path, contents }),
   takeOpenedFiles: () => call<string[]>("take_opened_files"),
   /** Installed from the Microsoft Store, which brings the updates itself. */

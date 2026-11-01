@@ -19,6 +19,8 @@ export interface ContentTarget {
 
 interface UiState {
   modal: ModalId;
+  prefsSection:"app"|"agent";
+  openPrefs(section?:"app"|"agent"):void;
   probeNode: string | null;
   /** what the content editor ("content") edits */
   content: ContentTarget | null;
@@ -53,6 +55,8 @@ interface UiState {
 
 export const useUi = create<UiState>()((set) => ({
   modal: null,
+  prefsSection:"app",
+  openPrefs:(prefsSection="app")=>set({modal:"prefs",prefsSection}),
   probeNode: null,
   content: null,
   helpTab: "quick",

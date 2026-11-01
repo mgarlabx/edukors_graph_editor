@@ -6,7 +6,7 @@ import { activateNth, cycleDoc, dirtyDocs, flushPending } from "./store/docs";
 import { usePrefs } from "./store/prefs";
 import { useUi } from "./store/ui";
 import { isTauri, native } from "./app/platform";
-import { closeDoc, createCourse, exportPlayer, openCourse, saveCourse, settleAll, windowTitle } from "./app/files";
+import { closeDoc, createCourse, exportPlayer, openCourse, openRecent, saveCourse, settleAll, windowTitle } from "./app/files";
 import { Toolbar } from "./app/Toolbar";
 import { DocTabs } from "./app/DocTabs";
 import edukorsLogo from "./app/edukors.svg?raw";
@@ -53,7 +53,7 @@ export function command(id: string) {
   // Off in the menu without a course; the keys of the browser build come here all the same.
   if (!store.course && needsCourse(id)) return;
   if (id === "recent-clear") return usePrefs.getState().save({ recent: [] });
-  if (id.startsWith("recent:")) return openCourse(id.slice("recent:".length));
+  if (id.startsWith("recent:")) return openRecent(id.slice("recent:".length));
   if (id.startsWith("insert:")) {
     const type = id.slice("insert:".length) as NodeType;
     return NODE_TYPES.includes(type) ? insertNode(type) : undefined;

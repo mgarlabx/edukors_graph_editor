@@ -1,7 +1,7 @@
 {
   "name": "edukors-editor",
   "private": true,
-  "version": "2.19.0",
+  "version": "2.20.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -19,7 +19,8 @@
     "app:build:linux": "tauri build --config src-tauri/tauri.bundle.conf.json"
   },
   "dependencies": {
-    "@edukors/ai-cli": "0.1.1",
+    "@edukors/ai-cli": "0.2.2",
+    "@edukors/ai-ui": "0.1.4",
     "@monaco-editor/react": "^4.7.0",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-dialog": "^2.8.1",

@@ -6,7 +6,7 @@
  * It takes the inspector's place while it is open (App.tsx), and goes beside
  * the text in the full-screen content editor (ContentEditor.tsx).
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { sessionTitle, useAgent } from "./store";
 import { NODE_INSTALL, PROVIDER_INSTALL, type ProviderId } from "./events";
 import { SignInBox } from "./Accounts";
@@ -17,134 +17,20 @@ import { Usage } from "./Usage";
 import { useUi } from "../store/ui";
 import { usePrefs } from "../store/prefs";
 import { useResizable } from "../ui/resize";
-import { confirmDialog, openLink } from "../app/platform";
-import { hasKey, t } from "../i18n";
-import { AiIcon, ChevronDownIcon, CloseIcon, NewChatIcon, SearchIcon, TrashIcon } from "../ui/icons";
-import type { SessionInfo } from "./events";
+import { openLink } from "../app/platform";
+import { hasKey, t, useUiLang } from "../i18n";
+import { AiIcon } from "../ui/icons";
+import {AssistantHeader,ConversationList} from "@edukors/ai-ui";
+import {useEditor} from "../store/editor";
+import {docState} from "../store/docs";
 
-const DAY = 86_400_000;
-
-function groupOf(ms: number, now: Date): string {
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  if (ms >= today) return "agent.today";
-  if (ms >= today - DAY) return "agent.yesterday";
-  if (ms >= today - 6 * DAY) return "agent.week";
-  return "agent.older";
+function Header(){
+ const s=useAgent(),lang=useUiLang(),active=useEditor(e=>e.docId),[list,setList]=useState(false);
+ const bound=s.conversationDocument||active,doc=bound?(docState(bound)?.path||bound):'';
+ return <><AssistantHeader lang={lang} title={s.title||undefined} document={doc} busy={s.busy} onNew={()=>void s.newSession()} onHistory={()=>{setList(!list);void s.loadSessions();}} onClose={()=>useUi.getState().toggleAgent(false)}/>{s.legacy&&<p className="small" role="status">{t("agent.legacyReadOnly")}</p>}{list&&<ConversationList lang={lang} current={s.conversationId} busy={s.busy} items={(s.sessions||[]).filter(c=>!c.documentPath&&!c.documentId||c.documentId===bound||!!c.documentPath&&c.documentPath===docState(bound||'')?.path).map(c=>({id:c.id,title:sessionTitle(c),updated:c.lastModified,account:s.accounts.find(a=>a.id===c.accountId)?.label}))} onOpen={id=>{void s.resume(id);setList(false);}} onDelete={id=>{if(confirm(t('agent.deleteSession')))void s.deleteSession(id);}}/>}</>;
 }
 
-const when = (ms: number, group: string) =>
-  group === "agent.today" || group === "agent.yesterday"
-    ? new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-    : new Date(ms).toLocaleDateString([], { day: "numeric", month: "short" });
-
-const titleOf = sessionTitle;
-
-function SessionList({ onClose }: { onClose: () => void }) {
-  const sessions = useAgent((s) => s.sessions);
-  const current = useAgent((s) => s.sessionId);
-  const resume = useAgent((s) => s.resume);
-  const remove = useAgent((s) => s.deleteSession);
-  const [query, setQuery] = useState("");
-
-  useEffect(() => {
-    void useAgent.getState().loadSessions();
-  }, []);
-
-  const groups = useMemo(() => {
-    const now = new Date();
-    const q = query.trim().toLowerCase();
-    const out = new Map<string, SessionInfo[]>();
-    for (const s of sessions ?? []) {
-      if (q && !`${titleOf(s)} ${s.firstPrompt ?? ""}`.toLowerCase().includes(q)) continue;
-      const g = groupOf(s.lastModified, now);
-      out.set(g, [...(out.get(g) ?? []), s]);
-    }
-    return [...out.entries()];
-  }, [sessions, query]);
-
-  return (
-    <div className="agent-sessions" role="dialog" aria-label={t("agent.sessions")}>
-      <label className="agent-sessions-search">
-        <SearchIcon size={14} />
-        <input autoFocus placeholder={t("agent.searchSessions")} value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Escape" && onClose()} />
-      </label>
-      <div className="agent-sessions-list">
-        {sessions === null && (
-          <div className="agent-sessions-empty">
-            <span className="spinner" />
-          </div>
-        )}
-        {sessions?.length === 0 && <div className="agent-sessions-empty">{t("agent.noSessions")}</div>}
-        {sessions?.length !== 0 && sessions !== null && !groups.length && <div className="agent-sessions-empty">{t("agent.noMatch")}</div>}
-        {groups.map(([group, list]) => (
-          <section key={group}>
-            <h4>{t(group)}</h4>
-            {list.map((s) => (
-              <div key={s.id} className={`agent-session ${s.id === current ? "is-current" : ""}`}>
-                <button
-                  type="button"
-                  className="agent-session-open"
-                  onClick={() => {
-                    onClose();
-                    void resume(s.id);
-                  }}
-                  title={s.firstPrompt ?? titleOf(s)}
-                >
-                  <span className="agent-session-title">{titleOf(s)}</span>
-                  <span className="agent-session-when">{when(s.lastModified, group)}</span>
-                </button>
-                <button
-                  type="button"
-                  className="agent-icon-btn agent-session-delete"
-                  title={t("agent.deleteSession")}
-                  aria-label={t("agent.deleteSession")}
-                  onClick={async () => {
-                    if (await confirmDialog(t("agent.deleteConfirm", { name: titleOf(s) }), t("agent.deleteSession"), t("agent.deleteSession"), t("common.cancel"))) await remove(s.id);
-                  }}
-                >
-                  <TrashIcon size={14} />
-                </button>
-              </div>
-            ))}
-          </section>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function Header() {
-  const title = useAgent((s) => s.title);
-  const newSession = useAgent((s) => s.newSession);
-  const [list, setList] = useState(false);
-  const wrap = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!list) return;
-    const away = (e: MouseEvent) => !wrap.current?.contains(e.target as Node) && setList(false);
-    document.addEventListener("mousedown", away);
-    return () => document.removeEventListener("mousedown", away);
-  }, [list]);
-
-  return (
-    <header className="agent-head" ref={wrap}>
-      <button type="button" className="agent-title" onClick={() => setList(!list)} aria-expanded={list} title={t("agent.sessions")}>
-        <AiIcon size={15} className="icon agent-title-icon" />
-        <span className="agent-title-text">{title ?? t("agent.untitled")}</span>
-        <ChevronDownIcon size={13} />
-      </button>
-      <button type="button" className="agent-icon-btn" onClick={() => void newSession()} title={t("agent.newSession")} aria-label={t("agent.newSession")}>
-        <NewChatIcon size={16} />
-      </button>
-      <button type="button" className="agent-icon-btn" onClick={() => useUi.getState().toggleAgent(false)} title={t("agent.close")} aria-label={t("agent.close")}>
-        <CloseIcon size={16} />
-      </button>
-      {list && <SessionList onClose={() => setList(false)} />}
-    </header>
-  );
-}
-
-const SUGGESTIONS = ["agent.try1", "agent.try2", "agent.try3", "agent.try4"];
+const SUGGESTIONS = ["agent.try1", "agent.try2", "agent.try3"];
 
 /** The account the agent runs on, as a line: "Trabalho · Claude · ana@escola.org". */
 function AccountLine() {
@@ -225,7 +111,7 @@ function Start() {
           <div>{t("agent.noAccountHelp")}</div>
         </div>
         <div className="agent-start-actions">
-          <button type="button" className="btn btn-small btn-primary" onClick={() => useUi.getState().open("prefs")}>
+          <button type="button" className="btn btn-small btn-primary" onClick={() => useUi.getState().openPrefs("agent")}>
             {t("agent.openAccounts")}
           </button>
         </div>
@@ -245,7 +131,7 @@ function Start() {
             <button type="button" className="btn btn-small btn-primary" onClick={() => void connectAccount(accountId)}>
               {t("prefs.accountConnect")}
             </button>
-            <button type="button" className="btn btn-small" onClick={() => useUi.getState().open("prefs")}>
+            <button type="button" className="btn btn-small" onClick={() => useUi.getState().openPrefs("agent")}>
               {t("agent.openAccounts")}
             </button>
           </div>
@@ -283,8 +169,11 @@ export function AgentPanel({ focus = true }: { focus?: boolean } = {}) {
   const { width, handle } = useResizable(saved, MIN_WIDTH, MAX_WIDTH, (w) =>
     usePrefs.getState().save({ agent: { ...usePrefs.getState().agent, width: w } }),
   );
+  const docId=useEditor(s=>s.docId), busy=useAgent(s=>s.busy);
+  useEffect(()=>{if(!busy)void useAgent.getState().focusDocument(docId);},[docId,busy]);
   const [focusKey] = useState(() => (focus ? Date.now() : 0));
 
+  useEffect(()=>{const refresh=()=>{void useAgent.getState().refreshAccounts().catch(()=>undefined);};window.addEventListener('focus',refresh);return()=>window.removeEventListener('focus',refresh);},[]);
   useEffect(() => {
     void useAgent.getState().ensure().catch(() => undefined);
   }, []);
@@ -296,6 +185,7 @@ export function AgentPanel({ focus = true }: { focus?: boolean } = {}) {
       <Messages empty={<Start />} />
       <Asks />
       <Composer focusKey={focusKey} />
+      <Usage />
     </aside>
   );
 }

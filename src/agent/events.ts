@@ -14,10 +14,8 @@ export type ProviderId = (typeof PROVIDER_IDS)[number];
  * Where each provider is installed from, for the panel to point at when it is
  * missing. Not translated: they are the official pages.
  */
-export const PROVIDER_INSTALL: Record<ProviderId, string> = {
-  claude: "https://claude.com/claude-code",
-  codex: "https://developers.openai.com/codex/cli/",
-};
+import { PROVIDERS } from "@edukors/ai-ui";
+export const PROVIDER_INSTALL = Object.fromEntries(PROVIDERS.map(p=>[p.id,p.url])) as Record<ProviderId,string>;
 
 /** Where Node.js, which runs the agent, is installed from. */
 export const NODE_INSTALL = "https://nodejs.org/en/download";
@@ -39,6 +37,8 @@ export interface SessionInfo {
   firstPrompt?: string;
   lastModified: number;
   accountId?: string;
+  documentPath?:string|null;
+  documentId?:string;
 }
 
 /** One usage limit of the account: a window, the share of it used, and when it resets. */

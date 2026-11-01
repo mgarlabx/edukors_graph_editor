@@ -20,6 +20,7 @@ export interface SavedConversation {
   resumeId?: string;
   /** the course the conversation worked on, by its file, when it had one */
   coursePath?: string | null;
+  documentId?: string;
   items: Item[];
 }
 
@@ -31,7 +32,7 @@ export async function listConversations(): Promise<SessionInfo[]> {
   const metas = await call<Meta[]>("agent_history_list");
   return metas
     .filter((m) => m && typeof m.id === "string")
-    .map((m) => ({ id: m.id, title: m.title, firstPrompt: m.firstPrompt, lastModified: m.lastModified, accountId: m.accountId }))
+    .map((m) => ({ id: m.id, title: m.title, firstPrompt: m.firstPrompt, lastModified: m.lastModified, accountId: m.accountId, documentPath:m.coursePath,documentId:m.documentId }))
     .sort((a, b) => b.lastModified - a.lastModified);
 }
 
