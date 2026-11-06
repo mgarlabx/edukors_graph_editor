@@ -66,7 +66,7 @@ try {
     return { window: `${innerWidth}x${innerHeight}@${devicePixelRatio}`, flow: flow && `${Math.round(flow.width)}x${Math.round(flow.height)}`, transform: document.querySelector(".react-flow__viewport")?.style.transform, nodes };
   });
   check("the map draws every step of the course", ids.every((id) => drawn.has(id)), `${ids.filter((id) => drawn.has(id)).length}/${ids.length} ${JSON.stringify(view)}`);
-  if (process.env.GRAPH_SHOT_DIR) await page.screenshot({ path: join(process.env.GRAPH_SHOT_DIR, "map.png") });
+  if (process.env.GRAPH_SHOT_DIR) await page.screenshot({ path: join(process.env.GRAPH_SHOT_DIR, "map.png"), timeout: 5000 }).catch(() => undefined);
   check("the sidebar starts closed", await page.evaluate(() => document.querySelector('.toolbar [data-command="sidebar"]')?.getAttribute("aria-pressed") !== "true"));
   await page.click(`.react-flow__node[data-id="${ids[0]}"]`, { force: true });
   await page.waitForTimeout(300);

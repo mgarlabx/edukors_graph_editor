@@ -28,7 +28,7 @@ const raw = {
   name: "raw",
   setup(b) {
     b.onResolve({ filter: /\?raw$/ }, (args) => ({ path: resolve(args.resolveDir, args.path.slice(0, -4)), namespace: "raw" }));
-    b.onLoad({ filter: /.*/, namespace: "raw" }, async (args) => ({ contents: await readFile(args.path, "utf8"), loader: "text" }));
+    b.onLoad({ filter: /.*/, namespace: "raw" }, async (args) => ({ contents: (await readFile(args.path, "utf8")).replace(/\r\n/g, "\n"), loader: "text" })); // LF on a Windows checkout too
   },
 };
 
@@ -70,8 +70,11 @@ for (const [name, { entry, resolveDir }] of workers)
 
 // The editor's stylesheet inside Common's shell: its own rules, its tokens drawn from Common's, no global rules
 // (Common's shell.css owns html, body and the base font).
-const css = await readFile(join(ROOT, "src/styles.css"), "utf8");
-const own = css.slice(css.indexOf("code,\nkbd,\npre,\n.mono"));
+// Line endings normalized: a Windows checkout has CRLF, and the marker would not be found.
+const css = (await readFile(join(ROOT, "src/styles.css"), "utf8")).replace(/\r\n/g, "\n");
+const marker = css.indexOf("code,\nkbd,\npre,\n.mono");
+if (marker < 0) throw Error("src/styles.css: the start of the editor's own rules (code, kbd, pre, .mono) was not found");
+const own = css.slice(marker);
 const tokens = `/* Edukors Graph Editor inside Edukors Common: the editor's tokens from Common's. Built by scripts/build.mjs. */
 :root {
   --bg: var(--workspace); --panel: var(--surface); --panel-2: color-mix(in srgb, var(--workspace) 60%, var(--surface));
