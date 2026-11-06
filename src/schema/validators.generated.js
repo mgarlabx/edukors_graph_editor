@@ -305,9 +305,9 @@ var require_ucs2length = __commonJS({
   }
 });
 
-// ../../../../../../../private/var/folders/s2/3x0hpzwx1f12n18bjt3z_qz00000gn/T/graph-validators-Oc21Fx/validators.cjs
+// graph-validators:validators.cjs
 var require_validators = __commonJS({
-  "../../../../../../../private/var/folders/s2/3x0hpzwx1f12n18bjt3z_qz00000gn/T/graph-validators-Oc21Fx/validators.cjs"(exports) {
+  "graph-validators:validators.cjs"(exports) {
     "use strict";
     exports.validateSchema = validate20;
     var formats0 = require_formats().fullFormats.uri;
@@ -6190,8 +6190,8 @@ var require_validators = __commonJS({
 });
 
 // <stdin>
-var import_validators = __toESM(require_validators());
-var stdin_default = import_validators.default;
+var import_graph_validators = __toESM(require_validators());
+var stdin_default = import_graph_validators.default;
 export {
   stdin_default as default
 };
