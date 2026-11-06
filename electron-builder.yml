@@ -70,6 +70,8 @@ mac:
           public.mime-type: [application/vnd.edukors.graph+json]
 dmg:
   artifactName: Edukors-Graph-Editor-${version}-mac-${arch}.${ext}
+  # The disk image signed too (Developer ID), as in 2.x; the release workflow notarizes and staples it.
+  sign: true
 
 win:
   icon: build/icon.png
