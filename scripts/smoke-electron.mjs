@@ -60,7 +60,13 @@ try {
   // The map frames the course once it is laid out; until then some steps may be outside the view, and not drawn.
   await page.waitForFunction((ids) => { const on = new Set([...document.querySelectorAll(".react-flow__node")].map((e) => e.getAttribute("data-id"))); return ids.every((id) => on.has(id)); }, ids, { timeout: 10000 }).catch(() => undefined);
   const drawn = new Set(await page.$$eval(".react-flow__node", (n) => n.map((e) => e.getAttribute("data-id"))));
-  check("the map draws every step of the course", ids.every((id) => drawn.has(id)), `${ids.filter((id) => drawn.has(id)).length}/${ids.length}`);
+  const view = await page.evaluate(() => {
+    const flow = document.querySelector(".react-flow")?.getBoundingClientRect();
+    const nodes = [...document.querySelectorAll(".react-flow__node")].map((e) => { const r = e.getBoundingClientRect(); return `${e.getAttribute("data-id")}:${Math.round(r.x)},${Math.round(r.y)},${Math.round(r.width)}x${Math.round(r.height)}`; });
+    return { window: `${innerWidth}x${innerHeight}@${devicePixelRatio}`, flow: flow && `${Math.round(flow.width)}x${Math.round(flow.height)}`, transform: document.querySelector(".react-flow__viewport")?.style.transform, nodes };
+  });
+  check("the map draws every step of the course", ids.every((id) => drawn.has(id)), `${ids.filter((id) => drawn.has(id)).length}/${ids.length} ${JSON.stringify(view)}`);
+  if (process.env.GRAPH_SHOT_DIR) await page.screenshot({ path: join(process.env.GRAPH_SHOT_DIR, "map.png") });
   check("the sidebar starts closed", await page.evaluate(() => document.querySelector('.toolbar [data-command="sidebar"]')?.getAttribute("aria-pressed") !== "true"));
   await page.click(`.react-flow__node[data-id="${ids[0]}"]`, { force: true });
   await page.waitForTimeout(300);
