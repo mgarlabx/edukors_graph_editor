@@ -54,7 +54,10 @@ jobs:
         run: node scripts/build.mjs --no-bump
       - name: Electron smoke (hidden windows)
         # The real app with Common's host: start, .egf import, .egrx save/open, export, preview, AI panel, strict CSP.
+        # On Windows the window is shown: a window never shown is not painted there, and the map cannot measure its steps.
         timeout-minutes: 10
         shell: bash
         run: |
-          if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a node scripts/smoke-electron.mjs; else node scripts/smoke-electron.mjs; fi
+          if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a node scripts/smoke-electron.mjs
+          elif [ "$RUNNER_OS" = Windows ]; then GRAPH_SMOKE_VISIBLE=1 node scripts/smoke-electron.mjs
+          else node scripts/smoke-electron.mjs; fi

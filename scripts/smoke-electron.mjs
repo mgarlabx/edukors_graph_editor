@@ -28,7 +28,9 @@ const check = (name, ok, detail = "") => {
 const app = await electron.launch({
   executablePath: join(ROOT, "node_modules", "electron", "dist", process.platform === "darwin" ? "Electron.app/Contents/MacOS/Electron" : process.platform === "win32" ? "electron.exe" : "electron"),
   args: [ROOT, "--data-dir", data],
-  env: { ...process.env, EDUKORS_HIDDEN: "1", GRAPH_HIDDEN: "1", GRAPH_DATA_DIR: join(data, "graph"), EDUKORS_ACCEPT_TERMS: "1", EDUKORS_NO_UPDATES: "1" },
+  // GRAPH_SMOKE_VISIBLE=1 shows the window (CI on Windows: there a window never shown is not painted, so the map
+  // cannot measure its steps).
+  env: { ...process.env, ...(process.env.GRAPH_SMOKE_VISIBLE ? {} : { EDUKORS_HIDDEN: "1", GRAPH_HIDDEN: "1" }), GRAPH_DATA_DIR: join(data, "graph"), EDUKORS_ACCEPT_TERMS: "1", EDUKORS_NO_UPDATES: "1" },
 });
 const errors = [];
 try {
