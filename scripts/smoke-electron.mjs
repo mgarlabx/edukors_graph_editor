@@ -54,6 +54,11 @@ try {
     EdukorsDocuments.activate(doc.id);
   }, text);
   await page.waitForSelector(".react-flow__node", { timeout: 20000 });
+  // The same window on every system: CI's Windows screen is small, and at the map's least zoom the last steps of a
+  // tall course would sit below the edge (the map draws only what is in view). Then the map is framed again.
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().forEach((w) => w.setContentSize(1360, 900)));
+  await page.waitForTimeout(500);
+  await page.evaluate(() => document.dispatchEvent(new CustomEvent("graph:command", { detail: "fit" })));
   await page.waitForTimeout(1500);
   if (process.env.GRAPH_SHOT) await page.screenshot({ path: process.env.GRAPH_SHOT });
   const ids = JSON.parse(text).nodes.map((n) => n.id);
