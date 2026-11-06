@@ -51,8 +51,12 @@ function frameAll(rf: ReactFlowInstance, el: HTMLElement | null, duration: numbe
   if (!el || !all.length) return;
   const bounds = rf.getNodesBounds(all);
   const { width, height } = el.getBoundingClientRect();
+  // Nothing to frame yet while the map has no size (hidden, not painted) or its steps are not measured: framing
+  // then would give a viewport of NaN, and the map would stay blank until the next framing.
+  if (!width || !height || !bounds.width || !bounds.height) return;
   const view = getViewportForBounds(bounds, width, height, 0.35, 1, 0.12);
   if (bounds.height * view.zoom > height) view.y = 40 - bounds.y * view.zoom;
+  if (![view.x, view.y, view.zoom].every(Number.isFinite)) return;
   rf.setViewport(view, { duration });
 }
 
