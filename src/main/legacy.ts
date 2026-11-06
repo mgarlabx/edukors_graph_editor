@@ -18,11 +18,13 @@ const IDENTIFIER = "org.edukors.grapheditor";
 
 /** Where 2.20 kept its preferences (config) and its agent folder (data), per system. */
 export function legacyFolders(platform = process.platform, env = process.env, home = os.homedir()) {
-  if (platform === "darwin") { const d = path.join(home, "Library", "Application Support", IDENTIFIER); return { config: d, data: d }; }
-  if (platform === "win32") { const d = path.join(env.APPDATA || path.join(home, "AppData", "Roaming"), IDENTIFIER); return { config: d, data: d }; }
+  // The paths of that system, whichever system this runs on (the tests ask for all three).
+  const p = platform === "win32" ? path.win32 : path.posix;
+  if (platform === "darwin") { const d = p.join(home, "Library", "Application Support", IDENTIFIER); return { config: d, data: d }; }
+  if (platform === "win32") { const d = p.join(env.APPDATA || p.join(home, "AppData", "Roaming"), IDENTIFIER); return { config: d, data: d }; }
   return {
-    config: path.join(env.XDG_CONFIG_HOME && path.isAbsolute(env.XDG_CONFIG_HOME) ? env.XDG_CONFIG_HOME : path.join(home, ".config"), IDENTIFIER),
-    data: path.join(env.XDG_DATA_HOME && path.isAbsolute(env.XDG_DATA_HOME) ? env.XDG_DATA_HOME : path.join(home, ".local", "share"), IDENTIFIER),
+    config: p.join(env.XDG_CONFIG_HOME && p.isAbsolute(env.XDG_CONFIG_HOME) ? env.XDG_CONFIG_HOME : p.join(home, ".config"), IDENTIFIER),
+    data: p.join(env.XDG_DATA_HOME && p.isAbsolute(env.XDG_DATA_HOME) ? env.XDG_DATA_HOME : p.join(home, ".local", "share"), IDENTIFIER),
   };
 }
 

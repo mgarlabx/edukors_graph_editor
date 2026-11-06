@@ -111,7 +111,12 @@ try {
   await page.click("dialog[open] .file-footer button.primary").catch(() => undefined);
   for (let i = 0; i < 30 && !existsSync(join(data, "curso.egf")); i++) await page.waitForTimeout(200);
   const exported = existsSync(join(data, "curso.egf")) ? readFileSync(join(data, "curso.egf"), "utf8") : null;
-  check("Export .egf writes the course as it came, next to its .egrx", exported === text, exported === null ? "not written" : `${exported.length} vs ${text.length} chars`);
+  // Byte for byte when every step already had its place on the map; a course without places gets them from the map's
+  // layout (as in 2.20), and is otherwise the same.
+  const unplaced = (raw) => { const c = JSON.parse(raw); return JSON.stringify({ ...c, nodes: c.nodes.map(({ position, ...n }) => n) }); };
+  const placedNow = exported !== null && JSON.parse(exported).nodes.every((n) => n.position);
+  const asItCame = exported === text || (placedNow && JSON.parse(text).nodes.some((n) => !n.position) && unplaced(exported) === unplaced(text));
+  check("Export .egf writes the course as it came, next to its .egrx", asItCame, exported === null ? "not written" : `${exported.length} vs ${text.length} chars${exported === text ? "" : ", positions added by the layout"}`);
   await page.keyboard.press("Escape");
 
   // The other views: the EGF tab (Monaco and its workers) and the preview (the player in its frame).
