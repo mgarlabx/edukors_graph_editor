@@ -25,7 +25,7 @@ export const getUiLang = () => current;
 export const setUiLang = (lang: UiLang) => {
   if (!UI_LANGS.includes(lang) || lang === current) return;
   current = lang;
-  document.documentElement.lang = lang;
+  // The page's lang is Common's (its interface language may be one the editor has no texts for yet).
   listeners.forEach((l) => l());
 };
 

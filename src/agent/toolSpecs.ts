@@ -4,16 +4,15 @@
  * store as the canvas and the inspector, so every change is validated and can
  * be undone with ⌘Z.
  *
- * The library (@edukors/ai-cli) offers them to whichever provider runs the
+ * Common's AI runtime offers them to whichever provider runs the
  * session, as the MCP server `edukors`: the model calls them
  * `mcp__edukors__<tool>`. Questions to the person are the provider's own
  * (the library turns them into the panel's question cards); the plan is
  * `plan_ready`, here.
  */
 import { z } from "zod";
-import { TOOL_SERVER_NAME } from "@edukors/ai-cli/settings";
-
-export const SERVER = TOOL_SERVER_NAME;
+/** The tool server the assistant reaches the editor through (Common's runtime: TOOL_SERVER_NAME). */
+export const SERVER = "edukors";
 
 /** read: never asked about; view: moves the view only; edit: changes a course; plan: the plan to approve. */
 export type ToolKind = "read" | "view" | "edit" | "plan";

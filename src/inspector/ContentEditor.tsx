@@ -6,10 +6,9 @@
  * kept whole. What is typed goes into the course at once, as in the inspector,
  * so closing never loses anything, and ⌘Z undoes it.
  *
- * The AI agent opens beside the text (the ✦ in the title bar, ⇧⌘A), so it can
- * work on the text being written: what it changes appears in the box at once,
- * since both read the course. It is the panel of App.tsx, which gives it up
- * while the editor is open.
+ * The AI assistant (Common's panel) stays beside the text, so it can work on
+ * the text being written: what it changes appears in the box at once, since
+ * both read the course. The ✦ in the title bar opens and closes it.
  */
 import { useEffect, useRef, useState } from "react";
 import { courseLangs, useEditor } from "../store/editor";
@@ -17,11 +16,10 @@ import { usePrefs } from "../store/prefs";
 import { useUi } from "../store/ui";
 import { getText } from "../i18n/texts";
 import { localize } from "../course/localize";
-import { commandKey, keyLabel } from "../app/os";
+import { commandKey } from "../app/os";
 import { isDialogOpen } from "../ui/dialogs";
 import { IconButton, Tabs } from "../ui/controls";
 import { AiIcon, BoldIcon, HeadingIcon, ImageIcon, ItalicIcon, LinkIcon, ListIcon, ListOrderedIcon, ParagraphIcon, WrapIcon } from "../ui/icons";
-import { AgentPanel } from "../agent/AgentPanel";
 import { RichPreview, StorageKeySelect, useStorageCompletion, writeText } from "./fields";
 import { applyMarkup, COMMANDS, storageRef, type MarkupCommand, type TextEdit } from "./markup";
 import { t } from "../i18n";
@@ -52,7 +50,7 @@ const MENU = { width: 360, height: 240 };
 const keepFocus = (e: React.MouseEvent) => e.preventDefault();
 
 /** Whether a key was pressed inside the agent beside the text, which has its own Esc. */
-const inAgent = (target: EventTarget | null) => !!(target as Element | null)?.closest?.(".agent-panel");
+const inAgent = (target: EventTarget | null) => !!(target as Element | null)?.closest?.(".ai-panel, #assistant-panel");
 
 /**
  * Where the character at `index` is drawn in a text box, in pixels from the
@@ -77,7 +75,8 @@ function caretPoint(el: HTMLTextAreaElement, index: number) {
 export function ContentEditor() {
   const target = useUi((s) => s.content);
   const close = useUi((s) => s.close);
-  const agent = useUi((s) => s.agent);
+  // Common's AI assistant panel, beside the text (the shell's own toggle).
+  const [agent, setAgent] = useState(() => document.querySelector('.toolbar [data-command="assistant"]')?.getAttribute("aria-pressed") === "true");
   const course = useEditor((s) => s.course);
   const canvasLang = useEditor((s) => s.canvasLang);
   const wrap = usePrefs((s) => s.editorWrap);
@@ -86,8 +85,6 @@ export function ContentEditor() {
   // where the list of keys opens, under the "{{" being typed
   const [anchor, setAnchor] = useState<{ left: number; top: number } | null>(null);
   const box = useRef<HTMLTextAreaElement | null>(null);
-  // The agent that was already open when the editor opened only moves here: the text keeps the focus.
-  const [agentWasOpen] = useState(agent);
   const list = course && target ? getText(course, target.path) : undefined;
   const path = target?.path ?? "";
   const langs = course ? courseLangs(course) : [];
@@ -186,10 +183,14 @@ export function ContentEditor() {
             </select>
           )}
           <IconButton
-            title={`${t("agent.title")} (${keyLabel("⇧⌘A")})`}
+            title={t("agent.title")}
             className={`ce-agent ${agent ? "is-on" : ""}`}
             aria-pressed={agent}
-            onClick={() => useUi.getState().toggleAgent()}
+            onClick={() => {
+              const toggle = document.querySelector<HTMLElement>('.toolbar [data-command="assistant"]');
+              toggle?.click();
+              setAgent(toggle?.getAttribute("aria-pressed") === "true");
+            }}
           >
             <AiIcon size={17} />
           </IconButton>
@@ -275,7 +276,6 @@ export function ContentEditor() {
           {raw && anchor && completion.menu({ left: anchor.left, top: anchor.top, width: MENU.width }, "ce-complete")}
         </div>
       </div>
-      {agent && <AgentPanel focus={!agentWasOpen} />}
     </div>
   );
 }

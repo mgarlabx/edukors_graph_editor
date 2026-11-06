@@ -32,7 +32,7 @@ const OS_ERRORS: Record<number, string> = {
   63: "err.nameTooLong",
 };
 
-/** What src-tauri/src/lib.rs (and app/platform.ts in a browser) answer with. */
+/** What the main process (src/main) and app/platform.ts in a browser answer with. */
 const KNOWN: [RegExp, (m: RegExpExecArray) => string][] = [
   [/^(.+): stream did not contain valid UTF-8$/, (m) => t("err.notText", { path: m[1] })],
   [/^(.+): ([^:]*) \(os error (\d+)\)$/, (m) => t(OS_ERRORS[Number(m[3])] ?? "err.io", { path: m[1], detail: m[2] })],

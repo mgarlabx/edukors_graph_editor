@@ -7,18 +7,16 @@
  * a key of the locales, shown in the interface's language, and in English in
  * the issue's message, which is what the agent reads.
  */
-import Ajv2020, { type ErrorObject } from "ajv/dist/2020";
-import addFormats from "ajv-formats";
-import schema from "./schema.json";
+import type { ErrorObject } from "ajv/dist/2020";
+// Compiled ahead of time from schema.json (scripts/gen-validators.mjs): nothing is compiled at run time, so the page's
+// Content-Security-Policy needs no 'unsafe-eval'.
+import validators from "./validators.generated.js";
 import { t, translate, type Params } from "../i18n";
 import type { Issue } from "../validate/rules";
 
-const ajv = new Ajv2020({ allErrors: true, strict: false, allowUnionTypes: true });
-addFormats(ajv);
-ajv.addKeyword({ keyword: "x-enumDescriptions", schemaType: "object" });
-
-export const validateSchema = ajv.compile(schema);
-const nodeSchema = ajv.getSchema(`${schema.$id}#/$defs/node`)!;
+type Validator = ((data: unknown) => boolean) & { errors?: ErrorObject[] | null };
+export const validateSchema = validators.validateSchema as Validator;
+const nodeSchema = validators.validateNode as Validator;
 
 /** Validates a single node, as the generator does before it shows a draft. */
 export const validateNodeSchema = (node: unknown): string[] =>

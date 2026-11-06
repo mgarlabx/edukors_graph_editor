@@ -123,6 +123,8 @@ if (!CHECK) {
   if (schemaChanged) {
     console.log("\nThe schema changed: regenerating src/schema/course.generated.ts");
     execFileSync("node", [join(ROOT, "scripts/gen-types.mjs")], { cwd: ROOT, stdio: "inherit" });
+    // The validators compiled from the schema (the page runs without eval: scripts/gen-validators.mjs).
+    execFileSync("node", [join(ROOT, "scripts/gen-validators.mjs")], { cwd: ROOT, stdio: "inherit" });
   }
   writeFileSync(
     RECORD,

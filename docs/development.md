@@ -1,54 +1,37 @@
 # Desenvolvimento
 
-Notas técnicas do Edukors Graph Editor: como o agente de IA é montado, os testes, a estrutura do código e como manter o editor em dia com o repositório [edukors_graph](https://github.com/mgarlabx/edukors_graph). Para a apresentação e a instalação, ver o [README](../README.md).
+Notas técnicas do Edukors Graph Editor: a arquitetura sobre o Edukors Common, os testes, a estrutura do código e como manter o editor em dia com o repositório [edukors_graph](https://github.com/mgarlabx/edukors_graph). Para a apresentação e a instalação, ver o [README](../README.md); para assinatura, instaladores, loja e releases, [distribution.md](distribution.md).
 
 ## Requisitos e comandos
 
-Xcode Command Line Tools, Rust (`rustup`), Node 22+. Para os testes de paridade: `php` 8.4+ e o repositório `edukors_graph` (por padrão em `~/Library/CloudStorage/Dropbox/EDUKORS/edukors_graph`, ou em `EDUKORS_GRAPH`). Para o agente de IA: o Claude Code instalado e logado numa conta do Claude neste Mac (`claude`, depois `/login`); o editor não traz o seu.
+Node 22.12+ e git (o Common vem do GitHub, por `git+https`, com `.npmrc` `allow-git=root`). Para os testes de paridade: `php` 8.4+ e o repositório `edukors_graph` (por padrão em `~/Library/CloudStorage/Dropbox/EDUKORS/edukors_graph`, ou em `EDUKORS_GRAPH`); sem eles, esses testes são pulados.
 
 ```sh
-npm install
-npm run app:dev        # o app, com recarga ao vivo
-npm run app:build      # .app e .dmg em src-tauri/target/release/bundle/
-npm run dev            # só a interface, num navegador (sem Keychain nem diálogos nativos)
+npm ci
+npm start                                   # build (esbuild) e o app no Electron; dados em .local-data/
+node node_modules/typescript/bin/tsc --noEmit
+npm test                                    # vitest
+node scripts/build.mjs --no-bump && node scripts/smoke-electron.mjs   # o app de verdade, janelas ocultas, dados temporários
+node scripts/smoke-legacy.mjs               # a migração da 2.20, sobre uma cópia de dados reais (GRAPH_LEGACY_SOURCE)
+npm run package                             # instaladores deste sistema em release/ (montados fora do Dropbox)
 ```
 
-Versões novas saem pelo GitHub Actions, a partir de uma tag, com o `CHANGELOG.md` e `scripts/bump-version.mjs`. O app instalado se atualiza sozinho. Ver [Releases e atualização automática](distribution.md#releases-and-automatic-updates).
+`scripts/build.mjs` grava em `package.json` a versão do dia (`YY.M.D`, a regra do Common); `--no-bump` mantém a que está (e é o padrão na CI), `--version=X.Y.Z` escolhe outra. Ele também regenera os validadores (`scripts/gen-validators.mjs`).
 
-## Agente de IA
+As strings da interface ficam em `src/i18n/locales/{pt,en,es}.json`, editadas diretamente (as três com as mesmas chaves).
 
-O ícone ✦ na ponta direita da barra (⇧⌘A, ou **Ver → Agente de IA**) abre o agente no lugar do inspetor. Ele é feito com o [Claude Agent SDK](https://code.claude.com/docs/en/agent-sdk/overview), que comanda o Claude Code instalado neste Mac (o `claude` que `agent/cli.mjs` encontra, ou o de `EDUKORS_CLAUDE`, passado em `pathToClaudeCodeExecutable`; o app leva só o JavaScript do SDK, sem os binários nativos), e usa a conta do Claude com que ele está logado: as chaves `ANTHROPIC_API_KEY` e `ANTHROPIC_AUTH_TOKEN` são retiradas do ambiente do processo para que a conta seja o que vale.
+Depois de qualquer `npm install`, o lockfile volta a apontar o Common por `git+ssh` e o `package.json` por `github:`; trocar os dois de volta para `git+https://github.com/mgarlabx/edukors_common_ux.git` (o README do Common explica o motivo).
 
-```
-painel (src/agent/)  ⇄  Rust (src-tauri/src/agent.rs)  ⇄  Node: agent/sidecar.mjs  ⇄  Claude Agent SDK → Claude Code → Claude
-     eventos "agent" / agent_send             JSON por linha (stdin/stdout)
-```
+## Arquitetura
 
-- **`agent/sidecar.mjs`** roda o SDK em modo de entrada contínua (uma conversa aberta por vez, com fila, interrupção e troca de modelo, modo e esforço no meio). Lista, reabre e exclui as sessões que o SDK grava em `~/.claude/projects/`, numa pasta de trabalho própria do app (`~/Library/Application Support/org.edukors.grapheditor/agent`). Não carrega as configurações, skills, plugins nem servidores MCP do Claude Code da pessoa (`settingSources: []`, `strictMcpConfig`, conectores do claude.ai desligados): as skills e os servidores MCP do agente são os do próprio app (abaixo).
-- **As ferramentas** (`agent/tools.mjs`) são declaradas no processo e executadas no editor (`src/agent/editorTools.ts`): `read_course`, `get_schema`, `validate_course`, `get_editor_state`, `edit_course` (operações aplicadas juntas, como um passo de desfazer, ou nenhuma), `replace_course`, `new_course`, `show_node`, `auto_layout`. Das ferramentas do Claude Code, só `Read`, `Glob`, `Grep`, `Bash`, `WebSearch`, `WebFetch`, `AskUserQuestion`, `TodoWrite`, `ExitPlanMode` e, havendo skills, `Skill`: nada de escrever arquivos com Write/Edit. Cada comando do Bash pede aprovação, em qualquer modo (sem "permitir sempre"), e no modo *Planejar* é recusado.
-- **Skills e MCP do app** (`agent/extensions.mjs`): as skills ficam em `…/org.edukors.grapheditor/agent/plugin/skills/<nome>/SKILL.md`, montadas como plugin local (`edukors`); só elas são ligadas, pelo nome (`skills: ["edukors:<nome>"]`), e as skills embutidas do Claude Code ficam de fora. Os servidores MCP (stdio, http, sse) vêm de **Preferências → Agente de IA**, no formato do `.mcp.json` (`agent.mcp`, validado em `src/agent/mcpConfig.ts`), e passam a `mcpServers` ao lado do `edukors`; suas ferramentas pedem permissão no modo *Pedir antes* e não no *Automático*. Antigravity e Codex não recebem os servidores diretamente (sem modo interativo, chamariam sem perguntar): o processo do agente se conecta a cada um como cliente (`agent/mcpProxy.mjs`) e a ponte (`agent/mcpBridge.mjs`) os serve de novo em `/mcp/<nome>`, com o mesmo nome, o mesmo gate e os mesmos cards das ferramentas do editor. Eles entram no `config.toml` do Codex (que é reiniciado quando o conjunto muda), no `mcp_config.json` do Antigravity, cujo guard passa a aceitar esses nomes, e na configuração do OpenCode. No Codex, a pasta das skills entra como raiz extra (`skills/extraRoots/set`) a cada conversa aberta, e as outras skills que ele encontra (as dele, em `CODEX_HOME/skills/.system`, e as da pessoa, em `~/.agents/skills`, que ele lê mesmo com outro `CODEX_HOME`) são desligadas com `skills/config/write`. O menu do modelo mostra as skills e o estado de cada servidor.
-- **OpenCode** (`agent/providers/opencode.mjs`): o processo sobe o `opencode serve` do próprio Mac em `127.0.0.1`, com senha gerada a cada vez (`OPENCODE_SERVER_PASSWORD`), `--pure` (sem os plugins da pessoa) e uma pasta de trabalho vazia (`…/agent/opencode/workspace`), e fala com ele por HTTP e pelo fluxo de eventos (`/event`). A configuração vai em `OPENCODE_CONFIG_CONTENT`, por cima da da pessoa (de onde vêm os provedores e modelos): um agente `edukors` cujas permissões negam tudo menos a ponte (`edukors_*` e `<servidor>_*`) e as skills, que vêm de `skills.paths`; as skills do Claude Code e de outros agentes ficam de fora (`OPENCODE_DISABLE_CLAUDE_CODE`, `OPENCODE_DISABLE_EXTERNAL_SKILLS`). O prompt do sistema vai em cada mensagem (`system` do `prompt_async`), e o esforço, como `variant` do modelo. Os modelos são os dos provedores conectados (`opencode auth login`); os gratuitos do OpenCode Zen, que vêm com a chave `public`, ficam de fora, porque o Zen os recusa (`FreeTierError`) a qualquer agente que não seja o do próprio OpenCode. As sessões são as do OpenCode, filtradas pela pasta de trabalho (fora de um projeto git, ele guarda todas juntas). `tests/fake-opencode.mjs` faz o papel do servidor nos testes; `tests/fixtures/opencode/` tem eventos reais do 1.19.
-- **Kiro e Kimi Code** (`agent/providers/kiro.mjs`, `kimi.mjs`, sobre `acp.mjs` e `acpEvents.mjs`): os dois falam o Agent Client Protocol (`kiro-cli acp`, `kimi acp`): JSON-RPC 2.0 pelo stdio, um processo mantido entre conversas, uma sessão por conversa, um `session/prompt` por mensagem, e os eventos chegam em `session/update`. O editor não oferece arquivos nem terminal ao agente (`clientCapabilities` desligadas); quando o agente pede permissão (`session/request_permission`, que às vezes só traz o id da chamada já anunciada), as chamadas à ponte passam (a ponte decide), ler e buscar passam, um comando vai à pessoa (`askCommand`) e mudar um arquivo é recusado (aviso `acp_file_change`). O modo *Planejar* vai como texto à frente da mensagem. As conversas ficam num diário do editor (`journal.mjs`), com o id da sessão do CLI para retomar (`session/resume` ou `session/load`). O Kiro roda como o agente `edukors`, escrito em `…/agent/kiro/workspace/.kiro/agents/edukors.json` (prompt, a ponte como servidores MCP `http` com o token em `${EDUKORS_MCP_TOKEN}`, ferramentas `@edukors`, `@<servidor>` e `read`, as skills como `skill://`, sem o `mcp.json` da pessoa); a conta vem de `kiro-cli whoami --format json`, e sem login o `acp` nem sobe. O Kimi recebe uma casa própria (`KIMI_CODE_HOME=…/agent/kimi/home`): `SYSTEM.md` é o prompt do editor (com `${skills_section}`), o `config.toml` é o da pessoa (`~/.kimi-code/config.toml`, de onde vêm provedores e modelos) sem o que o editor define, com `default_permission_mode = "manual"`, as skills do editor e `[tools] disabled` para Write, Edit, os de plano, AskUserQuestion e subagentes; a pasta `credentials` é a da pessoa, ligada por symlink (junction no Windows), e a ponte vai em cada `session/new`. O `kimi` 1.x (o `kimi-cli` antigo, em Python) conta como ausente. `tests/fake-acp.mjs` faz o papel dos dois nos testes (`FAKE_ACP=kiro|kimi`).
-- **Modos**: *Pedir antes* (cada alteração do curso espera aprovação no painel), *Automático* (altera sem perguntar) e *Planejar* (estuda e propõe um plano; nada muda até a aprovação). Ler arquivos do Mac fora da pasta do agente sempre pede permissão.
-- **Conta e uso**: a conta é a do login do Claude Code, lida quando cada conversa começa (o menu do modelo a mostra). O uso da conta é o relatório do `/usage` do Claude Code, mostrado como vem, em inglês, com uma barra por janela (sessão de 5 horas, semana): o processo o pede numa consulta à parte, que não chama modelo nem grava sessão, ao abrir uma conversa e depois de cada resposta (no máximo a cada 15 s). No Codex vem de `account/rateLimits/read` do app server, e no Antigravity de `agy -p /usage --output-format json`; os dois dão os limites já estruturados (`limits`: grupo, janela, % usado, renovação), que o painel escreve no idioma da interface.
-- **Cada mensagem** leva na frente um bloco `<editor-context>` com o curso na tela, os outros abertos, a vista e a seleção (o chip ◎ do compositor tira a seleção); o painel não mostra esse bloco.
-- O processo procura o Node no PATH, nos lugares usuais (`~/.local/bin`, Homebrew, nvm, Volta…) e, por último, no shell de login, porque um app aberto pelo Finder não recebe o PATH do terminal (`EDUKORS_NODE` força um caminho).
+O editor é um app do [Edukors Common](https://github.com/mgarlabx/edukors_common_ux), como o Slides e o Text: janela, barra de título, toolbar, abas, Abrir/Salvar/Recentes, rascunhos, configurações, ajuda, termos, tema, aviso de atualização e o assistente de IA vêm dele.
 
-> **Atenção, se o app for distribuído**: a documentação do Agent SDK diz que, salvo aprovação prévia, a Anthropic não permite que terceiros ofereçam o login do claude.ai, nem os limites de uso dele, nos seus produtos, inclusive agentes feitos com o SDK; para isso, pede autenticação por chave de API. O agente daqui usa o login do Claude Code do próprio Mac, que serve ao uso pessoal; para entregar o app a professores, troque para uma chave de API (ver [distribution.md](distribution.md)).
+- **Processo principal** (`src/main/index.ts`): `startDesktopApp({appId: 'graph', documentExtensions: ['.egrx'], openExtensions: ['.egf', '.json']})` mais a ponte `window.graph` (`preload.ts`, registrado na sessão; o remetente é conferido em toda chamada): preferências do Graph; a chave da OpenRouter guardada com `safeStorage`, que nunca chega à página, e as chamadas só para `https://openrouter.ai/` (`openrouter.ts`); exportação `.egf`/HTML com guarda de destino (`files.ts`); tela cheia; a migração única dos dados da 2.20 (`legacy.ts`, só lendo a pasta antiga).
+- **Quadros** (`src/app/frames.ts`): o player do preview, o mapa do curso e as prévias HTML do inspetor vêm de `graph-frame://doc/<id>`, servidos pelo processo principal, em sandbox e sem a ponte. A página tem CSP estrita (`script-src 'self'`); os validadores do Ajv são pré-compilados para não precisar de `eval`.
+- **Página** (`src/common/`): `config.ts` (ajuda: guia rápido, guia do professor dos `docs/teacher-guide*.md`, termos), `document.ts` (Salvar grava só `.egrx`; `.egf`/`.json` abrem como importação não salva), `tabs.ts` (abas do Common ↔ cursos do Graph), `assistant.ts` (as ferramentas do curso para o assistente do Common), `editor.tsx` (mapa, EGF, preview e problemas na área de trabalho, inspetor na barra lateral, grupo do Graph na toolbar, Exportar, atalhos, a seção "IA no preview" das Configurações), `legacy-conversations.ts` (as conversas da 2.19/2.20 no histórico do curso).
+- **Formato**: `src/course/egrx.ts`, descrito em [formats/egrx-v1.md](formats/egrx-v1.md).
 
 ## Testes
-
-```sh
-npm test                               # vitest: 229 testes
-(cd src-tauri && cargo test)           # comandos nativos
-npm run dev &                          # depois:
-node tests/e2e/smoke.mjs /tmp          # a interface em WebKit, com capturas de tela
-node tests/e2e/preview.mjs /tmp        # o preview do início ao fim, com a OpenRouter simulada
-node tests/e2e/tabs.mjs /tmp           # dois cursos em abas, um nó copiado de um para o outro
-node tests/e2e/content.mjs /tmp        # o editor de conteúdo em tela cheia e os atalhos da ajuda no Windows
-node tests/e2e/agent.mjs /tmp          # o painel do agente, com o processo simulado (não gasta uso)
-node tests/e2e/agent.mjs /tmp --live   # o mesmo painel com o agente de verdade (Haiku; gasta um pouco do uso da conta)
-```
 
 | Teste | O que garante |
 | --- | --- |
@@ -59,38 +42,36 @@ node tests/e2e/agent.mjs /tmp --live   # o mesmo painel com o agente de verdade 
 | `tests/positions.test.ts` | As posições ficam no `position` de cada nó, arredondadas e antes do título; mover é uma alteração do curso, desfeita num passo; nada mudando, o curso é o mesmo objeto; o agente reescrevendo o curso não tira os nós do lugar. |
 | `tests/tabs.test.ts` | Cada aba guarda o seu curso, histórico, seleção e preview; nós colados de outro curso ganham ids novos, as referências dentro do grupo os acompanham e os textos ficam nos idiomas do curso de destino. |
 | `tests/errors.test.ts` | Os erros da validação, do julgamento da IA e do lado nativo aparecem no idioma da interface (pt, en, es), enquanto o inglês comparado nos testes de paridade continua o do script e o do servidor; JSON quebrado é apontado por linha e coluna. |
-| `tests/e2e/tabs.mjs` | No WebKit, um nó copiado num curso cola em outro aberto em outra aba; o que se digita na aba EGF fica no curso certo mesmo trocando de aba logo em seguida; fechar uma aba com alterações pergunta antes, pelo nome do curso. |
 | `tests/markup.test.ts` | A barra do editor de conteúdo: o que cada comando escreve e seleciona, em Markdown e em HTML, e como desfaz a marcação que já está lá; o `{{STORAGE: …}}` que um prompt completa. |
-| `tests/e2e/content.mjs` | No WebKit, o inspetor mostra o conteúdo e o prompt dos nós com IA só para leitura e o ✎ abre o editor de tela cheia; a barra e ⌘B/⌘I agem sobre a seleção e ⌘Z desfaz; Raw/View, quebra de linhas e idioma; no prompt, `{{` completa a chave no cursor e Esc fecha a lista antes do editor; ⌫ na View não apaga o nó; no Windows, os guias e as dicas mostram Ctrl, Alt e Shift. |
-| `tests/agentProxy.test.ts` | Os servidores MCP da pessoa pela ponte (`tests/fake-mcp-server.mjs`): conexão e falha, ferramentas em `/mcp/<nome>`, cada chamada pelo gate e com card, nada sem o token, e o servidor tirado das Preferências deixa de ser servido. |
-| `tests/agentMcp.test.ts` | O JSON dos servidores MCP das Preferências: as duas formas aceitas, os campos que passam, cada erro e o nome reservado `edukors`; o frontmatter das skills e a filtragem dos servidores no processo do agente. |
-| `tests/agent.test.ts` | As edições do agente se aplicam todas ou nenhuma, num passo de desfazer, mantendo referências e a ordem das edges; ele lê o curso da conversa sem mexer na tela; o contexto de cada mensagem e a conversa (em streaming, interrompida ou lida do disco) chegam ao painel como devem. |
-| `tests/e2e/agent.mjs` | No WebKit, o ícone abre o agente ao lado do inspetor, sem fechá-lo; uma edição aprovada passa pelas ferramentas do editor; perguntas, plano, modo, modelo, ⇧⌘A e sessões funcionam. Com `--live`, o Claude edita um curso de verdade, pelo `agent/sidecar.mjs`. |
-| `tests/e2e/preview.mjs` | No WebKit, o preview percorre o `world-cats-2-short` com geração e julgamento; o corpo enviado ao `/decisions`, as chaves e a edge tomada batem com `ai.php`/`course.php`, e o bloco do julgamento no prompt do feedback é idêntico ao do servidor, caractere a caractere. |
+| `tests/egrx.test.ts` | Os cursos do corpus voltam byte a byte (`.egf` → `.egrx` → `.egf`); leitura estrita (outro app, versão mais nova, JSON quebrado com linha e coluna); conversas legadas preservadas. |
+| `tests/main.test.ts` | A regra da OpenRouter, a guarda de exportação e a migração da 2.20 (pasta antiga intacta, nada sobrescrito). |
+| `tests/legacy-conversations.test.ts` | As conversas da 2.19/2.20 viram conversas do Common. |
+| `scripts/smoke-electron.mjs` | No Electron, com janelas ocultas e dados temporários: o shell do Common e as pontes, `.egf` importado, `.egrx` salvo e reaberto, original intacto, exportações, Monaco, o player no quadro `graph-frame:` sob a CSP, o painel de IA, sem erros na página. Roda na CI nos três sistemas. |
+| `scripts/smoke-legacy.mjs` | A migração da 2.20 no app real, sobre uma cópia de dados reais. |
+| `.github/workflows/release.yml` | Instalar por cima da v2.20.0 real: no Windows (a 2.20 sai, os dados ficam, o app novo e o atalho entram) e no Linux (`.deb`). |
 
 ## Estrutura
 
 ```
-src-tauri/      Rust: arquivos, preferências, Keychain, HTTP para a OpenRouter (a chave nunca chega ao JS), menu nativo, abrir .egf (e .json antigo) pelo Finder, o processo do agente
-agent/          o agente: Claude Agent SDK num processo Node (sidecar.mjs), as ferramentas sobre o curso (tools.mjs), o system prompt
 src/
-  store/        estado (zustand), undo/redo, layout, preferências, cursos abertos em abas
-  schema/       schema.json embutido, Ajv (camada 1), tipos gerados, textos de ajuda lidos do schema
-  validate/     porte linha a linha do antigo validate_course.py (camada 2) e painel de problemas
-  course/       operações no grafo, chaves produzidas e escalas, condições, serialização fiel
+  main/         processo principal: host do Common, ponte window.graph, OpenRouter, exportação, migração da 2.20
+  common/       a parte do Graph na página do Common (config, documento, abas, assistente, editor)
+  store/        estado (zustand), undo/redo, layout, preferências do Graph, cursos abertos
+  schema/       schema.json, validadores pré-compilados, tipos gerados, textos de ajuda lidos do schema
+  validate/     validação (camada 2) e painel de problemas
+  course/       operações no grafo, serialização fiel, o formato .egrx
   canvas/       React Flow: nós, edges, seções, layout ELK
-  inspector/    formulários por tipo de nó, campos localizados, editor de conteúdo em tela cheia, tarefa de escrita lado a lado
+  inspector/    formulários por tipo de nó, campos localizados, editor de conteúdo em tela cheia
   conditions/   editor de when em árvore
   json/         aba Monaco, sincronizada nos dois sentidos
   preview/      player verbatim + shim (o bridge.js do editor) + painel do preview
-  judge/        porte do ai.php (geração e julgamento) e o judge-probe visual
+  judge/        porte do ai.php (geração e julgamento)
   i18n/         idiomas do curso, strings da interface (pt, en, es)
   ai/           cliente OpenRouter do preview, preços dos modelos
-  agent/        o painel do agente de IA: conversa, aprovações, sessões, as ferramentas executadas no editor
-  prefs/        preferências
-assets/         course_player.html e course_viewer.html (cópias verbatim), ícone
-samples/        world-cats 1, 2 e 3
-scripts/        update-assets.mjs, gen-types.mjs, build-locales.py
+  agent/        o prompt e as especificações das ferramentas do curso, usadas pelo assistente do Common
+build/          ícone, entitlements, after-pack, instalador NSIS (installer.nsh), blocos da Store (appx/)
+assets/         course_player.html e course_viewer.html (cópias verbatim)
+scripts/        build, package, smoke, update-assets, gen-types, gen-validators, release-notes, public-installers, tauri-update
 ```
 
 ## Manter em dia com o repositório
@@ -102,17 +83,8 @@ node scripts/update-assets.mjs --check
 
 O script também vigia o código que o editor porta — `bridge.js`, `ai.php`, `course.php`, as classes `Ai`, `JudgeView` e `Course` do player e o `validate.php` — e avisa qual arquivo do editor revisar quando um deles muda. Depois, `npm test` diz se a paridade se manteve.
 
-## Decisões tomadas onde o plano deixou em aberto
-
-| Questão (plano §8) | Decisão |
-| --- | --- |
-| Nome e licença | *Edukors Graph Editor*, MIT, como o repositório. |
-| Importar para um player remoto | Fica na exportação de arquivos (curso, mapa e player). |
-| `.edukors` ou dois arquivos | Um arquivo só, `curso.egf`: a posição de cada nó no canvas vai no campo `position` do próprio nó, que o schema aceita e os players ignoram. |
-
 ## Limitações conhecidas
 
-- **Assinatura**: o app do Mac sai assinado e notarizado pelo fluxo de release; um build local só é assinado quando o certificado *Developer ID* está no ambiente. O instalador do Windows não é assinado; a cópia da Microsoft Store é assinada pela própria Store. Ver [distribution.md](distribution.md).
-- Os testes com IA usam um modelo simulado. A integração foi verificada com a OpenRouter simulada no nível da rede; uma rodada com a chave real fica para o primeiro uso.
-- O `tools/judge-probe.php` não é executado nos testes (precisa da chave e da rede); os testes chamam diretamente as funções do `ai.php` que ele usa.
-- **O agente precisa do Node**: o processo `agent/sidecar.mjs` vai dentro do app (`src-tauri/agent-bundle/`, em `Contents/Resources/agent/` no Mac, via `tauri.bundle.conf.json`), mas roda no Node do computador do professor, que precisa estar instalado (ver [distribution.md](distribution.md#the-ai-agent)).
+- **Assinatura**: o app do Mac sai assinado e notarizado pelo fluxo de release; um build local só é assinado quando o certificado *Developer ID* está no Keychain. O instalador do Windows não é assinado; a cópia da Microsoft Store é assinada pela própria Store.
+- **Mídia própria** (imagens e vídeos guardados no `.egrx`) fica fora desta versão: imagens e vídeos continuam por link, como no `.egf`.
+- Os testes com IA usam um modelo simulado; o `tools/judge-probe.php` não é executado nos testes.

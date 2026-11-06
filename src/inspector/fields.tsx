@@ -14,6 +14,7 @@ import { getText, setText, type TextKind } from "../i18n/texts";
 import { withText } from "../course/localize";
 import { keysOfCourse, scaleLabel, type KeyInfo } from "../course/keys";
 import { openLink } from "../app/platform";
+import { useFrameDoc } from "../app/frames";
 import { AutoTextarea, Field, IconButton } from "../ui/controls";
 import { EditIcon } from "../ui/icons";
 import { storageQuery, storageRef, type StorageQuery } from "./markup";
@@ -201,7 +202,8 @@ function LangEditor(props: {
 /** Markdown as the student reads it, or HTML in a sandbox. A link opens in the computer's browser: the editor's window never leaves the editor. */
 export function RichPreview({ kind, text, className = "" }: { kind: TextKind; text: string; className?: string }) {
   const html = useMemo(() => (kind === "html" ? text : DOMPurify.sanitize(String(marked.parse(text ?? "", { async: false })))), [kind, text]);
-  if (kind === "html") return <iframe className={`html-preview ${className}`} sandbox="allow-scripts" srcDoc={html} title="preview" />;
+  const doc = useFrameDoc(kind === "html" ? html : "");
+  if (kind === "html") return <iframe className={`html-preview ${className}`} sandbox="allow-scripts" {...doc} title="preview" />;
   const onClick = (e: MouseEvent<HTMLDivElement>) => {
     const a = (e.target as HTMLElement).closest("a");
     if (!a) return;
