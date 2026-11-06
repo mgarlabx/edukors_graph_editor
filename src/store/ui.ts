@@ -63,7 +63,8 @@ export const useUi = create<UiState>()((set) => ({
   bottom: null,
   agent: false,
   inspector: false,
-  previewSide: true,
+  // The preview's panel (calls, state, path, console) starts closed; its button in the preview bar opens it.
+  previewSide: false,
   presenting: false,
   inspectorTab: "data",
   setInspectorTab: (inspectorTab) => set({ inspectorTab }),

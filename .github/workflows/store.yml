@@ -1,28 +1,21 @@
-# The Microsoft Store: the .msix the release's Windows job made, sent to
-# Partner Center with the Microsoft Store Developer CLI (msstore) as a new
-# submission of the app (Store ID 9N0N0P3GVRCK). The listing stays as it is;
-# only the package changes.
+# The Microsoft Store: the .appx the release's Windows job made (electron-builder, identity mgarlabx.EdukorsGraphEditor,
+# the same as the 2.x package, so the Store updates it in place), sent to Partner Center with the Microsoft Store
+# Developer CLI (msstore) as a new submission of the app (Store ID 9N0N0P3GVRCK). The listing stays as it is; only
+# the package changes.
 #
-# The release workflow calls it once the Windows package is there. By hand
-# (Actions → Microsoft Store → Run workflow) it either checks that the
-# credentials reach Partner Center, or sends the package of an earlier run.
+# The release workflow calls it once the GitHub release is out. By hand (Actions → Microsoft Store → Run workflow) it
+# either checks that the credentials reach Partner Center, or sends the package of an earlier Release run.
 #
-# The submission is left as a draft in Partner Center, as the GitHub release is
-# left as a draft: someone opens it and clicks "Submit for certification".
-# With the repository variable STORE_AUTO_SUBMIT set to "true", it is submitted
-# for certification right away.
+# With the repository variable STORE_AUTO_SUBMIT set to "true" it is submitted for certification right away;
+# otherwise it is left as a draft submission in Partner Center ("Submit for certification" by hand).
 #
-# It needs four repository secrets, from Partner Center (docs/distribution.md):
-# PARTNER_CENTER_TENANT_ID, PARTNER_CENTER_SELLER_ID, PARTNER_CENTER_CLIENT_ID
-# and PARTNER_CENTER_CLIENT_SECRET. Without them, it says so and does nothing.
+# It needs four repository secrets, from Partner Center (docs/distribution.md): PARTNER_CENTER_TENANT_ID,
+# PARTNER_CENTER_SELLER_ID, PARTNER_CENTER_CLIENT_ID and PARTNER_CENTER_CLIENT_SECRET. Without them, it says so and
+# does nothing.
 name: Microsoft Store
 
 on:
   workflow_call:
-    inputs:
-      version:
-        type: string
-        required: true
   workflow_dispatch:
     inputs:
       check_only:
@@ -30,7 +23,7 @@ on:
         type: boolean
         default: true
       run_id:
-        description: The Release run whose microsoft-store-msix artifact is sent (when not only checking)
+        description: The Release run whose store-msix artifact is sent (when not only checking)
         type: string
         default: ''
 
@@ -69,15 +62,27 @@ jobs:
 
       # The package of this release's run, or of the run given by hand.
       - if: steps.ready.outputs.go == 'true' && env.CHECK_ONLY != 'true'
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: microsoft-store-msix
+          name: store-msix
           path: msix
           run-id: ${{ github.event_name == 'workflow_dispatch' && inputs.run_id || github.run_id }}
           github-token: ${{ github.token }}
 
       - if: steps.ready.outputs.go == 'true'
-        uses: microsoft/microsoft-store-apppublisher@v1.1
+        uses: microsoft/microsoft-store-apppublisher@15abd1c50fcc164b19cb240fb04ef3c49bf715a2 # v1.1
+
+      # msstore only says "failed to auth": ask Entra directly, to log its reason (AADSTS code) and the shape of each
+      # value, never the values themselves.
+      - if: steps.ready.outputs.go == 'true'
+        run: |
+          guid='^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+          shape(){ local v="$2"; local s="length ${#v}"; [[ "$v" =~ $guid ]] && s="$s, a GUID"; [[ "$v" =~ ^[0-9]+$ ]] && s="$s, digits only"
+            [[ "$v" != "${v#"${v%%[![:space:]]*}"}" || "$v" != "${v%"${v##*[![:space:]]}"}" ]] && s="$s, WITH SPACES AT THE ENDS"; echo "$1: $s"; }
+          shape tenant "$TENANT"; shape client "$CLIENT"; shape seller "$SELLER"; shape secret "$SECRET"
+          curl -s -X POST "https://login.microsoftonline.com/$TENANT/oauth2/v2.0/token" --data-urlencode "client_id=$CLIENT" \
+            --data-urlencode "client_secret=$SECRET" -d grant_type=client_credentials -d scope=https://api.store.microsoft.com/.default \
+            | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);console.log(j.access_token?'Entra: token obtained':'Entra: '+String(j.error_description).split('\n')[0])})"
 
       - if: steps.ready.outputs.go == 'true'
         run: |
@@ -87,15 +92,13 @@ jobs:
 
       - if: steps.ready.outputs.go == 'true' && env.CHECK_ONLY != 'true'
         run: |
-          msix=( msix/*.msix )
-          [ -f "${msix[0]}" ] || { echo "::error::no .msix in the artifact"; exit 1; }
-          echo "sending ${msix[0]}"
-          flags=()
-          [ "$COMMIT" = "true" ] || flags+=(--noCommit)
+          shopt -s nullglob; pkg=( msix/*.appx msix/*.msix )
+          [ ${#pkg[@]} -eq 1 ] || { echo "::error::expected one package in the artifact, found: ${pkg[*]}"; exit 1; }
+          # msstore picks its handler by the extension and knows .msix, not .appx (the same package format).
+          [[ "${pkg[0]}" == *.appx ]] && { mv "${pkg[0]}" "${pkg[0]%.appx}.msix"; pkg[0]="${pkg[0]%.appx}.msix"; }
+          echo "sending ${pkg[0]}"
+          flags=(); [ "$COMMIT" = "true" ] || flags+=(--noCommit)
           # The CLI knows the package by the path's extension; the upload gets more than its default 100 s.
-          msstore publish "${msix[0]}" --appId "$PRODUCT_ID" --uploadTimeout 1800 "${flags[@]}"
-          if [ "$COMMIT" = "true" ]; then
-            echo "::notice::the package was submitted for certification in Partner Center"
-          else
-            echo "::notice::the package is in a draft submission in Partner Center: open it and click Submit for certification"
-          fi
+          msstore publish "${pkg[0]}" --appId "$PRODUCT_ID" --uploadTimeout 1800 "${flags[@]}"
+          if [ "$COMMIT" = "true" ]; then echo "::notice::the package was submitted for certification in Partner Center"
+          else echo "::notice::the package is in a draft submission in Partner Center: open it and click Submit for certification"; fi

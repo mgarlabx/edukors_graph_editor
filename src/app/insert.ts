@@ -1,7 +1,7 @@
 /**
  * Inserting a node of one of the ten types, from the Insert menu or the
  * toolbar's + list (plan 5.1). The native menu lists the same groups, in the
- * same order (src-tauri/src/lib.rs).
+ * same order.
  */
 import { courseLangs, useEditor } from "../store/editor";
 import { flushPending } from "../store/docs";

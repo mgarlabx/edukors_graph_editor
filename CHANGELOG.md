@@ -1,6 +1,19 @@
 # Changelog
 
-Each version has its own section, written before the tag, **always in English**: its text goes to the release page on GitHub and to the update notice inside the app (`scripts/release-notes.mjs`). A section changed after the build does not reach the app.
+Each version has its own section, written before the tag, **always in English**: its text goes to the release page on GitHub and to the update notice that versions 2.x show (`scripts/release-notes.mjs`, `scripts/tauri-update.mjs`). A section changed after the release does not reach that notice.
+
+## 26.11.5
+
+A new editor, on the same foundation as the other Edukors apps. Versions are now numbered by date (YY.M.D).
+
+- **Same interface as the other Edukors apps:** title bar, toolbar, course tabs, Open/Save/Recent, settings, help, terms, light/dark/system theme, interface size and the update notice now come from Edukors Common, as in the Slides Editor. The toolbar groups File (new, open, recent, save, export, folder), View (map, EGF, preview, preview with map), undo/redo, clipboard, new step, fit and problems; auto-layout stays on ⇧⌘L. "Preferences" is now **Settings**.
+- **New course file `.egrx`.** Save writes the course, its map layout and its AI conversations to one `.egrx` file. An `.egf` (or an older `.json`) opens as an import and is never overwritten by Save. The course inside is exactly the `.egf` course: nothing about the format of courses changed.
+- **Export** (toolbar) writes **Course (.egf)**, for the player and the gallery, or **Player (HTML)**, next to the `.egrx`, with its name; an existing file is replaced only after you confirm.
+- **AI assistant from Edukors Common:** Claude Code or Codex, the AI accounts shared with the other Edukors apps, models and effort, a *Plan* mode that only reads and proposes, skills, and conversations kept with each course. **Node.js is no longer needed.** Antigravity, Kiro, Kimi Code, OpenCode and the editor's own MCP servers are gone.
+- **Your 2.20 data comes along** on the first start: settings, AI settings and skills, accepted terms, recent files that still exist, language and theme. Conversations of 2.19–2.20 about a course appear in its history when you open its `.egf`. **The preview's OpenRouter key is not carried over:** paste it once in **Settings → Preview AI**. The 2.20 data folder stays as it was.
+- **Updating from 2.20:** this update replaces the app. On Windows, the installer removes 2.20 first (outside the Microsoft Store); on Linux, the `.deb` upgrades the 2.20 package. From now on, the app tells you when a new version is out and links to it; it no longer installs updates by itself. The Microsoft Store keeps updating its copy.
+- **Going back:** version 2.20 does not open `.egrx` files. To take a course back to it, export it as `.egf`.
+- **Smaller changes:** the map language is set only in the inspector's text language bar; the preview's calls panel opens with its own button and starts closed; the preview's OpenRouter key is kept encrypted by the system and never reaches the page; the page runs under a strict content security policy, with the player and previews in their own sandboxed frames.
 
 ## 2.20.0
 

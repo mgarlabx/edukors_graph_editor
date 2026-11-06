@@ -10,7 +10,7 @@ import { isDirty, useEditor } from "../src/store/editor";
 import { activateDoc, activateNth, cycleDoc, dirtyDocs, docState, dropDoc, onLeave, openDoc, patchDoc, useDocs } from "../src/store/docs";
 import { usePreview } from "../src/preview/session";
 import { pasteClip, readClip, selectionClip, textSelected } from "../src/app/clipboard";
-import { docLabel, withEgf } from "../src/app/files";
+import { docLabel } from "../src/app/files";
 import { duplicateNodes, pasteNodes } from "../src/course/ops";
 import { fitLanguages } from "../src/i18n/languages";
 import { newCourse } from "../src/course/factory";
@@ -142,12 +142,6 @@ describe("tabs", () => {
     expect(docLabel({ path: null, course: untitled })).toBe("Sem título");
   });
 
-  it("a course is saved as .egf, an older .json one next to it", () => {
-    expect(withEgf("/x/curso.egf")).toBe("/x/curso.egf");
-    expect(withEgf("/x/curso.EGF")).toBe("/x/curso.EGF");
-    expect(withEgf("/x/curso.json")).toBe("/x/curso.egf");
-    expect(withEgf("/x/curso")).toBe("/x/curso.egf");
-  });
 });
 
 describe("copying nodes from one course to another", () => {

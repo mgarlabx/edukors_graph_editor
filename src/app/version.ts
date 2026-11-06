@@ -1,12 +1,8 @@
 /**
- * The editor's version, as the app is built with it (src-tauri/tauri.conf.json;
- * package.json and src-tauri/Cargo.toml carry the same number: see
- * scripts/bump-version.mjs).
+ * The editor's version, as the app is built with it: package.json holds the release date (YY.M.D, Common's rule),
+ * set into the bundle by scripts/build.mjs and shown as v.YY.MM.DD.
  */
-import tauriConf from "../../src-tauri/tauri.conf.json";
+declare const __APP_VERSION__: string | undefined;
 
-/** As people read it: "1.12.0" is "1.12"; a patch release keeps its third number. */
-export const shortVersion = (version: string) => version.replace(/\.0$/, "");
-
-export const APP_NAME = tauriConf.productName;
-export const APP_VERSION = shortVersion(tauriConf.version);
+export const APP_NAME = "Edukors Graph Editor";
+export const APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "dev";

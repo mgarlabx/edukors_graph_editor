@@ -3,13 +3,12 @@
  * noul -- which the student only passes through while the AI decides -- are
  * diamonds (plan 5.1).
  */
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useRef } from "react";
 import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
 import type { CourseNode } from "../schema/types";
 import { TYPE_STYLE } from "../course/nodeTypes";
 import { localize } from "../course/localize";
-import { issueText, issueWhere, type Issue } from "../validate";
-import { Bubble } from "../ui/controls";
+import type { Issue } from "../validate";
 import { t } from "../i18n";
 
 export interface CourseNodeData extends Record<string, unknown> {
@@ -29,48 +28,13 @@ const Badge = ({ issues }: { issues: Issue[] }) => {
 };
 
 /**
- * A node's problems, in a bubble over its card when the pointer rests on it a
- * moment; gone as soon as the pointer leaves, presses or the map moves.
+ * A node with problems shows only its badge (the count): the problems themselves are in the panel below the map, so
+ * no bubble opens over the card on hover.
  */
-function useIssueBubble(issues: Issue[]) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function useIssueBubble(_issues: Issue[]) {
   const ref = useRef<HTMLDivElement>(null);
-  const [open, setOpen] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const hide = () => {
-    clearTimeout(timer.current);
-    setOpen(false);
-  };
-  useEffect(() => () => clearTimeout(timer.current), []);
-  useEffect(() => {
-    if (!open) return;
-    window.addEventListener("wheel", hide, true);
-    return () => window.removeEventListener("wheel", hide, true);
-  }, [open]);
-  const handlers = issues.length
-    ? {
-        onMouseEnter: () => {
-          clearTimeout(timer.current);
-          timer.current = setTimeout(() => setOpen(true), 350);
-        },
-        onMouseLeave: hide,
-        onPointerDown: hide,
-      }
-    : {};
-  const bubble =
-    open && issues.length > 0 && ref.current ? (
-      <Bubble anchor={ref.current} className="issue-bubble">
-        <ul>
-          {[...issues]
-            .sort((a, b) => (a.level === b.level ? 0 : a.level === "error" ? -1 : 1))
-            .map((i, k) => (
-              <li key={k}>
-                <span className={i.level === "error" ? "is-error" : "is-warning"}>{i.level === "error" ? "✖" : "⚠"}</span> {issueText(i)} <code>{issueWhere(i)}</code>
-              </li>
-            ))}
-        </ul>
-      </Bubble>
-    ) : null;
-  return { ref, handlers, bubble };
+  return { ref, handlers: {}, bubble: null };
 }
 
 const status = (data: CourseNodeData, selected: boolean) => {

@@ -1,6 +1,6 @@
 # Teacher's guide — Edukors Graph Editor
 
-This guide shows how to build a course in Edukors Graph Editor, from the first step to a file ready to publish. You don't need to write JSON: everything is done on the graph and in the panel on the right.
+This guide shows how to build a course in Edukors Graph Editor, from the first step to a file ready to publish. You don't need to write JSON: everything is done on the map and in the inspector.
 
 ## 1. The idea in one sentence
 
@@ -21,38 +21,66 @@ A course is a **graph**. Each **node** is a step the student sees or does (a tex
 Without the Microsoft Store (some school computers have it turned off), use the installer instead:
 
 1. Download [`Edukors-Graph-Editor-windows.exe`](https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-windows.exe). If the browser says the file isn't commonly downloaded, open the **…** menu next to it and choose **Keep** (in Edge, also **Show more → Keep anyway**).
-2. Open the downloaded file. This installer has no digital signature, so Windows shows **Windows protected your PC**. Click **More info** and then **Run anyway**. The warning appears only on this first installation: new versions come through the editor itself.
+2. Open the downloaded file. This installer has no digital signature, so Windows shows **Windows protected your PC**. Click **More info** and then **Run anyway**.
 3. The installer doesn't ask for an administrator password; then the editor opens, and it stays in the Start menu.
 
 If Windows says it **blocked** the installer, with no *Run anyway* button, the computer has **Smart App Control** turned on, or a school policy that only allows signed programs. Install from the Microsoft Store, or talk to whoever looks after the computer.
 
 **On Linux** (64-bit, x64):
 
-- On **Ubuntu, Debian, Mint** and their relatives, download [`Edukors-Graph-Editor-linux.deb`](https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-linux.deb) and double-click it (or run `sudo apt install ./Edukors-Graph-Editor-linux.deb` in the folder it is in). The installation asks for your password; then the editor is in the applications menu, and an `.egf` opens in it with a double click.
+- On **Ubuntu, Debian, Mint** and their relatives, download [`Edukors-Graph-Editor-linux.deb`](https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-linux.deb) and double-click it (or run `sudo apt install ./Edukors-Graph-Editor-linux.deb` in the folder it is in). The installation asks for your password; then the editor is in the applications menu.
 - On **other distributions**, download [`Edukors-Graph-Editor-linux.AppImage`](https://github.com/mgarlabx/edukors_graph_editor/releases/latest/download/Edukors-Graph-Editor-linux.AppImage), mark it as executable (right-click → **Properties → Permissions → Allow executing file as program**, or `chmod +x` in a terminal) and open it. It runs without installing, from wherever it is.
 
-New versions come through the editor itself; with the `.deb`, the update asks for your password.
+**New versions.** When a new version comes out, the editor shows a notice, "Version … is available.", with a **Download** button: it opens the download page, and you install the new version the same way you installed the first one. The editor does not update itself. With the Microsoft Store, the Store itself does the updating.
 
-**On every system**, the first time, the editor shows the **Terms of use** (the MIT license, explained): you must accept them to go on. They stay available under **Help → Terms of use**. Each time it opens, the editor shows its version, which also appears at the top of **Help**. From there you can create a **New course** or **Open** an `.egf` file. To see how a course is put together, download the [sample courses](https://github.com/mgarlabx/edukors_graph/blob/main/samples/samples.README.md) (*Cats of the World*, eight `.egf` files, each one explained) and open them in the editor; they also run, with a short video each, at [edukors.org/graph](https://edukors.org/graph/).
+**On every system**, the first time, the editor shows the **Terms of use** (the MIT license, explained): you must click **Accept** to go on (**Decline and quit** closes the editor). They stay available under **Help → Terms of use**. The editor's version shows in the bar at the bottom of the window and at the top of **Help**. From there you can create a **New** course or **Open** a file. To see how a course is put together, download the [sample courses](https://github.com/mgarlabx/edukors_graph/blob/main/samples/samples.README.md) (*Cats of the World*, eight `.egf` files, each one explained) and open them in the editor; they also run, with a short video each, at [edukors.org/graph](https://edukors.org/graph/).
 
-Tip: once installed, an `.egf` course opens in the editor with a double click. An older `.json` course becomes `.egf` by changing the file's extension (the content is the same).
+### Course files: `.egrx` and `.egf`
+
+- The editor saves the course in an **`.egrx`** file: a package with the course, the map's arrangement and the conversations with the AI assistant about it. It is the working file.
+- An **`.egf`** course (or an older `.json`) also opens in the editor, with **Open**, **Recent** or a double click. It opens as a course **not saved yet**: when you save, the editor asks for a name and a folder for the `.egrx`. **Save** never changes the original `.egf` file.
+- The `.egf` is still the file you publish (section 11): to make one, use **Export**.
+- Once installed, an `.egrx` or an `.egf` opens in the editor with a double click.
+
+### Coming from version 2.20
+
+The first time this version opens, it brings over from 2.20, just once, what was already there: the editor's settings, the AI assistant's settings and skills, the terms already accepted, the **Recent** files that still exist, the language and the theme. The OpenRouter key does not come along: paste it again in **Settings → Preview AI** (section 9). The 2.20 data stays where it was.
+
+When you open an `.egf`, the conversations 2.20 kept about that file go into the assistant's history for that course.
+
+Version 2.20 cannot open `.egrx` files. To take a course back to it, use **Export → Course (.egf)**.
 
 ## 3. The screen
 
 | Part | What it does |
 | --- | --- |
-| **Graph** (center) | The steps and the arrows. Drag the steps to arrange them, or drag a section's title to move the whole section; use ⊞ to arrange everything automatically. |
-| **Inspector** (right) | The content of whatever is selected. It starts closed when you open a file and opens when you click a step or an arrow; the sidebar icon (⌥⌘0) opens and closes it, and its left edge can be dragged to change its width — in the Preview, the same icon opens and closes the panel with the calls, state, path and console. With nothing selected, it shows the course's information. It stays open when the AI agent appears beside it. |
-| **Top bar** | Save, the ＋ that **inserts** steps (the ten types, also in the **Insert** menu), undo, the **Map / EGF / Preview / Preview with map** tabs, the graph's language, the **problems** badge and, at the far right, the **AI agent** ✦. |
+| **Top bar** | From left to right: the logo (opens edukors.org); **File** (New, Open, Recent, Save, Export, Show in folder); the **Map / EGF / Preview / Preview with map** views; Undo and Redo; Cut, Copy, Paste, Duplicate and Delete; **Insert node**, **Fit the graph** and **Problems**; **Settings** and **Help**. At the far right, the **Sidebar** button (the inspector) and the **AI assistant** button. |
 | **Course tabs** (just below) | One open course per tab; ＋ creates a new course. |
+| **Map** (center) | The steps and the arrows. Drag the steps to arrange them, or drag a section's title to move the whole section; ⇧⌘L arranges everything automatically. |
+| **Inspector** (sidebar, on the left) | The content of whatever is selected. The title, the type and the id stay fixed at the top; below, the step is split in two parts: *General data* (identification, exits and extras) and the part for its type (the content, the questions, the judgement…). It starts closed; the **Sidebar** button, at the far right of the top bar, opens and closes it. Its edge can be dragged to change its width. With nothing selected, it shows the course's information. |
+| **AI assistant** (on the right) | The assistant's panel (section 12). It opens and closes with its own button, independently of the inspector: both can be open together. |
+
+With no course open, the bar shows only New, Open, Recent, Settings and Help.
+
+### Settings and Help
+
+**Settings** (⚙, or ⌘,) has three parts:
+
+- **Interface**: the **Interface language** (the editor's texts; the course's language does not change), the **Theme** (System, Light or Dark) and the **Font size**, from 80% to 200% (also with ⇧⌘+ and ⇧⌘−). In Chinese and Hindi, the editor's own texts and this guide show in English.
+- **AI assistant**: the assistant's accounts and options (section 12).
+- **Preview AI**: the OpenRouter key and the Preview's models (section 9).
+
+**Help** has three tabs: **Quick guide**, **Full guide** (this guide) and **Terms of use**.
 
 ### Several courses at once
 
-Every course you open or create gets a **course tab**, just below the top bar. Click a tab to switch courses: each one keeps its own undo, selection, graph position and Preview. The ● dot on a tab means unsaved changes; the ✕ closes the tab and, if there is something to save, the editor asks first. Opening a file that is already open just shows its tab. To reorder, drag the tabs.
+Every course you open or create gets a **course tab**, just below the top bar. Click a tab to switch courses: each one keeps its own undo, selection, map position and Preview. The tab shows when there are unsaved changes; the ✕ closes the tab and, if there is something to save, the editor asks first. Opening a file that is already open just shows its tab.
 
-To **bring steps from one course to another**: select the steps on the graph, press ⌘C, switch tabs, click the graph and press ⌘V. The steps arrive with new ids, near the center of the screen and in the same arrangement; the arrows between them come along. References from one to another now point to the copies: a copied *Score (AI)* together with its form assesses the copied form. The texts arrive in the destination course's languages; if its main language is missing, the original text goes into that language, for you to translate right there.
+If the editor closes suddenly with unsaved changes, the next time it opens it offers to **Recover** or **Discard** those courses. A recovered course opens as "… (recovered)", not saved yet; the original file is not touched.
 
-You can also paste onto the graph a step copied from the **EGF** tab (the whole step object, from `{` to `}`).
+To **bring steps from one course to another**: select the steps on the map, press ⌘C, switch tabs, click the map and press ⌘V. The steps arrive with new ids, near the center of the screen and in the same arrangement; the arrows between them come along. References from one to another now point to the copies: a copied *Score (AI)* together with its form assesses the copied form. The texts arrive in the destination course's languages; if its main language is missing, the original text goes into that language, for you to translate right there.
+
+You can also paste onto the map a step copied from the **EGF** tab (the whole step object, from `{` to `}`).
 
 ## 4. The step types
 
@@ -78,22 +106,22 @@ You can also paste onto the graph a step copied from the **EGF** tab (the whole 
 
 ## 5. Building a course, step by step
 
-1. **New course.** Click ＋ next to the course tabs (or press ⌘N). With nothing selected, fill in the title, the author and, if you like, the description on the right.
-2. **Add steps.** Click the ＋ on the top bar (or open the **Insert** menu) and choose *Text*: the new step appears below the selected one and comes already selected. To choose where it goes, drag *Text* from the ＋ list onto the graph. Write the title in the inspector. The content shows there read-only: click ✎ (or the text itself) to open it in the full-screen editor.
+1. **New course.** Click **New** on the top bar (or the ＋ next to the course tabs). With nothing selected, fill in the title, the author and, if you like, the description in the inspector.
+2. **Add steps.** Click **Insert node** on the top bar and choose *Text*: the new step appears below the selected one and comes already selected. Write the title in the inspector. The content shows there read-only: click ✎ (or the text itself) to open it in the content editor.
 3. **Connect the steps.** Drag from the circle at the bottom of a step to another one. That creates an arrow.
 4. **Mark the start.** The course's first step has the ▶ badge. To change it, tick "This is the course's start node" on the step you want.
-5. **Save** with ⌘S. The editor writes a single file, `my-course.egf`, with the course and the graph's arrangement. Moving a step on the graph is also a change: the course tab shows a dot until it is saved.
+5. **Save** with ⌘S (or **Save**). The first time, the editor asks for the name and the folder; it writes a single file, `my-course.egrx`, with the course, the map's arrangement and the conversations with the assistant. **Save as** (⇧⌘S) writes a copy under another name. Moving a step on the map is also a change: the course tab shows there is something to save until you save it.
 
 ### The content editor
 
-The content of a *Text* (markdown) or *HTML* step, and the prompt of an *AI text* or *AI HTML* step, are not edited in the inspector: there they are shown read-only, and the ✎ next to the field's name (or a click on the text) opens the editor, which fills the whole window.
+The content of a *Text* (markdown) or *HTML* step, and the prompt of an *AI text* or *AI HTML* step, are not edited in the inspector: there they are shown read-only, and the ✎ next to the field's name (or a click on the text) opens the editor, which fills the work area, between the inspector and the AI assistant.
 
 - **Raw** shows the text as it is written; **View**, as the student sees it.
 - The bar has the main commands: heading, bold, italic, bulleted list, numbered list, link and image (in HTML, paragraph too). They act on the selected passage; ⌘B, ⌘I and ⌘K apply bold, italic and link.
 - A prompt is written in markdown, with the same bar plus the **Insert {{STORAGE: …}}** list; typing `{{` opens the list of keys right at the cursor.
 - The icon at the right end of the bar turns the wrapping of long lines on and off.
 - In a course with several languages, the selector at the top switches the text's language.
-- The ✦ at the top (or ⇧⌘A) opens the **AI agent** beside the text, and closes it again. It knows which text you have open and in which language: ask it to "make this shorter", "add an example here", "translate this into Spanish", and what it writes appears in the box right away (⌘Z undoes).
+- The ✦ at the top opens and closes the **AI assistant** beside the text. It knows which text you have open and in which language: ask it to "make this shorter", "add an example here", "translate this into Spanish", and what it writes appears in the box (⌘Z undoes).
 - What you type goes into the course right away: **Done** (or Esc) closes the editor without losing anything, and ⌘Z undoes.
 
 ## 6. Different paths for different students
@@ -125,7 +153,7 @@ The Score's inspector shows the form's instructions next to the state and warns 
 
 ## 8. Finding and fixing problems
 
-The badge on the top bar shows ✖ errors and ⚠ warnings. Click it to see the list; click an item to go to the step or the arrow. Steps with a problem also get a red or orange badge on the graph.
+The **Problems** button on the top bar (or ⇧⌘M) opens and closes the problems panel, below the map, with the course's errors and warnings; click an item to go to the step or the arrow. Steps with a problem also get a red or orange badge on the map.
 
 - **Errors** keep the course from working (an arrow to a step that doesn't exist, a quiz without a correct answer).
 - **Warnings** are advice (a very short text, a missing translation). The course works, but they are worth reading.
@@ -134,19 +162,19 @@ The editor applies the same rules the player uses to check a course before impor
 
 ## 9. Testing as the student (Preview)
 
-In the **Preview** tab you take the course as the student would, with the real AI.
+In the **Preview** view you take the course as the student would, with the real AI.
 
-1. In **Preferences** (⚙), paste your **OpenRouter** key. It is kept in the Mac's Keychain, never in a file.
+1. In **Settings → Preview AI**, paste your **OpenRouter key** and click **Store key**. It is kept encrypted by the system itself and is never shown to the editor's page; **Delete** removes it. The same section holds the **Generation** and **Judgement** models, with the same values as the player.
 2. The AI texts are generated on the spot; the AI's grades and choices are made as on the server, with the same model and the same limits.
-3. Next to **Start over**, **Showing** gives the id of the step on screen, also when the student reviews an earlier step. Click it to go to that step on the graph; the preview carries on from where it was.
-4. On the right:
+3. Next to **Start over**, **Showing** gives the id of the step on screen, also when the student reviews an earlier step. Click it to go to that step on the map; the preview carries on from where it was.
+4. The button at the right end of the preview's bar opens and closes the **Calls, state, path and console** panel (it starts closed):
    - **Calls**: every call to the AI, with model, tokens, cost and time. Click one to see what was sent and the answer.
    - **State**: everything the student has produced so far.
-   - **Path**: each step, the arrow taken and the condition that decided it; the path also shows in green on the graph. Use **Back to node** to test another branch without redoing everything.
+   - **Path**: each step, the arrow taken and the condition that decided it; the path also shows in green on the map. Use **Back to node** to test another branch without redoing everything.
    - **Console**: what the course writes to the browser's console and the errors it leaves unhandled, including those of an HTML page, each line with the time and the step it came from. Use it to understand why a simulation doesn't work.
 5. If you edit the course with the preview open, click **Apply changes** to reload while keeping the student where they are.
 6. The links in a step open in your computer's browser, and the preview stays where it was.
-7. The **Preview with map** tab (⇧⌘P) is the same preview with the course map beside it, as the student sees it on the platform: the map marks the steps already done and the path taken, and follows the current step. The arrows on the line between the two halves widen one of them. Switching between the two tabs does not restart the student.
+7. The **Preview with map** view (⇧⌘P) is the same preview with the course map beside it, as the student sees it on the platform: the map marks the steps already done and the path taken, and follows the current step. The arrows on the line between the two halves widen one of them. Switching between the two views does not restart the student.
 
 Without a key, the preview runs in a reduced mode: the AI texts show "try again" and the AI's assessments become a panel where you pick the result yourself.
 
@@ -155,82 +183,88 @@ To test a single assessment, use **Test judgement** in the inspector of the Scor
 ## 10. Several languages
 
 - **Course languages…** (in the course's inspector): add languages (`pt`, `en`, `es`, `pt-BR`…). The source language is always the first one.
-- Each text gets one tab per language; the empty ones show an orange dot.
-- The 🌐 selector on the bar changes the language of the titles on the graph; in the Preview you choose the student's language.
+- The inspector shows and edits all the texts in a single language, chosen in the **Language of the texts** bar, just below the step's title. It is also the language of the titles on the map: changing one changes the other. An orange dot marks the language in which some text of the step is still empty, and each field shows, next to its name, the tag of the language it is showing.
+- In the Preview, the student's language is chosen in the player itself.
 
 ## 11. Publishing
 
-- **File → Export course…** produces an HTML file that runs the course on its own, with no server (the AI's assessments become the manual panel).
-- To publish on Edukors, upload the file `my-course.egf` to your Google Drive and register it in the "Gallery" section.
+Use **Export**, on the top bar. The export screen offers two formats:
+
+- **Course (.egf)**: the course as it is, for the player, the Moodle plugin and the gallery.
+- **Player (HTML)**: one HTML file that runs the course on its own, with no server (the AI's assessments become the manual panel).
+
+The file is written next to the `.egrx`, with the same name (for example, `my-course.egf`). A course that has no file yet is saved first. If a file with that name already exists, the editor tells you, and it is replaced only after **Replace**. Exporting never changes the `.egrx`.
+
+- To publish on Edukors, export the **Course (.egf)**, upload the file `my-course.egf` to your Google Drive and register it in the "Gallery" section.
 - If you prefer, upload the file to the provider of your choice.
 
-## 12. The AI agent
+## 12. The AI assistant
 
-The ✦ icon at the far right of the top bar (or ⇧⌘A) opens the **AI agent** at the right end of the window, beside the graph and the inspector; click it again to close it. The two panels are independent: the sidebar icon (⌥⌘0) opens and closes only the inspector, and ✦ only the agent. The editor works with the AI agent you pick in **Preferences → AI agent**. The agent works on the course on screen: it reads the steps, writes, connects arrows, translates, validates and fixes. With the content editor open, its own ✦ brings the agent beside the text, to work on that text (section 5).
+The **AI assistant** button, at the far right of the top bar, opens the assistant's panel at the right end of the window, beside the map; click it again (or the panel's ✕) to close it. The assistant works on the conversation's course: it reads the steps, writes, connects arrows, translates, validates, fixes and arranges the map. With the content editor open, its own ✦ brings the assistant beside the text, to work on that text (section 5).
 
-**Before you start.** In **Preferences → AI agent**, under **Provider**, pick the agent that answers in the panel. A new install starts with **Claude Code**. All of them are programs you install on your computer — next to the one that is missing, **See how to install** shows the way. The agent works with your own account in its service, not with an editor account: if the panel says no account is connected, follow the login instruction it shows for that agent (some ask for a command in Terminal, others open the browser) and click **Try again**. OpenCode has no account of its own: it answers with the provider you connect to it, in Terminal, with `opencode auth login` (OpenCode Zen or Go, a ChatGPT or Copilot subscription, or an API key). OpenCode Zen's free models do not work here, since they only answer OpenCode's own agent. Kiro signs in with `kiro-cli login`, and Kimi Code with `kimi login` (it is the current Kimi Code CLI, 2.0 or later, not the older Python `kimi-cli`). The agent also needs [Node.js](https://nodejs.org) (version 18 or later) installed on the computer; if it is missing, the panel says so.
+**Before you start.** The assistant answers with an account of yours in **Claude Code** (Anthropic) or **Codex** (OpenAI), programs you install on your computer. In **Settings → AI assistant**:
 
-**How to ask.** Write in the field at the bottom and press ↵ (⇧↵ starts a new line). Examples:
+1. Under **Accounts**, click ＋ (**Add account**), choose the **AI service** (each one shows whether its program is installed), give it an **Account name** and click **Add and sign in**. Signing in happens on the service's page, in the browser. If the program is not installed, the screen shows the **Official guide** and the install command for your system (**Copy command**); once it is installed, click **Check again**. The editor installs nothing by itself.
+2. Tick, on the left of the account, the one the editor will use. Accounts apply to every EDUKORS app on the computer; changing the account starts a new conversation.
+
+Below the accounts, these apply to this editor only:
+
+- **Instructions**: a text the assistant reads in every new conversation. Use it for what always applies: the audience ("my students are in 9th grade"), the tone ("informal, short sentences"), building habits ("end each section with a 3-question quiz").
+- **MCP servers**: connect the assistant to other services. The ＋ asks for the server's **Name** and **Address (URL)**. Servers that ask you to log in on the web don't work here.
+- **Skills**: packages of instructions (a folder with a `SKILL.md` file) that teach the assistant to do a task in a certain way. The ＋ adds a skill from a ZIP file; the trash icon deletes it.
+
+**How to ask.** Write in the field at the bottom and send. Examples:
 
 - "Review the course and fix the validation errors."
 - "Create a 3-question quiz about the selected step."
 - "Build a writing task assessed by the AI after sm3, with feedback."
 - "Translate the missing texts into Spanish."
-- "Create a short course on fractions for 6th grade." (with no course open, it creates one in a new tab)
+- "Create a short course on fractions for 6th grade." (it creates the course in a new tab)
 
-Whatever is selected on the graph goes along with the message: it shows in the ◎ chip in the field (click it to leave it out). That is why "this step" means the selected step.
+Every request carries the state of the course on screen, unsaved changes included, and whatever is selected on the map. That is why "this step" means the selected step.
 
-**Standing instructions.** In **Preferences → AI agent** there is a text field the agent reads at the start of every session. Use it for what always applies: the audience ("my students are in 9th grade"), the tone ("informal, short sentences"), building habits ("end each section with a 3-question quiz"). What you ask in the conversation takes priority. The instructions apply from the next session on (**New session**).
+**The field's ＋** offers: **Add files** (attach files to the request), **Skills** and **MCP servers** (to ask it to use one of them for this request) and **Search the web** (on or off).
 
-**Skills and MCP servers.** Also in **Preferences → AI agent** you can give the agent extra abilities:
-
-- **Skills** are packages of instructions (a folder with a `SKILL.md` file, sometimes with scripts) that teach the agent to do a task in a certain way. Click **Open skills folder**, put the skill's folder there and click **Reload**: it shows up in the list.
-- **MCP servers** connect the agent to other programs and services (a folder of materials, a document base…). Paste into the **MCP servers** field the JSON the server's documentation gives (the `.mcp.json`). Servers that ask you to log in on the web don't work here.
-
-Both apply from the next session on (**New session**). The model menu, at the foot of the panel, shows the loaded skills and whether each server connected (✓) or failed (✗). If a skill needs to run a command on the computer, the agent asks for your approval **for every command**, showing the command, even in Auto mode. MCP servers work with all six agents (Claude Code, Codex, Antigravity, Kiro, Kimi Code and OpenCode); so do skills. When the agent you picked doesn't take something, the panel says so.
-
-**The three modes** (on the ✋ button in the field):
+**The three modes** (on the mode button, next to the model):
 
 | Mode | What happens |
 | --- | --- |
-| **Ask first** | Each change shows up in a card with what will change (steps added, changed, deleted, arrows). Click **Allow**, **Always allow in this session** or **Decline** (the **…** lets you say what it should do instead). |
-| **Auto edit** | The agent changes the course without asking. |
-| **Plan** | The agent studies the course and writes a plan, without changing anything. Approve the plan for it to carry out, or ask for changes. |
+| **Review before applying** | The default. Each change to the course waits in a card, with **Details**; click **Approve** or **Decline**. |
+| **Apply changes** | The assistant changes the course at once. |
+| **Plan** | The assistant reads the course and proposes a plan, without changing anything. To carry out the plan, choose another mode and ask. |
 
-In any mode, **each change the agent makes is one undo step**: ⌘Z undoes the last one. Reading a file from your Mac (attached with the 📎 clip, which shows it as a card above the text, with an × to take it off) or opening a web page always asks for your permission. The agent does not save the course file: save it yourself, with ⌘S, when you are happy.
+In any mode, **each change the assistant makes is one undo step**: ⌘Z undoes the last one. When it wants to use one of your MCP servers, it asks first: **Allow**, **Always allow** (in this conversation) or **Decline**. The assistant does not save the course file: save it yourself, with ⌘S, when you are happy.
 
-**The agent's questions.** When the request could go more than one way (the school year, the length, the languages), the agent asks in a card with options; pick one or write another answer.
+**The assistant's questions.** When the request could go more than one way (the school year, the length, the languages), the assistant asks in a card with options; pick one or write another answer.
 
-**Model and effort.** On the model button, at the foot of the panel, you choose among the models the agent offers and, when it allows it, the **effort**, on a slider that goes from the default to the maximum: more effort, more careful and slower answers. The default works for almost everything. Which agent answers (Claude Code, Codex, Antigravity, Kiro, Kimi Code or OpenCode) is not chosen here: it is in **Preferences → AI agent**.
+**Model and effort.** On the model button, next to send, you choose among the models the service offers and, when the model allows it, the **effort**: more effort, more careful and slower answers. The choice is kept for each account.
 
-**Account and usage.** The same menu shows the account in use and, when the agent reports it, the **account usage**: your subscription's limit windows, each with a bar and the time it resets. Claude Code reports them itself — the session one (*Current session*) and the weekly one (*Current week*); Codex and Antigravity show the 5-hour and the weekly limit (in Antigravity, one pair for each group of models); OpenCode shows the connected providers but reports no usage, and neither do Kiro and Kimi Code. Usage is updated when the panel opens and after each answer (⟳ updates it right away), and it also shows at the start of each new conversation. The windows belong to your account, not to the editor: they also count what you use in that same service elsewhere. To use another account, log in with it in the agent's own program and start a new conversation in the panel.
+**Account usage.** Below the field, a bar shows how much of your account's usage window (**Session limit**) has been used and when it resets. It is your account's usage in the service, not the editor's.
 
-**Sessions.** Each conversation is kept. The title at the top of the panel opens the list of past conversations (with search); click one to carry on from where it stopped. The ✎ icon starts a new conversation; each item's 🗑 deletes the conversation.
+**Conversations.** Conversations belong to the course: they are kept inside the `.egrx` when you save (so a new conversation also counts as an unsaved change). At the top of the panel, **Conversations** opens the course's history, by day, with search; click one to carry on. **New conversation** starts another one; the trash icon deletes a conversation.
 
-**Stopping.** While the agent works, the send button turns into ■: click it (or press Esc in the field) to interrupt. You can also write while it works: the message goes into the queue.
+**Stopping.** While the assistant works, the send button turns into **Stop**. Changes already made stay and can be undone.
 
 ## 13. Shortcuts
 
-On Windows and Linux, ⌘ and ⌃ stand for Ctrl, ⌥ for Alt and ⇧ for Shift; inside the editor, each shortcut already shows the keys of your system.
+On Windows and Linux, ⌘ and ⌃ stand for Ctrl, ⌥ for Alt and ⇧ for Shift.
 
 | Shortcut | Action |
 | --- | --- |
-| ⌘N / ⌘O / ⌘S / ⇧⌘S | New, open, save, save as |
+| ⌘S / ⇧⌘S | Save / save as |
 | ⌘W | Close the course tab |
 | ⌃⇥ / ⌃⇧⇥ | Next course tab / previous |
-| ⌘1 … ⌘9 | Go to course tab 1 … 9 (⌘9: the last one) |
 | ⌘Z / ⇧⌘Z | Undo / redo |
-| ⌫ | Delete whatever is selected on the graph |
+| ⌫ | Delete whatever is selected on the map |
 | ⌘D | Duplicate the selected steps |
-| ⌘C / ⌘V | Copy and paste steps (from one course tab to another too) |
+| ⌘X / ⌘C / ⌘V | Cut, copy and paste steps (from one course tab to another too) |
 | ⌘A | Select all steps |
 | ⌘0 | Fit the graph |
-| ⇧⌘L | Arrange automatically |
+| ⇧⌘L | Auto layout |
 | ⇧⌘M | Open / close the problems panel |
-| ⌘M / ⌘E / ⌘P | Map / EGF / Preview tab |
-| ⇧⌘P | Preview with map tab |
-| ⌥⌘0 | Open / close the inspector (in the Preview, the side panel) |
-| ⌘, | Preferences |
-| ⇧⌘A | Open / close the AI agent |
+| ⌘M / ⌘E / ⌘P | Map / EGF / Preview view |
+| ⇧⌘P | Preview with map view |
+| ⌘, | Settings |
+| ⇧⌘+ / ⇧⌘− | Increase / decrease the font size |
 | ⌘B / ⌘I / ⌘K | Bold / italic / link, in the content editor |
 | Esc | Clear the selection |

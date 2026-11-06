@@ -1,0 +1,118 @@
+# Installers of the Graph Editor (Electron, on Edukors Common) for macOS, Windows and Linux. Locally:
+# node scripts/package.mjs [--dir] builds this system's installers into release/ (the app is assembled outside Dropbox);
+# releases: .github/workflows/release.yml. The identities are the ones of the 2.x versions (Tauri), so the new app
+# installs over the old one: org.edukors.grapheditor (macOS), the Store's mgarlabx.EdukorsGraphEditor (MSIX) and the
+# edukors-graph-editor package (.deb).
+appId: org.edukors.grapheditor
+productName: Edukors Graph Editor
+copyright: Copyright © 2026 Edukors
+directories:
+  output: release
+  buildResources: build
+files:
+  - package.json
+  - dist/**
+  - "!dist/**/*.map"
+  # Edukors Common and its dependencies come in as production dependencies. The AI runtime runs the CLI the person
+  # installed (Claude Code, Codex), not the copy bundled in the SDK (~220 MB).
+  - "!node_modules/@anthropic-ai/claude-agent-sdk-*/**"
+  - "!**/*.d.ts"
+asar: true
+npmRebuild: false
+afterPack: build/after-pack.cjs
+fileAssociations:
+  - ext: egrx
+    name: Edukors Graph Course
+    description: Edukors Graph course
+    mimeType: application/vnd.edukors.graph+zip
+    role: Editor
+    rank: Owner
+  - ext: egf
+    name: Edukors Graph Course (EGF)
+    description: Edukors Graph course (EGF, opened as an import)
+    mimeType: application/vnd.edukors.graph+json
+    role: Editor
+    rank: Owner
+# Common's update notice reads the GitHub releases (package.json → edukors.updates); the releases also carry the
+# latest.json that the 2.x versions read (scripts/tauri-update.mjs).
+publish:
+  provider: github
+  owner: mgarlabx
+  repo: edukors_graph_editor
+
+mac:
+  category: public.app-category.education
+  icon: build/icon.png
+  minimumSystemVersion: "11.0"
+  target:
+    - target: dmg
+      arch: [universal]
+    - target: zip
+      arch: [universal]
+  artifactName: Edukors-Graph-Editor-${version}-mac-${arch}.${ext}
+  hardenedRuntime: true
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  extendInfo:
+    UTExportedTypeDeclarations:
+      - UTTypeIdentifier: org.edukors.grapheditor.egrx
+        UTTypeDescription: Edukors Graph Course
+        UTTypeConformsTo: [public.zip-archive, public.data]
+        UTTypeTagSpecification:
+          public.filename-extension: [egrx, EGRX]
+          public.mime-type: [application/vnd.edukors.graph+zip]
+      # The identifier the 2.x versions declared.
+      - UTTypeIdentifier: org.edukors.grapheditor.egf
+        UTTypeDescription: Edukors Graph Course (EGF)
+        UTTypeConformsTo: [public.json, public.data]
+        UTTypeTagSpecification:
+          public.filename-extension: [egf, EGF]
+          public.mime-type: [application/vnd.edukors.graph+json]
+dmg:
+  artifactName: Edukors-Graph-Editor-${version}-mac-${arch}.${ext}
+  # The disk image signed too (Developer ID), as in 2.x; the release workflow notarizes and staples it.
+  sign: true
+
+win:
+  icon: build/icon.png
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: appx
+      arch: [x64]
+  artifactName: Edukors-Graph-Editor-${version}-setup.${ext}
+# The installer outside the Store, per user. build/installer.nsh first removes the 2.x version (Tauri) installed by
+# its own installer, keeping its data for the migration.
+nsis:
+  oneClick: true
+  perMachine: false
+  include: build/installer.nsh
+# Microsoft Store package (MSIX); the Store signs it. Identity from Partner Center → Product identity, and the
+# application id of the 2.x package, so the Store updates it in place. Tiles in build/appx/ (scripts/appx-tiles.py).
+appx:
+  identityName: mgarlabx.EdukorsGraphEditor
+  publisher: CN=25CB0A95-E013-4D6C-9667-81DF1CC50F46
+  publisherDisplayName: mgarlabx
+  displayName: Edukors Graph Editor
+  applicationId: EdukorsGraphEditor
+  backgroundColor: transparent
+  languages: [en-US, pt-BR, es-ES]
+  minVersion: 10.0.17763.0
+  maxVersionTested: 10.0.26100.0
+  artifactName: Edukors-Graph-Editor-${version}-${arch}.${ext}
+
+linux:
+  icon: build/icon.png
+  target:
+    - target: AppImage
+      arch: [x64]
+    - target: deb
+      arch: [x64]
+  category: Education
+  executableName: edukors-graph-editor
+  synopsis: Visual editor of Edukors Graph courses
+  maintainer: Edukors
+  artifactName: Edukors-Graph-Editor-${version}-linux-${arch}.${ext}
+# The package name of the 2.x .deb, so dpkg upgrades it.
+deb:
+  packageName: edukors-graph-editor

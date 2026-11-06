@@ -1,167 +1,37 @@
 /**
- * New, open, save, save as, close, export (plan 5.8).
+ * What the editor does with course files besides Save and Open, which are Common's (src/common/document.ts): a
+ * course's name, a new course, the samples, and the two exports -- the course as .egf for the player, the Moodle
+ * plugin and the gallery, and the standalone player (HTML).
  *
- * A course is one `.egf` file (Edukors Graph Format, JSON inside), written in
- * the style it was read in so that opening and saving changes nothing. A
- * `.json` path (a recent file from before the format) still opens; its first
- * save asks where to put the `.egf`. Where the nodes sit is in it too, in each node's
- * `position`.
- *
- * Each course opens in a tab of its own (store/docs.ts); a file already open
- * is shown, not opened twice.
+ * Exports are not saves: they never write the course's .egrx or the .egf it came from (checked again in the main
+ * process, src/main/files.ts).
  */
-import { native, pickOpen, pickSave, alertDialog, confirmDialog, COURSE_EXT } from "./platform";
+import { native } from "./platform";
 import { baseName as fileName } from "./os";
 import { buildPlayer, titleOf } from "./export";
-import { askUnsaved } from "../ui/dialogs";
-import { isDirty, useEditor, type DocSlice } from "../store/editor";
-import { activateDoc, dirtyDocs, docState, docWithPath, dropDoc, flushPending, openDoc, patchDoc } from "../store/docs";
-import { usePrefs } from "../store/prefs";
-import { useUi } from "../store/ui";
-import { positionsOf } from "../store/layout";
-import { detectStyle, stringify, syntaxErrorAt } from "../course/serialize";
+import { useEditor, type DocSlice } from "../store/editor";
+import { docState, openDoc } from "../store/docs";
+import { detectStyle } from "../course/serialize";
+import { exportEgf } from "../course/egrx";
 import { newCourse } from "../course/factory";
-import { t } from "../i18n";
+import { getUiLang, t } from "../i18n";
 import { errorText } from "../i18n/errors";
-import type { Course } from "../schema/types";
 
-/** What a tab, the toolbar and the window call a course: its file's name, or its title until it has a file. */
+/** What a tab and the assistant call a course: its file's name, or its title until it has a file. */
 export const docLabel = (doc: Pick<DocSlice, "path" | "course">): string =>
   doc.path ? fileName(doc.path) : (doc.course ? titleOf(doc.course, "").trim() : "") || t("file.untitled");
 
-export const windowTitle = () => {
-  const s = useEditor.getState();
-  return s.course ? `${isDirty(s) ? "• " : ""}${docLabel(s)} — Edukors Graph Editor` : "Edukors Graph Editor";
-};
-
-/** Asks what to do with the unsaved changes of an open course. True when it is fine to go on. */
-export async function settleUnsaved(id = useEditor.getState().docId): Promise<boolean> {
-  flushPending();
-  const doc = id ? docState(id) : undefined;
-  if (!doc || !isDirty(doc)) return true;
-  const choice = await askUnsaved(docLabel(doc));
-  if (choice === "cancel") return false;
-  if (choice === "save") return saveCourse(false, id);
-  return true;
-}
-
-/** Before the window closes: each course with unsaved changes comes on screen in turn and is asked about. */
-export async function settleAll(): Promise<boolean> {
-  flushPending();
-  for (const id of dirtyDocs()) {
-    activateDoc(id);
-    if (!(await settleUnsaved(id))) return false;
-  }
-  return true;
-}
-
-/** Closes a tab, asking first when its course has unsaved changes (shown, so the question is about what is seen). */
-export async function closeDoc(id = useEditor.getState().docId): Promise<boolean> {
-  if (!id) return false;
-  const doc = docState(id);
-  if (doc && isDirty(doc)) activateDoc(id);
-  if (!(await settleUnsaved(id))) return false;
-  dropDoc(id);
-  return true;
-}
-
-export function createCourse() {
-  const lang = usePrefs.getState().uiLang;
-  // Nothing in it is the author's yet: closing it untouched asks nothing.
-  openDoc(newCourse(lang, t("file.newTitle")), { path: null, saved: true });
-}
+/** A new course, in a tab of its own; nothing in it is the author's yet. */
+export const createCourse = () => openDoc(newCourse(getUiLang(), t("file.newTitle")), { path: null, saved: true });
 
 /** One of the samples, in a tab of its own. */
 export function openSample(raw: string) {
-  openDoc(JSON.parse(raw), { path: null, style: detectStyle(raw), saved: true });
+  const id = openDoc(JSON.parse(raw), { path: null, style: detectStyle(raw), saved: true });
   useEditor.getState().requestLayout();
+  return id;
 }
 
-const opening = new Set<string>();
-
-export async function openCourse(path?: string): Promise<void> {
-  const target = path ?? (await pickOpen());
-  if (!target) return;
-  const open = docWithPath(target);
-  if (open) return activateDoc(open);
-  if (opening.has(target)) return;
-  opening.add(target);
-  try {
-    await readCourse(target);
-  } finally {
-    opening.delete(target);
-  }
-}
-
-/** A recent file that is gone: "File not found", and the choice to drop it from the list. */
-export async function openRecent(path: string): Promise<void> {
-  if (!docWithPath(path) && !(await native.fileExists(path).catch(() => true))) {
-    if (await confirmDialog(`${path}\n\n${t("file.notFoundRemove")}`, t("file.notFound"), t("file.removeRecent"), t("file.keepRecent")))
-      await usePrefs.getState().save({ recent: usePrefs.getState().recent.filter((p) => p !== path) });
-    return;
-  }
-  return openCourse(path);
-}
-
-async function readCourse(target: string) {
-  let raw: string;
-  try {
-    raw = await native.readText(target);
-  } catch (e) {
-    await alertDialog(errorText(e), t("file.openFailed"));
-    return;
-  }
-  let course: Course;
-  try {
-    course = JSON.parse(raw);
-  } catch {
-    const at = syntaxErrorAt(raw);
-    await alertDialog(at ? `${t("file.notJson")}\n${t("json.at", at)}` : t("file.notJson"), t("file.openFailed"));
-    return;
-  }
-  if (!course || typeof course !== "object" || !("nodes" in course)) {
-    await alertDialog(t("file.notCourse"), t("file.openFailed"));
-    return;
-  }
-  openDoc(course, { path: target, style: detectStyle(raw), saved: true });
-  // A course opened from a file starts on the whole map, the side panel closed.
-  useUi.setState({ inspector: false });
-  if (!placed(course)) useEditor.getState().requestLayout();
-  await usePrefs.getState().addRecent(target);
-}
-
-const placed = (course: Course) => Array.isArray(course.nodes) && course.nodes.every((n) => positionsOf(course)[n?.id]);
-
-/** Saves an open course, the one on screen unless told which. */
-export async function saveCourse(saveAs: boolean, id = useEditor.getState().docId): Promise<boolean> {
-  const doc = id ? docState(id) : undefined;
-  if (!doc?.course) return false;
-  const { course, style } = doc;
-  let path = doc.path;
-  if (!path || saveAs || !isEgf(path)) {
-    const picked = await pickSave(path ? withEgf(path) : `${slug(titleOf(course, "course"))}.${COURSE_EXT}`);
-    if (!picked) return false;
-    path = withEgf(picked);
-  }
-  const text = stringify(course, style);
-  try {
-    await native.writeText(path, text);
-  } catch (e) {
-    await alertDialog(errorText(e), t("file.saveFailed"));
-    return false;
-  }
-  // What was written, not what the course may have become meanwhile.
-  patchDoc(id, { path, savedCourse: course });
-  await usePrefs.getState().addRecent(path);
-  return true;
-}
-
-const isEgf = (path: string) => path.toLowerCase().endsWith(`.${COURSE_EXT}`);
-
-/** The path with the course extension, in place of a `.json` one. */
-export const withEgf = (path: string) => (isEgf(path) ? path : `${path.replace(/\.json$/i, "")}.${COURSE_EXT}`);
-
-const slug = (text: string) =>
+export const slug = (text: string) =>
   text
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
@@ -169,16 +39,44 @@ const slug = (text: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "") || "course";
 
-const baseName = () => {
-  const s = useEditor.getState();
-  if (s.path) return s.path.replace(/(-course)?\.(egf|json)$/i, "");
-  return slug(titleOf(s.course!, "course"));
-};
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const common: any = globalThis;
+/** Common's interface texts (its export screen's), and the editor's own for the formats. */
+const commonT = (key: string) => common.EdukorsLanguages?.[document.documentElement.lang]?.messages?.[key] ?? common.EdukorsLanguages?.en?.messages?.[key] ?? key;
+let lastFormat = "egf";
 
-export async function exportPlayer(): Promise<void> {
-  const course = useEditor.getState().course;
-  if (!course) return;
-  const path = await pickSave(`${baseName()}-player.html`, [{ name: "HTML", extensions: ["html"] }]);
-  if (!path) return;
-  await native.writeText(path, buildPlayer(course)).catch((e) => alertDialog(errorText(e), t("file.saveFailed")));
+/**
+ * Export, on Common's export screen: the course as .egf (for the player, the Moodle plugin and the gallery: the course
+ * as it is) or the standalone player (HTML). The file goes next to the course's .egrx, with its name; a course
+ * without a file is saved first. `doc` is Common's tab of the course.
+ */
+export async function exportCourse(id: string, doc: { name?: string; folder?: string; path?: string }): Promise<void> {
+  if (!(await common.EdukorsFiles.saveFirst(doc))) return;
+  const formats = [
+    { id: "egf", label: t("export.egf"), description: t("export.egfDesc"), extension: ".egf" },
+    { id: "html", label: t("export.player"), description: t("export.playerDesc"), extension: ".html" },
+  ];
+  await common.EdukorsFileDialogs.exportAs({
+    t: commonT,
+    name: doc.name,
+    folder: doc.folder,
+    formats,
+    format: lastFormat,
+    commit: async ({ name, folder, format, replace, progress }: { name: string; folder: string; format: "egf" | "html"; replace?: boolean; progress: (n: number) => void }) => {
+      const state = docState(id);
+      if (!state?.course) return { error: t("file.saveFailed") };
+      progress(20);
+      try {
+        const text = format === "egf" ? exportEgf({ course: state.course, style: state.style }) : buildPlayer(state.course);
+        const written = await native.exportFile({ kind: format, name, folder, text, replace: !!replace, protect: [doc.path].filter((p): p is string => !!p) });
+        if (written && "exists" in written) return { exists: true };
+        progress(100);
+        lastFormat = format;
+        common.EdukorsFileDialogs.toast({ t: commonT, message: `${t("export.done")}: ${name}.${format}` });
+        return {};
+      } catch (e) {
+        return { error: errorText(e) };
+      }
+    },
+  });
 }

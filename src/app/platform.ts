@@ -1,26 +1,25 @@
 /**
  * The native side, behind one door.
  *
- * In the app every call goes to the Rust commands in src-tauri/src/lib.rs. In a
- * plain browser (`npm run dev`, used to work on the interface) the same calls
- * fall back to what a browser has, so the editor still opens, edits and
- * validates; only the Keychain and the native dialogs are missing there.
+ * In the desktop app every call goes to the editor's own bridge, window.graph (src/main/preload.ts, checked again
+ * in src/main/index.ts); what every Edukors app shares (files, Recent, the AI assistant, settings) is Common's,
+ * reached through its own globals. In a plain browser (the headless tests, a preview of the page) the same calls
+ * fall back to what a browser has, so the editor still opens, edits and validates.
  */
-import { invoke } from "@tauri-apps/api/core";
-import { baseName } from "./os";
 
-export const isTauri = (): boolean => typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type Bridge = { invoke: (method: string, ...args: unknown[]) => Promise<any> };
+const bridge = (): Bridge | undefined => (globalThis as any).graph;
+
+/** Inside the desktop app (Electron, with the editor's bridge). */
+export const isDesktop = (): boolean => !!bridge();
 
 /** The links the editor hands to the computer's browser; anything else stays where it is. */
 export const EXTERNAL_LINK = /^(https?:|mailto:)/i;
 
-/** Opens a link in the computer's browser: the webview itself never leaves the editor. */
-export async function openLink(href: string) {
-  if (!EXTERNAL_LINK.test(href)) return;
-  if (isTauri()) {
-    const { openUrl } = await import("@tauri-apps/plugin-opener");
-    await openUrl(href);
-  } else window.open(href, "_blank", "noopener");
+/** Opens a link in the computer's browser: the window itself never leaves the editor (Common's host opens it). */
+export function openLink(href: string) {
+  if (EXTERNAL_LINK.test(href)) window.open(href, "_blank", "noopener");
 }
 
 export interface HttpAnswer {
@@ -31,58 +30,24 @@ export interface HttpAnswer {
   ms: number;
 }
 
-const DEV_KEY = "edukors-editor.dev-openrouter-key";
-const PREFS = "edukors-editor.prefs";
-const HISTORY = "edukors-editor.agent-history";
+const DEV_KEY = "edukors-graph.dev-openrouter-key";
+const PREFS = "edukors-graph.prefs";
 
-const readHistory = (): Record<string, { meta: unknown; body: unknown }> => JSON.parse(localStorage.getItem(HISTORY) ?? "{}");
-const writeHistory = (all: Record<string, { meta: unknown; body: unknown }>) => localStorage.setItem(HISTORY, JSON.stringify(all));
-
-const browser: Record<string, (args: Record<string, unknown>) => Promise<unknown>> = {
-  read_text: async ({ path }) => {
-    const res = await fetch(String(path));
-    if (!res.ok) throw new Error(`${path}: ${res.status}`);
-    return res.text();
-  },
-  write_text: async ({ path, contents }) => {
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([String(contents)], { type: "application/json" }));
-    a.download = baseName(String(path)) || "course.egf";
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-  },
-  take_opened_files: async () => [],
-  from_store: async () => false,
-  prefs_load: async () => JSON.parse(localStorage.getItem(PREFS) ?? "{}"),
-  prefs_save: async ({ prefs }) => localStorage.setItem(PREFS, JSON.stringify(prefs)),
-  key_status: async () => Boolean(localStorage.getItem(DEV_KEY)),
-  key_set: async ({ key }) => localStorage.setItem(DEV_KEY, String(key)),
-  key_delete: async () => localStorage.removeItem(DEV_KEY),
-  set_menu: async () => undefined,
-  // The agent's saved conversations (src-tauri/src/agent.rs), kept in the browser here.
-  agent_history_list: async () => Object.values(readHistory()).map((c) => c.meta),
-  agent_history_read: async ({ id }) => {
-    const found = readHistory()[String(id)];
-    if (!found) throw new Error(`no conversation ${id}`);
-    return found.body;
-  },
-  agent_history_write: async ({ id, meta, body }) => writeHistory({ ...readHistory(), [String(id)]: { meta, body } }),
-  agent_history_delete: async ({ id }) => {
-    const { [String(id)]: _, ...rest } = readHistory();
-    writeHistory(rest);
-  },
-  ai_models: async () => (await fetch("https://openrouter.ai/api/v1/models")).json(),
-  // Development only: the key sits in the browser here, which the app never allows.
-  ai_post: async ({ url, body }) => {
+const browser: Record<string, (...args: any[]) => Promise<unknown>> = {
+  prefsLoad: async () => JSON.parse(localStorage.getItem(PREFS) ?? "{}"),
+  prefsSave: async (prefs) => localStorage.setItem(PREFS, JSON.stringify(prefs)),
+  keyStatus: async () => Boolean(localStorage.getItem(DEV_KEY)),
+  keySet: async (key) => localStorage.setItem(DEV_KEY, String(key)),
+  keyDelete: async () => localStorage.removeItem(DEV_KEY),
+  aiModels: async () => (await fetch("https://openrouter.ai/api/v1/models")).json(),
+  legacyConversations: async () => null,
+  // Development only: the key sits in the browser here, which the desktop app never allows.
+  aiPost: async (url, body) => {
     const key = localStorage.getItem(DEV_KEY);
     if (!key) throw new Error("no OpenRouter key");
     const started = performance.now();
     try {
-      const res = await fetch(String(url), {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}`, "X-Title": "Edukors Graph Editor" },
-        body: JSON.stringify(body),
-      });
+      const res = await fetch(String(url), { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}`, "X-Title": "Edukors Graph Editor" }, body: JSON.stringify(body) });
       const raw = await res.text();
       let json: unknown = null;
       try {
@@ -90,12 +55,7 @@ const browser: Record<string, (args: Record<string, unknown>) => Promise<unknown
       } catch {
         /* unreadable */
       }
-      const error =
-        json === null
-          ? "unreadable answer"
-          : res.status >= 400
-            ? String((json as { error?: { message?: string } }).error?.message ?? `request failed (${res.status})`)
-            : null;
+      const error = json === null ? "unreadable answer" : res.status >= 400 ? String((json as any)?.error?.message ?? `request failed (${res.status})`) : null;
       return { status: res.status, json, raw, error, ms: Math.round(performance.now() - started) };
     } catch (e) {
       return { status: 0, json: null, raw: "", error: String(e), ms: Math.round(performance.now() - started) };
@@ -103,69 +63,26 @@ const browser: Record<string, (args: Record<string, unknown>) => Promise<unknown
   },
 };
 
-export async function call<T>(command: string, args: Record<string, unknown> = {}): Promise<T> {
-  if (isTauri()) return invoke<T>(command, args);
-  const fallback = browser[command];
-  if (!fallback) throw new Error(`${command} is not available outside the app`);
-  return (await fallback(args)) as T;
+export async function call<T>(method: string, ...args: unknown[]): Promise<T> {
+  const b = bridge();
+  if (b) return b.invoke(method, ...args);
+  const fallback = browser[method];
+  if (!fallback) throw new Error(`${method} is not available outside the desktop app`);
+  return (await fallback(...args)) as T;
 }
 
 export const native = {
-  readText: (path: string) => call<string>("read_text", { path }),
-  fileExists: (path: string) => call<boolean>("file_exists", { path }),
-  writeText: (path: string, contents: string) => call<void>("write_text", { path, contents }),
-  takeOpenedFiles: () => call<string[]>("take_opened_files"),
-  /** Installed from the Microsoft Store, which brings the updates itself. */
-  fromStore: () => call<boolean>("from_store"),
-  prefsLoad: () => call<Record<string, unknown>>("prefs_load"),
-  prefsSave: (prefs: unknown) => call<void>("prefs_save", { prefs }),
-  keyStatus: () => call<boolean>("key_status"),
-  keySet: (key: string) => call<void>("key_set", { key }),
-  keyDelete: () => call<void>("key_delete"),
-  aiPost: (url: string, body: unknown, timeout?: number) => call<HttpAnswer>("ai_post", { url, body, timeout }),
-  aiModels: () => call<{ data?: unknown[] }>("ai_models"),
-  setMenu: (lang: string, recent: string[], map: { langs: string[]; current: string }, state: { course: boolean; tabs: number; dialog: boolean }) =>
-    call<void>("set_menu", { lang, recent, map, state }),
+  prefsLoad: () => call<Record<string, unknown>>("prefsLoad"),
+  prefsSave: (prefs: unknown) => call<void>("prefsSave", prefs),
+  keyStatus: () => call<boolean>("keyStatus"),
+  keySet: (key: string) => call<void>("keySet", key),
+  keyDelete: () => call<void>("keyDelete"),
+  aiPost: (url: string, body: unknown, timeout?: number) => call<HttpAnswer>("aiPost", url, body, timeout),
+  aiModels: () => call<{ data?: unknown[] }>("aiModels"),
+  /** What 2.19-2.20 kept of the conversations about a course file (JSON bytes), or null. */
+  legacyConversations: (coursePath: string) => call<Uint8Array | null>("legacyConversations", coursePath),
+  /** A document for one of the editor's frames, served from graph-frame:// (replacing `previous`). */
+  frame: (html: string, previous?: string) => call<{ id: string; url: string }>("frame", html, previous),
+  frameForget: (id: string) => call<void>("frameForget", id),
+  exportFile: (request: { kind: "egf" | "html"; name: string; folder: string; text: string; replace?: boolean; protect?: string[] }) => call<{ file: string } | { exists: true }>("export", request),
 };
-
-// ---------------------------------------------------------------- dialogs --
-
-/** Edukors Graph Format: the course file's own extension. */
-export const COURSE_EXT = "egf";
-
-export async function pickOpen(filters = [{ name: "Edukors Graph", extensions: [COURSE_EXT] }]): Promise<string | null> {
-  if (isTauri()) {
-    const { open } = await import("@tauri-apps/plugin-dialog");
-    const picked = await open({ multiple: false, directory: false, filters });
-    return typeof picked === "string" ? picked : null;
-  }
-  return null;
-}
-
-export async function pickSave(defaultPath: string, filters = [{ name: "Edukors Graph", extensions: [COURSE_EXT] }]): Promise<string | null> {
-  if (isTauri()) {
-    const { save } = await import("@tauri-apps/plugin-dialog");
-    return (await save({ defaultPath, filters })) ?? null;
-  }
-  return defaultPath;
-}
-
-export async function confirmDialog(message: string, title: string, ok: string, cancel: string): Promise<boolean> {
-  if (isTauri()) {
-    const { ask } = await import("@tauri-apps/plugin-dialog");
-    return ask(message, { title, kind: "warning", okLabel: ok, cancelLabel: cancel });
-  }
-  return window.confirm(message);
-}
-
-export async function alertDialog(message: string, title: string): Promise<void> {
-  if (isTauri()) {
-    const { message: show } = await import("@tauri-apps/plugin-dialog");
-    await show(message, { title, kind: "error" });
-    return;
-  }
-  window.alert(message);
-}
-
-/** Reads a file the user dropped or picked in a browser <input type=file>. */
-export const readBrowserFile = (file: File): Promise<ArrayBuffer> => file.arrayBuffer();

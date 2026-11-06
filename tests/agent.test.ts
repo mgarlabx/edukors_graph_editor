@@ -12,9 +12,6 @@ import { applyOperations, EditError, outline, placeAdded, type Operation } from 
 import { runTool } from "../src/agent/editorTools";
 import { messageContext, selectionLabel } from "../src/agent/context";
 import { useUi } from "../src/store/ui";
-import { applyEvent, emptyTranscript, setToolInput, setToolResult, settle, splitContext, type Transcript } from "../src/agent/transcript";
-import type { AiEvent, AiEventBody } from "@edukors/ai-cli";
-import { splitUsage } from "../src/agent/usageReport";
 import { diagnose } from "../src/validate";
 import type { Course } from "../src/schema/types";
 import { positionsOf } from "../src/store/layout";
@@ -224,23 +221,22 @@ describe("agent tools in the editor", () => {
 });
 
 describe("agent context", () => {
-  it("tells the agent the course on screen and the selection, and the panel reads the selection back", () => {
+  it("tells the agent the course on screen and the selection", () => {
     openDoc(short(), { path: "/courses/short.json", saved: true });
     editor().select({ nodes: ["q1"], edge: null });
     const { block, docId } = messageContext(true);
     expect(docId).toBe(editor().docId);
     expect(block).toContain("short.json");
     expect(block).toMatch(/Selected: q1 \(quiz\) ".+"\./);
-    expect(splitContext(`${block}\n\nMake it harder`)).toEqual({ text: "Make it harder", context: selectionLabel()! });
     expect(messageContext(false).block).not.toContain("Selected");
   });
 
-  it("labels several nodes and edges the same way on both sides", () => {
+  it("names several selected nodes, and a selected edge by its ends", () => {
     openDoc(short(), { path: null, saved: true });
     editor().select({ nodes: ["q1", "f1"], edge: null });
-    expect(splitContext(messageContext(true).block + "\n\nhi").context).toBe(selectionLabel());
+    expect(messageContext(true).block).toMatch(/q1[\s\S]*f1/);
     editor().select({ nodes: [], edge: 3 });
-    expect(splitContext(messageContext(true).block + "\n\nhi").context).toBe("q1 → f1");
+    expect(messageContext(true).block).toContain("q1 → f1");
   });
 
   it("says which text the full-screen editor has open, and in which language", () => {
@@ -258,90 +254,5 @@ describe("agent context", () => {
 
   it("says when no course is open", () => {
     expect(messageContext(true).block).toContain("No course is open");
-  });
-});
-
-describe("agent transcript", () => {
-  const scope = { appId: "graph", documentId: "c1", accountId: "a1", providerId: "claude", sessionId: "s1", requestId: "r1", seq: 0, at: "" };
-  const ev = (body: AiEventBody) => ({ ...scope, ...body }) as AiEvent;
-  const fold1 = (events: AiEventBody[]) => events.reduce((t: Transcript, e) => applyEvent(t, ev(e)), emptyTranscript());
-
-  it("streams the answer and keeps it when the turn ends", () => {
-    let t = fold1([{ type: "textDelta", text: "Olá, " }, { type: "textDelta", text: "mundo" }]);
-    expect(t.live!.blocks[0].text).toBe("Olá, mundo");
-    expect(t.items).toHaveLength(0);
-    t = applyEvent(t, ev({ type: "turnCompleted" }));
-    expect(t.live).toBeNull();
-    expect(t.items).toEqual([{ kind: "text", key: "r1:0", text: "Olá, mundo" }]);
-  });
-
-  it("puts a tool card after the words that led to it, with the input and result the panel gives", () => {
-    let t = fold1([{ type: "textDelta", text: "Vou ler o curso." }, { type: "toolStarted", callId: "c1", tool: "read_course" }]);
-    t = setToolResult(setToolInput(t, "c1", { nodes: ["q1"] }), "c1", "outline");
-    t = [ev({ type: "toolCompleted", callId: "c1", tool: "read_course", ok: true }), ev({ type: "textDelta", text: "Pronto." }), ev({ type: "turnCompleted" })].reduce(applyEvent, t);
-    expect(t.items.map((i) => i.kind)).toEqual(["text", "tool", "text"]);
-    expect(t.items[1]).toMatchObject({ id: "c1", name: "read_course", input: { nodes: ["q1"] }, status: "done", result: "outline" });
-  });
-
-  it("counts a refused or invalid call as an error, and shows a card once", () => {
-    const t = fold1([
-      { type: "toolStarted", callId: "c1", tool: "edit_course" },
-      { type: "toolStarted", callId: "c1", tool: "edit_course" },
-      { type: "toolCompleted", callId: "c1", tool: "edit_course", ok: false, errorCode: "TOOL_INVALID_ARGUMENTS" },
-    ]);
-    expect(t.items).toHaveLength(1);
-    expect(t.items[0]).toMatchObject({ status: "error", result: "TOOL_INVALID_ARGUMENTS" });
-  });
-
-  it("keeps what was written when the person interrupts, and does not call it an error", () => {
-    const t = fold1([{ type: "textDelta", text: "Os gatos são" }, { type: "cancelled" }]);
-    expect(t.live).toBeNull();
-    expect(t.items).toEqual([{ kind: "text", key: "r1:0", text: "Os gatos são" }, expect.objectContaining({ kind: "notice", level: "info", code: "interrupted" })]);
-  });
-
-  it("notes a failed turn with the library's code", () => {
-    const t = fold1([{ type: "error", error: { code: "RATE_LIMITED", message: "limit", retryable: true } }]);
-    expect(t.items).toEqual([expect.objectContaining({ kind: "notice", level: "error", code: "RATE_LIMITED", text: "limit" })]);
-  });
-
-  it("stops the tool calls a finished turn left running", () => {
-    const t = settle(fold1([{ type: "toolStarted", callId: "c1", tool: "read_course" }]));
-    expect(t.items[0]).toMatchObject({ status: "error" });
-  });
-
-  it("takes the context block off a message read back", () => {
-    expect(splitContext('<editor-context>\nCourse on screen: "Gatos"\nSelected: q1 (quiz) "Quiz".\nMode: ask.\n</editor-context>\n\nQuantos passos?')).toEqual({ text: "Quantos passos?", context: "q1 · Quiz" });
-  });
-});
-
-describe("agent usage", () => {
-  // Claude Code's /usage report, as it came on 2026-10-02.
-  const REPORT = `You are currently using your subscription to power your Claude Code usage
-
-Current session: 22% used · resets Oct 2 at 1:39pm (America/Sao_Paulo)
-Current week (all models): 4% used · resets Oct 8 at 6:59am (America/Sao_Paulo)
-
-What's contributing to your limits usage?
-Approximate, based on local sessions on this machine — does not include other devices or claude.ai.
-
-Last 24h · 751 requests · 23 sessions
-  82% of your usage was at >150k context`;
-
-  it("puts each window's line on top, as written, with the share used", () => {
-    const { windows, rest } = splitUsage(REPORT);
-    expect(windows).toEqual([
-      { line: "Current session: 22% used · resets Oct 2 at 1:39pm (America/Sao_Paulo)", percent: 22 },
-      { line: "Current week (all models): 4% used · resets Oct 8 at 6:59am (America/Sao_Paulo)", percent: 4 },
-    ]);
-    expect(rest.startsWith("You are currently using your subscription")).toBe(true);
-    expect(rest).toContain("  82% of your usage was at >150k context");
-    expect(rest).not.toContain("Current session");
-  });
-
-  it("shows a report it cannot read whole, and a window without a percentage without a bar", () => {
-    expect(splitUsage("You are using an API key.\nCost so far: $0.12")).toEqual({ windows: [], rest: "You are using an API key.\nCost so far: $0.12" });
-    expect(splitUsage("Current session: resets soon").windows).toEqual([{ line: "Current session: resets soon" }]);
-    expect(splitUsage("Current week: 140% used").windows[0].percent).toBe(100);
-    expect(splitUsage("")).toEqual({ windows: [], rest: "" });
   });
 });

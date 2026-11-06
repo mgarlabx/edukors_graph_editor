@@ -1,46 +1,28 @@
 /**
- * Preferences, mirroring the player's config.php so that what is calibrated in
- * the editor -- the judge's exact slug, its confidence floor -- is what goes into
- * production. The key is not here: it lives in the Keychain, and the webview
- * only ever learns whether there is one.
+ * The editor's own preferences, mirroring the player's config.php so that what is calibrated in the editor -- the
+ * judge's exact slug, its confidence floor -- is what goes into production. The key is not here: it lives in the
+ * main process (encrypted by the system), and the page only ever learns whether there is one.
+ *
+ * Everything every Edukors app shares is Common's: the interface language (followed here, see followLanguage), the
+ * theme, the AI assistant's accounts and settings, Recent, the terms of use.
  */
 import { create } from "zustand";
 import { native } from "../app/platform";
-import { syncMenu } from "../app/menu";
 import { setUiLang, type UiLang } from "../i18n";
 
 export interface Prefs {
+  /** the interface language, Common's; languages the editor does not have yet show English */
   uiLang: UiLang;
-  theme: "system" | "light" | "dark";
   ai: { model: string; maxTokens: number; timeout: number; url: string };
   judge: { model: string; minConfidence: number; strictModel: boolean; url: string; timeout: number };
-  /**
-   * the AI agent of the side panel: the account it runs on (an id in the shared EDUKORS registry,
-   * see @edukors/ai-cli), the model and effort chosen for each account, the mode, the panel's width,
-   * the person's standing instructions, and their MCP servers (the text of a .mcp.json).
-   */
-  agent: {
-    account: string | null;
-    accounts: Record<string, { model: string; effort: string }>;
-    mode: "ask" | "auto";
-    width: number;
-    instructions: string;
-    mcp: string;
-  };
-  /** the widths of the right side panels, as last dragged: the inspector's and the preview's */
+  /** the widths of the panels beside the stage, as last dragged: the inspector's and the preview's */
   sidebar: { inspector: number; preview: number };
   /** whether the content editor breaks long lines at its edge */
   editorWrap: boolean;
-  recent: string[];
-  /** the version of the terms of use the person accepted ("" before they do: see src/app/TermsModal.tsx) */
-  terms: string;
-  /** whether the app looks for a new version on its own, once a day at most, and when it last did (ms; see src/app/updates.ts) */
-  updates: { auto: boolean; lastCheck: number };
 }
 
 export const DEFAULT_PREFS: Prefs = {
   uiLang: "pt",
-  theme: "system",
   ai: {
     model: "openai/gpt-5.6-luna",
     maxTokens: 1200,
@@ -54,124 +36,65 @@ export const DEFAULT_PREFS: Prefs = {
     url: "https://openrouter.ai/api/alpha/decisions",
     timeout: 45,
   },
-  agent: {
-    account: null,
-    accounts: {},
-    mode: "ask",
-    width: 420,
-    instructions: "",
-    mcp: "",
-  },
   sidebar: { inspector: 420, preview: 440 },
   editorWrap: true,
-  recent: [],
-  terms: "",
-  updates: { auto: true, lastCheck: 0 },
 };
+
+/** What 2.20 kept and Common now applies once (src/main/legacy.ts): the page reads it on its first start. */
+export interface LegacySeed {
+  language?: string;
+  theme?: string;
+  terms?: string;
+  recent?: string[];
+  assistantWidth?: number;
+}
 
 interface PrefsState extends Prefs {
   loaded: boolean;
   hasKey: boolean;
+  seed: LegacySeed | null;
   load(): Promise<void>;
-  save(change: Partial<Prefs>): Promise<void>;
-  addRecent(path: string): Promise<void>;
+  save(change: Partial<Omit<Prefs, "uiLang">>): Promise<void>;
   refreshKey(): Promise<void>;
+  /** The seed was applied: it is not offered again. */
+  dropSeed(): Promise<void>;
 }
 
-/**
- * The agent's settings. Accounts replaced the provider choice: what an older
- * version kept per provider is dropped, and the instructions, MCP servers,
- * mode and width carry over.
- */
-function mergeAgent(raw: Partial<Prefs["agent"]> | undefined): Prefs["agent"] {
-  const d = DEFAULT_PREFS.agent;
-  const r = (raw ?? {}) as Partial<Prefs["agent"]>;
-  const accounts: Prefs["agent"]["accounts"] = {};
-  for (const [id, v] of Object.entries(r.accounts && typeof r.accounts === "object" ? r.accounts : {}))
-    if (v && typeof v.model === "string" && typeof v.effort === "string") accounts[id] = { model: v.model, effort: v.effort };
-  return {
-    account: typeof r.account === "string" ? r.account : null,
-    accounts,
-    mode: r.mode === "auto" ? "auto" : "ask",
-    width: typeof r.width === "number" ? r.width : d.width,
-    instructions: typeof r.instructions === "string" ? r.instructions : d.instructions,
-    mcp: typeof r.mcp === "string" ? r.mcp : d.mcp,
-  };
-}
-
-const merge = (raw: Record<string, unknown>): Prefs => {
+const merge = (raw: Record<string, unknown>): Omit<Prefs, "uiLang"> => {
   const r = raw as Partial<Prefs>;
   return {
-    ...DEFAULT_PREFS,
-    ...r,
-    // Temperature is no longer a preference: what an older version saved is dropped.
     ai: (({ temperature: _, ...ai }) => ai)({ ...DEFAULT_PREFS.ai, ...(r.ai ?? {}) } as Prefs["ai"] & { temperature?: number }),
-    // The exact slug and the decisions endpoint are no longer preferences: whatever an older version saved, the server's are used.
+    // The exact slug and the decisions endpoint are not preferences: whatever was saved, the server's are used.
     judge: { ...DEFAULT_PREFS.judge, ...(r.judge ?? {}), strictModel: true, url: DEFAULT_PREFS.judge.url },
-    agent: mergeAgent(r.agent),
     sidebar: { ...DEFAULT_PREFS.sidebar, ...(r.sidebar ?? {}) },
     editorWrap: typeof r.editorWrap === "boolean" ? r.editorWrap : DEFAULT_PREFS.editorWrap,
-    recent: Array.isArray(r.recent) ? r.recent.filter((p) => typeof p === "string") : [],
-    terms: typeof r.terms === "string" ? r.terms : "",
-    updates: {
-      auto: typeof r.updates?.auto === "boolean" ? r.updates.auto : true,
-      lastCheck: typeof r.updates?.lastCheck === "number" ? r.updates.lastCheck : 0,
-    },
   };
 };
 
-const persisted = (s: PrefsState): Prefs => ({
-  uiLang: s.uiLang,
-  theme: s.theme,
-  ai: s.ai,
-  judge: s.judge,
-  agent: s.agent,
-  sidebar: s.sidebar,
-  editorWrap: s.editorWrap,
-  recent: s.recent,
-  terms: s.terms,
-  updates: s.updates,
-});
-
-export const applyTheme = (theme: Prefs["theme"]) => {
-  const root = document.documentElement;
-  if (theme === "system") root.removeAttribute("data-theme");
-  else root.setAttribute("data-theme", theme);
-};
+let raw: Record<string, unknown> = {};
 
 export const usePrefs = create<PrefsState>()((set, get) => ({
   ...DEFAULT_PREFS,
   loaded: false,
   hasKey: false,
+  seed: null,
 
   async load() {
-    let raw: Record<string, unknown> = {};
     try {
       raw = await native.prefsLoad();
     } catch {
-      /* first run */
+      raw = {};
     }
-    const prefs = merge(raw);
-    set({ ...prefs, loaded: true });
-    setUiLang(prefs.uiLang);
-    applyTheme(prefs.theme);
-    syncMenu();
+    const seed = raw.seed && typeof raw.seed === "object" ? (raw.seed as LegacySeed) : null;
+    set({ ...merge(raw), seed, loaded: true });
     await get().refreshKey();
   },
 
   async save(change) {
     set(change as Partial<PrefsState>);
     const s = get();
-    if (change.uiLang) setUiLang(change.uiLang);
-    // The native menu carries both the language and the recent files.
-    if (change.uiLang || change.recent) syncMenu();
-    if (change.theme) applyTheme(change.theme);
-    await native.prefsSave(persisted(s));
-  },
-
-  async addRecent(path) {
-    const recent = [path, ...get().recent.filter((p) => p !== path)].slice(0, 10);
-    await get().save({ recent });
+    raw = { ...raw, ai: s.ai, judge: s.judge, sidebar: s.sidebar, editorWrap: s.editorWrap };
+    await native.prefsSave(raw);
   },
 
   async refreshKey() {
@@ -181,5 +104,24 @@ export const usePrefs = create<PrefsState>()((set, get) => ({
       set({ hasKey: false });
     }
   },
+
+  async dropSeed() {
+    const { seed: _, ...rest } = raw;
+    raw = rest;
+    set({ seed: null });
+    await native.prefsSave(raw);
+  },
 }));
 
+/** The interface language follows Common's (Settings); pt, en and es have the editor's own texts, others show English. */
+export function followLanguage() {
+  const apply = () => {
+    const lang = document.documentElement.lang;
+    const ui: UiLang = lang === "pt" || lang === "es" || lang === "en" ? lang : "en";
+    if (usePrefs.getState().uiLang !== ui) usePrefs.setState({ uiLang: ui });
+    setUiLang(ui);
+  };
+  apply();
+  document.addEventListener("edukors:preferences-changed", apply);
+  new MutationObserver(apply).observe(document.documentElement, { attributes: true, attributeFilter: ["lang"] });
+}

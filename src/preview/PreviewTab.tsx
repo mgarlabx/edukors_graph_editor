@@ -6,7 +6,7 @@
  * follows the student from step to step, as the server's player_map.php does.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { courseLangs, useEditor } from "../store/editor";
+import { useEditor } from "../store/editor";
 import { usePrefs } from "../store/prefs";
 import { useUi } from "../store/ui";
 import { useResizable } from "../ui/resize";
@@ -19,9 +19,11 @@ import { keysOfCourse, scaleLabel } from "../course/keys";
 import { localize } from "../course/localize";
 import { formatCost } from "../ai/client";
 import { IconButton, Tabs } from "../ui/controls";
-import { ExitFullscreenIcon, FullscreenIcon } from "../ui/icons";
+import { ExitFullscreenIcon, SidebarIcon } from "../ui/icons";
 import { openLink } from "../app/platform";
-import { startPresenting, stopPresenting } from "../app/present";
+import { currentTheme, useTheme } from "../app/theme";
+import { useFrameDoc } from "../app/frames";
+import { stopPresenting } from "../app/present";
 import type { Course } from "../schema/types";
 import { t } from "../i18n";
 
@@ -56,10 +58,11 @@ export function PreviewTab({ withMap = false }: { withMap?: boolean }) {
   // The page is rebuilt on restart, on "back to node", on a language change and
   // when the author asks for the edited course -- never behind their back.
   const html = useMemo(
-    () => previewHtml(frozen, { seed, lang, manualJudges: !hasKey, theme: usePrefs.getState().theme }),
+    () => previewHtml(frozen, { seed, lang, manualJudges: !hasKey, theme: currentTheme() }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [reload, frozen, hasKey],
   );
+  const playerDoc = useFrameDoc(html);
 
   useEffect(() => {
     const onMessage = async (event: MessageEvent) => {
@@ -119,7 +122,7 @@ export function PreviewTab({ withMap = false }: { withMap?: boolean }) {
   }, []);
 
   // The theme reaches the running player as a message, so changing it keeps the student where they are.
-  const theme = usePrefs((s) => s.theme);
+  const theme = useTheme();
   useEffect(() => {
     frame.current?.contentWindow?.postMessage({ edukors: "theme", theme }, "*");
   }, [theme]);
@@ -130,7 +133,6 @@ export function PreviewTab({ withMap = false }: { withMap?: boolean }) {
     useUi.getState().open("prefs");
   }, [hasKey]);
 
-  const langs = courseLangs(course);
   return (
     <div className={`preview ${presenting ? "is-presenting" : ""}`}>
       <div className="preview-main">
@@ -144,15 +146,6 @@ export function PreviewTab({ withMap = false }: { withMap?: boolean }) {
             ↺ {t("preview.restart")}
           </button>
           <OnScreen />
-          <label className="row small">
-            {t("preview.lang")}
-            <select className="input input-small" value={lang ?? ""} onChange={(e) => usePreview.getState().setLang(e.target.value || null)}>
-              <option value="">{t("preview.langAuto")}</option>
-              {langs.map((l) => (
-                <option key={l}>{l}</option>
-              ))}
-            </select>
-          </label>
           {changed && (
             <button
               className="btn btn-small btn-primary"
@@ -175,8 +168,8 @@ export function PreviewTab({ withMap = false }: { withMap?: boolean }) {
               </button>
             </span>
           )}
-          <IconButton title={t("preview.present")} onClick={() => void startPresenting()}>
-            <FullscreenIcon />
+          <IconButton title={t("preview.calls")} aria-pressed={sideOpen} className={sideOpen ? "is-on" : ""} onClick={() => useUi.getState().toggleSidebar(true)}>
+            <SidebarIcon />
           </IconButton>
         </div>
         <div className={`preview-stage ${withMap ? "with-map" : ""} ${withMap && alone ? `alone-${alone}` : ""}`}>
@@ -186,7 +179,7 @@ export function PreviewTab({ withMap = false }: { withMap?: boolean }) {
             className="preview-frame"
             title={t("preview.title")}
             sandbox="allow-scripts allow-popups allow-forms allow-modals allow-popups-to-escape-sandbox"
-            srcDoc={html}
+            {...playerDoc}
           />
           {withMap && <CourseMap course={frozen} alone={alone} setAlone={setAlone} />}
         </div>
@@ -227,6 +220,7 @@ export function PreviewTab({ withMap = false }: { withMap?: boolean }) {
 function CourseMap({ course, alone, setAlone }: { course: Course; alone: Half | null; setAlone: (half: Half | null) => void }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const html = useMemo(() => buildViewer(course), [course]);
+  const mapDoc = useFrameDoc(html);
   const states = usePreview((s) => s.states);
   const state = currentState({ states });
 
@@ -269,7 +263,7 @@ function CourseMap({ course, alone, setAlone }: { course: Course; alone: Half | 
   return (
     <>
       {button("course")}
-      <iframe ref={frame} className="preview-map" title={t("preview.map")} sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" srcDoc={html} />
+      <iframe ref={frame} className="preview-map" title={t("preview.map")} sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" {...mapDoc} />
       {button("map")}
     </>
   );

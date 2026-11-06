@@ -46,7 +46,7 @@ function sessionTools(opts: { skills: boolean; mcp: boolean }): string {
   return `# The tools of this session\n\n${lines.join("\n")}\n`;
 }
 
-export function systemPrompt(instructions: string, opts: { skills: boolean; mcp: boolean }): string {
+export function systemPrompt(instructions: string, opts: { skills: boolean; mcp: boolean; plan?: boolean }): string {
   const text = instructions.trim().slice(0, INSTRUCTIONS_LIMIT);
   const teacher = text
     ? `# The teacher's standing instructions
@@ -59,5 +59,5 @@ ${text}
 
 `
     : "";
-  return `${base.trimEnd()}\n\n${sessionTools(opts)}\n${PLAN}\n${teacher}${SCOPE}`;
+  return `${base.trimEnd()}\n\n${sessionTools(opts)}\n${opts.plan ? `${PLAN}\n` : ""}${teacher}${SCOPE}`;
 }

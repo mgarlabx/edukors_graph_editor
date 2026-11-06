@@ -1,339 +1,254 @@
-# The release: the Mac app (universal), the Windows installer and the Linux
-# AppImage and .deb, built on GitHub's machines, with what the updater needs
-# (the .app.tar.gz, the installers' signatures, latest.json), in a draft release. Nothing reaches the
-# installed apps until the draft is published.
-#
-#   git tag v2.12.0 && git push origin v2.12.0
-#
-# The tag must match the version in package.json, src-tauri/tauri.conf.json and
-# src-tauri/Cargo.toml (scripts/bump-version.mjs), and CHANGELOG.md must have
-# its section (scripts/release-notes.mjs). Run by hand (Actions → Release → Run
-# workflow), it makes a draft of the version in package.json: for trying the
-# workflow out in a fork.
 name: Release
 
+# A tag vX.Y.Z builds, signs, notarizes and publishes the installers in a release, at once, and sends the Windows
+# package to the Microsoft Store (store.yml). package.json must already hold X.Y.Z (scripts/build.mjs: YY.M.D) and
+# CHANGELOG.md its section (scripts/release-notes.mjs). A tag vX.Y.Z-rc.N makes a pre-release, without the Store.
+#
+#   git tag v26.11.5 && git push origin v26.11.5
+#
+# Pull requests that touch packaging, and runs by hand (Actions → Release → Run workflow), build the installers too
+# and run the same checks, without publishing: a run by hand gives store.yml a package of package.json's version.
+#
+# The release also carries the latest.json that the 2.x versions (Tauri) read, so they update to this one
+# (scripts/tauri-update.mjs); on Windows and Linux, installing over the real v2.20.0 is checked on every run.
 on:
+  workflow_dispatch:
   push:
     tags: ['v*']
-  workflow_dispatch:
+  pull_request:
+    paths: [electron-builder.yml, build/**, scripts/package.mjs, scripts/public-installers.mjs, scripts/tauri-update.mjs, scripts/build.mjs, package.json, package-lock.json, .github/workflows/release.yml]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release-${{ github.ref }}
 
 jobs:
-  # One draft for all builds: each making its own could leave several.
-  prepare:
+  check:
     runs-on: ubuntu-latest
     outputs:
-      release_id: ${{ steps.create.outputs.result }}
-      version: ${{ steps.version.outputs.version }}
+      version: ${{ steps.v.outputs.version }}
+      base: ${{ steps.v.outputs.base }}
+      prerelease: ${{ steps.v.outputs.prerelease }}
     steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-
-      - id: version
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: v
         run: |
-          VERSION=$(node -p "require('./package.json').version")
-          CONF=$(node -p "require('./src-tauri/tauri.conf.json').version")
-          CARGO=$(grep -m1 '^version' src-tauri/Cargo.toml | cut -d'"' -f2)
-          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${GITHUB_REF_NAME}" != "v${VERSION}" ]; then
-            echo "::error::the tag ${GITHUB_REF_NAME} is not the version in package.json (v${VERSION})"; exit 1
+          pkg=$(node -p "require('./package.json').version")
+          node scripts/release-notes.mjs "$pkg" > /dev/null
+          if [ "$GITHUB_REF_TYPE" != tag ]; then
+            { echo "version=$pkg"; echo "base=$pkg"; echo "prerelease=true"; } >> "$GITHUB_OUTPUT"; exit 0
           fi
-          if [ "${CONF}" != "${VERSION}" ] || [ "${CARGO}" != "${VERSION}" ]; then
-            echo "::error::package.json (${VERSION}), tauri.conf.json (${CONF}) and Cargo.toml (${CARGO}) differ: run scripts/bump-version.mjs"; exit 1
-          fi
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-
-      # The app checks each update against this key: a build without it could never be updated.
-      - run: |
-          node -e "const k = require('./src-tauri/tauri.conf.json').plugins.updater.pubkey; if (!k || k.startsWith('PENDENTE')) { console.error('::error::plugins.updater.pubkey in src-tauri/tauri.conf.json is not set'); process.exit(1) }"
-
-      - run: node scripts/release-notes.mjs ${{ steps.version.outputs.version }} > release-notes.md
-
-      - id: create
-        uses: actions/github-script@v9
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-        with:
-          script: |
-            const body = require('fs').readFileSync('release-notes.md', 'utf8');
-            const { data } = await github.rest.repos.createRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              tag_name: `v${process.env.VERSION}`,
-              target_commitish: context.sha,
-              name: `v${process.env.VERSION}`,
-              body,
-              draft: true,
-            });
-            return data.id;
+          tag="${GITHUB_REF_NAME#v}"; base="${tag%%-*}"
+          if [ "$base" != "$pkg" ]; then echo "::error::Tag $GITHUB_REF_NAME does not match package.json ($pkg)"; exit 1; fi
+          { echo "version=$tag"; echo "base=$base"; } >> "$GITHUB_OUTPUT"
+          if [ "$tag" != "$base" ]; then echo "prerelease=true" >> "$GITHUB_OUTPUT"; else echo "prerelease=false" >> "$GITHUB_OUTPUT"; fi
 
   build:
-    needs: prepare
+    needs: check
+    name: build ${{ matrix.name }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: macos-latest
-            args: --target universal-apple-darwin
-            installer: src-tauri/target/universal-apple-darwin/release/bundle/dmg/*_{version}_universal.dmg
-            download: Edukors-Graph-Editor-mac.dmg
-          - platform: windows-latest
-            args: ''
-            installer: src-tauri/target/release/bundle/nsis/*_{version}_x64-setup.exe
-            download: Edukors-Graph-Editor-windows.exe
-          # 22.04, the oldest Ubuntu GitHub has: what is built against its glibc
-          # also runs on the newer distributions.
-          - platform: ubuntu-22.04
-            args: ''
-            installer: src-tauri/target/release/bundle/appimage/*_{version}_amd64.AppImage
-            download: Edukors-Graph-Editor-linux.AppImage
-    runs-on: ${{ matrix.platform }}
+          - {name: mac, os: macos-latest, args: --universal}
+          - {name: win, os: windows-latest, args: --x64}
+          - {name: linux-x64, os: ubuntu-latest, args: --x64}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 75
+    env:
+      HAS_MAC_CERT: ${{ secrets.APPLE_CERTIFICATE != '' }}
+      VERSION: ${{ needs.check.outputs.version }}
     steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: npm
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
-
-      - uses: swatinem/rust-cache@v2
-        with:
-          workspaces: src-tauri -> target
-
       - run: npm ci
-
-      # What Tauri builds on (WebKitGTK and the rest) and the keyring's D-Bus.
-      - if: matrix.platform == 'ubuntu-22.04'
+      - name: Version from the tag
+        shell: bash
+        run: node -e "const f='package.json',p=JSON.parse(require('fs').readFileSync(f));p.version=process.env.VERSION;require('fs').writeFileSync(f,JSON.stringify(p,null,2)+'\n')"
+      - name: Build
+        run: node scripts/build.mjs --no-bump
+      - name: Without a certificate, macOS builds are signed ad hoc (Gatekeeper will warn)
+        if: runner.os == 'macOS' && env.HAS_MAC_CERT != 'true'
+        run: echo "BUILDER_ARGS=-c.mac.identity=- -c.mac.hardenedRuntime=false" >> "$GITHUB_ENV"
+      # Developer ID signing (CSC_LINK takes the base64 .p12) and notarization by electron-builder (APPLE_API_KEY is
+      # the .p8's path, APPLE_API_KEY_ID its id). The secrets keep the names they had for Tauri: APPLE_CERTIFICATE
+      # (.p12, base64), APPLE_API_KEY (the key id) and APPLE_API_KEY_P8 (the key itself).
+      # Only on macOS: electron-builder would otherwise try the .p12 for Windows signing.
+      - name: Signing and notarization credentials
+        if: runner.os == 'macOS' && env.HAS_MAC_CERT == 'true'
+        env:
+          P12: ${{ secrets.APPLE_CERTIFICATE }}
+          P12_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          API_KEY_ID: ${{ secrets.APPLE_API_KEY }}
+          API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libdbus-1-dev patchelf xdg-utils
-
-      # The Apple credentials, for Tauri to sign and notarize the app: only when
-      # the secrets are there, so that a fork without them still builds, unsigned.
-      # tauri-action imports APPLE_CERTIFICATE (the .p12, in base64) into a keychain
-      # of its own; notarization uses the App Store Connect API key (docs/distribution.md).
-      - if: matrix.platform == 'macos-latest'
+          key="$RUNNER_TEMP/AuthKey.p8"; printf '%s\n' "$API_KEY_P8" > "$key"
+          { echo "CSC_LINK=$P12"; echo "CSC_KEY_PASSWORD=$P12_PASSWORD"; echo "APPLE_API_KEY=$key"
+            echo "APPLE_API_KEY_ID=$API_KEY_ID"; echo "APPLE_API_ISSUER=$API_ISSUER"; } >> "$GITHUB_ENV"
+      - name: Package
         shell: bash
         env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
-          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
-        run: |
-          if [ -z "$APPLE_CERTIFICATE" ]; then
-            echo "::warning::no Apple certificate: the Mac app will not be signed"; exit 0
-          fi
-          printf '%s\n' "$APPLE_API_KEY_P8" > "$RUNNER_TEMP/AuthKey.p8"
-          {
-            echo "APPLE_CERTIFICATE=$APPLE_CERTIFICATE"
-            echo "APPLE_CERTIFICATE_PASSWORD=$APPLE_CERTIFICATE_PASSWORD"
-            echo "APPLE_SIGNING_IDENTITY=$APPLE_SIGNING_IDENTITY"
-            echo "APPLE_API_ISSUER=$APPLE_API_ISSUER"
-            echo "APPLE_API_KEY=$APPLE_API_KEY"
-            echo "APPLE_API_KEY_PATH=$RUNNER_TEMP/AuthKey.p8"
-          } >> "$GITHUB_ENV"
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ env.HAS_MAC_CERT == 'true' }}
+          # electron-builder skips signing in pull requests; with the secrets (never given to forks' pull requests)
+          # they are signed and notarized too, so a release's Mac build has been rehearsed before its tag.
+          CSC_FOR_PULL_REQUEST: ${{ env.HAS_MAC_CERT == 'true' }}
+        run: node scripts/package.mjs ${{ matrix.args }} $BUILDER_ARGS
 
-      # Builds the interface, stages the agent (scripts/stage-agent.mjs: its own
-      # files and the Claude Agent SDK, without any claude binary), makes the app or the installers with their updater signatures, and uploads
-      # them to the draft. latest.json is the last job's, written once all builds are in.
-      - uses: tauri-apps/tauri-action@v0
+      - name: Check universal Mac executable
+        if: runner.os == 'macOS'
+        run: |
+          archs=" $(lipo -archs "release/mac-universal/Edukors Graph Editor.app/Contents/MacOS/Edukors Graph Editor") "
+          echo "Architectures:$archs"
+          [[ "$archs" == *" x86_64 "* && "$archs" == *" arm64 "* ]]
+      - name: Check signature and notarization
+        if: runner.os == 'macOS' && env.HAS_MAC_CERT == 'true'
+        run: |
+          app="release/mac-universal/Edukors Graph Editor.app"
+          codesign --verify --deep --strict "$app" && xcrun stapler validate "$app" && spctl -a -vv -t exec "$app"
+          # The .dmg itself, notarized and stapled, so it opens without a warning when downloaded.
+          dmg="release/Edukors-Graph-Editor-$VERSION-mac-universal.dmg"
+          xcrun notarytool submit "$dmg" --key "$APPLE_API_KEY" --key-id "$APPLE_API_KEY_ID" --issuer "$APPLE_API_ISSUER" --wait
+          xcrun stapler staple "$dmg"
+          spctl -a -vv -t open --context context:primary-signature "$dmg"
+      # For the 2.x updater (scripts/tauri-update.mjs): the notarized .app, the archive's first level being the .app
+      # (the updater puts what is inside it in place of the old app). Without macOS metadata (no ._ files).
+      - name: The .app for the 2.x updater
+        if: runner.os == 'macOS'
+        run: |
+          COPYFILE_DISABLE=1 tar --no-mac-metadata -czf "release/Edukors-Graph-Editor-$VERSION-mac-universal.app.tar.gz" -C release/mac-universal "Edukors Graph Editor.app"
+          mkdir "$RUNNER_TEMP/x" && tar -xzf "release/Edukors-Graph-Editor-$VERSION-mac-universal.app.tar.gz" -C "$RUNNER_TEMP/x"
+          codesign --verify --deep --strict "$RUNNER_TEMP/x/Edukors Graph Editor.app"
+
+      # Whoever has 2.20 installed by its own installer gets this one over it (from the 2.x updater or by hand): the
+      # old app removed (build/installer.nsh), its data kept for the migration, this one installed and starting.
+      - name: Install over 2.20 (Windows)
+        if: runner.os == 'Windows'
+        timeout-minutes: 10
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $key = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Edukors Graph Editor'
+          gh release download v2.20.0 -R $env:GITHUB_REPOSITORY -p 'Edukors.Graph.Editor_2.20.0_x64-setup.exe' -D $env:RUNNER_TEMP
+          Start-Process "$env:RUNNER_TEMP\Edukors.Graph.Editor_2.20.0_x64-setup.exe" -ArgumentList '/S' -Wait
+          $old = (Get-ItemProperty $key).InstallLocation.Trim('"')
+          Write-Host "2.20 installed in $old"
+          if (-not (Test-Path "$old\uninstall.exe")) { throw '2.20 did not install' }
+          $data = "$env:APPDATA\org.edukors.grapheditor"
+          New-Item -ItemType Directory -Force $data | Out-Null
+          Set-Content "$data\prefs.json" '{"locale":"en"}'
+          Start-Process "release\Edukors-Graph-Editor-$env:VERSION-setup.exe" -ArgumentList '/S' -Wait
+          if (Test-Path $key) { throw 'the 2.20 uninstall entry is still there' }
+          if (Test-Path "$old\uninstall.exe") { throw "2.20 is still in $old" }
+          if (-not (Test-Path "$data\prefs.json")) { throw "the 2.20 data was removed" }
+          $exe = "$env:LOCALAPPDATA\Programs\edukors-graph-editor\Edukors Graph Editor.exe"
+          if (-not (Test-Path $exe)) { throw "the new app is not in $exe" }
+          $lnk = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Edukors Graph Editor.lnk"
+          if (-not (Test-Path $lnk)) { throw 'no Start menu shortcut' }
+          Write-Host "ok: 2.20 removed, its data kept, $exe installed"
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+      - name: Install over 2.20 (Linux .deb)
+        if: runner.os == 'Linux'
+        # With dpkg -i, as the 2.x updater installs a .deb. 2.20's own libraries (WebKitGTK) are not fetched: only the
+        # package's upgrade is checked, not 2.20 running.
+        timeout-minutes: 10
+        run: |
+          gh release download v2.20.0 -R "$GITHUB_REPOSITORY" -p 'Edukors.Graph.Editor_2.20.0_amd64.deb' -D "$RUNNER_TEMP"
+          sudo DEBIAN_FRONTEND=noninteractive dpkg -i --force-depends "$RUNNER_TEMP/Edukors.Graph.Editor_2.20.0_amd64.deb"
+          dpkg -s edukors-graph-editor | grep '^Version: 2.20.0'
+          sudo DEBIAN_FRONTEND=noninteractive dpkg -i --force-depends "./release/Edukors-Graph-Editor-$VERSION-linux-amd64.deb"
+          dpkg -s edukors-graph-editor | grep "^Version: $VERSION"
+          test -x "$(readlink -f /usr/bin/edukors-graph-editor)"
+          grep -q 'application/vnd.edukors.graph+zip' /usr/share/applications/edukors-graph-editor.desktop
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: build-${{ matrix.name }}
+          path: |
+            release/*.dmg
+            release/*.zip
+            release/*.app.tar.gz
+            release/*.exe
+            release/*.AppImage
+            release/*.deb
+            release/*.blockmap
+            release/latest*.yml
+          if-no-files-found: error
+          retention-days: 7
+      - name: Microsoft Store package (sent to Partner Center by the store job)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: store-msix
+          path: release/*.appx
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    needs: [check, build]
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: build-*
+          path: files
+          merge-multiple: true
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - name: Public installer names (keep the versioned originals)
+        run: node scripts/public-installers.mjs files "$VERSION"
+      # The 2.x updater's signatures, with its key (minisign, through the Tauri CLI the 2.x versions were built with),
+      # then latest.json, which checks each signature against the 2.x public key.
+      - name: Update for the 2.x versions (latest.json)
+        if: needs.check.outputs.prerelease == 'false'
+        env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          for f in mac-universal.app.tar.gz setup.exe linux-x86_64.AppImage linux-amd64.deb; do
+            npx --yes @tauri-apps/cli@2.12.1 signer sign "files/Edukors-Graph-Editor-$VERSION-$f"
+          done
+          node scripts/tauri-update.mjs files "$VERSION" "$GITHUB_REF_NAME"
+      - name: Checksums
+        working-directory: files
+        run: sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          releaseId: ${{ needs.prepare.outputs.release_id }}
-          includeUpdaterJson: false
-          args: --config src-tauri/tauri.bundle.conf.json --config src-tauri/tauri.release.conf.json ${{ matrix.args }}
-
-      # Tauri notarizes the .app (and the .app.tar.gz the updater gets is made from
-      # it) but only signs the .dmg: notarized and stapled here, it opens without a
-      # warning when downloaded, and replaces the copy tauri-action put in the draft.
-      - if: matrix.platform == 'macos-latest' && env.APPLE_API_KEY_PATH != ''
-        shell: bash
+          subject-path: files/*
+      - name: GitHub release
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ needs.prepare.outputs.version }}
-          RELEASE_ID: ${{ needs.prepare.outputs.release_id }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          dmg=( src-tauri/target/universal-apple-darwin/release/bundle/dmg/*_${VERSION}_universal.dmg )
-          xcrun notarytool submit "${dmg[0]}" --key "$APPLE_API_KEY_PATH" --key-id "$APPLE_API_KEY" --issuer "$APPLE_API_ISSUER" --wait
-          xcrun stapler staple "${dmg[0]}"
-          asset=$(gh api --paginate "repos/${{ github.repository }}/releases/$RELEASE_ID/assets" \
-            --jq ".[] | select(.name | endswith(\"_${VERSION}_universal.dmg\")) | \"\(.id) \(.name)\"")
-          if [ "$(printf '%s\n' "$asset" | grep -c .)" -ne 1 ]; then
-            echo "::error::expected one .dmg in the draft, found: $asset"; exit 1
-          fi
-          gh api -X DELETE "repos/${{ github.repository }}/releases/assets/${asset%% *}"
-          curl --fail-with-body -sS -X POST \
-            -H "Authorization: Bearer ${GH_TOKEN}" \
-            -H "Content-Type: application/octet-stream" \
-            --data-binary "@${dmg[0]}" \
-            "https://uploads.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID/assets?name=${asset#* }" > /dev/null
+          node scripts/release-notes.mjs "${{ needs.check.outputs.base }}" > notes.md
+          pre=""; if [ "${{ needs.check.outputs.prerelease }}" = true ]; then pre="--prerelease"; fi
+          gh release create "$GITHUB_REF_NAME" files/* -R "$GITHUB_REPOSITORY" $pre --verify-tag \
+            --title "Edukors Graph Editor $VERSION" --notes-file notes.md
 
-      # The installer once more, under a name without the version, for links that
-      # always give the latest: releases/latest/download/Edukors-Graph-Editor-mac.dmg,
-      # …-windows.exe, …-linux.AppImage and …-linux.deb (docs/distribution.md).
-      - shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ needs.prepare.outputs.version }}
-        run: |
-          upload() {
-            # This version's only: the build cache may hold an older one.
-            local pattern="${1//\{version\}/$VERSION}"
-            local files=( $pattern )
-            if [ "${#files[@]}" -ne 1 ] || [ ! -f "${files[0]}" ]; then
-              echo "::error::expected one installer at $pattern, found: ${files[*]}"; exit 1
-            fi
-            curl --fail-with-body -sS -X POST \
-              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-              -H "Content-Type: application/octet-stream" \
-              --data-binary "@${files[0]}" \
-              "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ needs.prepare.outputs.release_id }}/assets?name=$2" > /dev/null
-          }
-          upload '${{ matrix.installer }}' '${{ matrix.download }}'
-          if [ '${{ matrix.platform }}' = ubuntu-22.04 ]; then
-            upload 'src-tauri/target/release/bundle/deb/*_{version}_amd64.deb' Edukors-Graph-Editor-linux.deb
-          fi
-
-      # The same Windows app as an MSIX package, for the Microsoft Store, which
-      # signs it: kept with the run's artifacts (not in the release, since the
-      # package installs only from the Store), to be submitted in Partner Center.
-      - if: matrix.platform == 'windows-latest'
-        run: node scripts/make-msix.mjs
-
-      - if: matrix.platform == 'windows-latest'
-        uses: actions/upload-artifact@v7
-        with:
-          name: microsoft-store-msix
-          path: src-tauri/target/Edukors-Graph-Editor-${{ needs.prepare.outputs.version }}.msix
-          if-no-files-found: error
-
-      # The app must carry the agent, without a claude of its own (the person's
-      # Claude Code is used), and, signed, pass Gatekeeper as a download would:
-      # the app and the .dmg, both notarized.
-      - if: matrix.platform == 'macos-latest'
-        env:
-          VERSION: ${{ needs.prepare.outputs.version }}
-        run: |
-          BUNDLE=src-tauri/target/universal-apple-darwin/release/bundle
-          APP="$BUNDLE/macos/Edukors Graph Editor.app"
-          SDK="$APP/Contents/Resources/agent/node_modules/@anthropic-ai"
-          test -f "$SDK/claude-agent-sdk/package.json" || { echo "::error::the app has no Claude Agent SDK"; exit 1; }
-          if ls -d "$SDK"/claude-agent-sdk-* 2>/dev/null; then echo "::error::the app carries a claude binary"; exit 1; fi
-          if [ -n "$APPLE_API_KEY_PATH" ]; then
-            spctl --assess --type execute --verbose "$APP"
-            spctl --assess --type open --context context:primary-signature --verbose "$BUNDLE"/dmg/*_${VERSION}_universal.dmg
-          fi
-
-      # The .deb must carry the agent (without a claude of its own), and the .egf
-      # type for the file managers.
-      - if: matrix.platform == 'ubuntu-22.04'
-        env:
-          VERSION: ${{ needs.prepare.outputs.version }}
-        run: |
-          deb=( src-tauri/target/release/bundle/deb/*_${VERSION}_amd64.deb )
-          dpkg-deb -c "${deb[0]}" > contents.txt
-          grep -q 'agent/node_modules/@anthropic-ai/claude-agent-sdk/package.json$' contents.txt || { echo "::error::the .deb has no Claude Agent SDK"; exit 1; }
-          if grep -q 'agent/node_modules/@anthropic-ai/claude-agent-sdk-' contents.txt; then echo "::error::the .deb carries a claude binary"; exit 1; fi
-          grep -q 'usr/share/mime/packages/edukors-graph-editor.xml$' contents.txt || { echo "::error::the .deb has no .egf type"; exit 1; }
-
-  # The Windows package to the Microsoft Store (store.yml), as a draft
-  # submission in Partner Center. A job cannot wait on one leg of the build
-  # matrix alone, so it waits for all of them, but goes ahead whatever became
-  # of the others: the Mac's notarization stalling does not hold up the Store.
-  # Only for a tag: a run by hand makes a draft of the GitHub release only.
+  # The Windows package to the Microsoft Store (store.yml), once the GitHub release is out: the Store never gets a
+  # version the release (notarized Mac app, latest.json for the 2.x versions) does not have. Final versions only: a
+  # pre-release's package would carry the same X.Y.Z.0 as the final one.
   store:
-    needs: [prepare, build]
-    if: always() && needs.prepare.result == 'success' && github.event_name == 'push'
+    needs: [check, publish]
+    if: needs.check.outputs.prerelease == 'false'
     permissions:
       contents: read
       actions: read
     uses: ./.github/workflows/store.yml
-    with:
-      version: ${{ needs.prepare.outputs.version }}
     secrets: inherit
-
-  # latest.json, from the signatures the builds uploaded: written once, here,
-  # since builds updating the same file could each drop another's platform.
-  updater-json:
-    needs: [prepare, build]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-
-      - run: node scripts/release-notes.mjs ${{ needs.prepare.outputs.version }} > release-notes.md
-
-      - uses: actions/github-script@v9
-        env:
-          VERSION: ${{ needs.prepare.outputs.version }}
-          RELEASE_ID: ${{ needs.prepare.outputs.release_id }}
-        with:
-          script: |
-            const { owner, repo } = context.repo;
-            const release_id = Number(process.env.RELEASE_ID);
-            const version = process.env.VERSION;
-            const assets = await github.paginate(github.rest.repos.listReleaseAssets, { owner, repo, release_id, per_page: 100 });
-            const named = (test) => {
-              const found = assets.filter((a) => test(a.name));
-              if (found.length !== 1) throw new Error(`expected one asset, found ${found.map((a) => a.name).join(', ') || 'none'}`);
-              return found[0];
-            };
-            const signature = async (asset) => {
-              const sig = named((n) => n === `${asset.name}.sig`);
-              const { data } = await github.rest.repos.getReleaseAsset({ owner, repo, asset_id: sig.id, headers: { accept: 'application/octet-stream' } });
-              return Buffer.from(data).toString('utf8').trim();
-            };
-            // A draft's own download links are temporary: these are the ones the tag will have once published.
-            const url = (asset) => `https://github.com/${owner}/${repo}/releases/download/v${version}/${encodeURIComponent(asset.name)}`;
-
-            const mac = named((n) => n.endsWith('.app.tar.gz'));
-            const win = named((n) => /-setup\.exe$/.test(n));
-            const macEntry = { url: url(mac), signature: await signature(mac) };
-            const winEntry = { url: url(win), signature: await signature(win) };
-            // The AppImage replaces itself; an editor installed from the .deb updates with
-            // the .deb, which the updater looks for under linux-x86_64-deb first.
-            const appImage = named((n) => n.endsWith(`_${version}_amd64.AppImage`));
-            const deb = named((n) => n.endsWith(`_${version}_amd64.deb`));
-            const linuxEntry = { url: url(appImage), signature: await signature(appImage) };
-            const debEntry = { url: url(deb), signature: await signature(deb) };
-            const latest = {
-              version,
-              notes: require('fs').readFileSync('release-notes.md', 'utf8').trim(),
-              pub_date: new Date().toISOString(),
-              platforms: {
-                'darwin-aarch64': macEntry,
-                'darwin-x86_64': macEntry,
-                'windows-x86_64': winEntry,
-                'linux-x86_64': linuxEntry,
-                'linux-x86_64-deb': debEntry,
-              },
-            };
-            for (const old of assets.filter((a) => a.name === 'latest.json')) {
-              await github.rest.repos.deleteReleaseAsset({ owner, repo, asset_id: old.id });
-            }
-            await github.rest.repos.uploadReleaseAsset({
-              owner, repo, release_id,
-              name: 'latest.json',
-              data: JSON.stringify(latest, null, 2),
-              headers: { 'content-type': 'application/json' },
-            });
-            core.info(JSON.stringify(latest.platforms, null, 2));

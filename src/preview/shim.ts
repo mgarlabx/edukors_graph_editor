@@ -30,7 +30,6 @@
 import { bootJson, playerTemplate } from "../app/export";
 import { EXTERNAL_LINK } from "../app/platform";
 import type { Course } from "../schema/types";
-import type { Prefs } from "../store/prefs";
 import type { PlayerState } from "./session";
 
 export const PREVIEW_SCOPE = "editor-preview";
@@ -128,7 +127,7 @@ const PAGE_HOOKS = String.raw`function (post) {
 /** The hooks for an HTML step's frame, which reports to the player (its parent). */
 const STEP_HOOKS = `<script>(${PAGE_HOOKS})(function (m) { parent.postMessage(m, '*'); });</` + "script>";
 
-const shimSource = (seed: PlayerState | null, theme: Prefs["theme"]) => `
+const shimSource = (seed: PlayerState | null, theme: "system" | "light" | "dark") => `
 (function () {
   'use strict';
   var STATE_KEY = ${JSON.stringify(STATE_KEY)};
@@ -291,7 +290,7 @@ const shimSource = (seed: PlayerState | null, theme: Prefs["theme"]) => `
 `;
 
 /** The player, with the course in its boot block and the shim before its own script. */
-export function previewHtml(course: Course, opts: { seed: PlayerState | null; lang: string | null; manualJudges: boolean; theme: Prefs["theme"] }): string {
+export function previewHtml(course: Course, opts: { seed: PlayerState | null; lang: string | null; manualJudges: boolean; theme: "system" | "light" | "dark" }): string {
   const boot: Record<string, unknown> = { scope: PREVIEW_SCOPE };
   if (opts.lang) boot.lang = opts.lang;
   // With no key the author's panel replaces the judgement, as in the builder's copy.
