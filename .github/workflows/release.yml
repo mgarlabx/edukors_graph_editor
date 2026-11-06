@@ -129,6 +129,7 @@ jobs:
       # old app removed (build/installer.nsh), its data kept for the migration, this one installed and starting.
       - name: Install over 2.20 (Windows)
         if: runner.os == 'Windows'
+        timeout-minutes: 10
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -154,12 +155,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
       - name: Install over 2.20 (Linux .deb)
         if: runner.os == 'Linux'
+        # Never interactive, and waiting for dpkg's lock (the runner's own updates) rather than failing on it.
+        timeout-minutes: 10
         run: |
           gh release download v2.20.0 -R "$GITHUB_REPOSITORY" -p 'Edukors.Graph.Editor_2.20.0_amd64.deb' -D "$RUNNER_TEMP"
-          sudo apt-get update -q
-          sudo apt-get install -y -q "$RUNNER_TEMP/Edukors.Graph.Editor_2.20.0_amd64.deb"
+          apt=(sudo DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 -o Dpkg::Options::=--force-confnew -y -q)
+          "${apt[@]}" update
+          "${apt[@]}" install --no-install-recommends "$RUNNER_TEMP/Edukors.Graph.Editor_2.20.0_amd64.deb"
           dpkg -s edukors-graph-editor | grep '^Version: 2.20.0'
-          sudo apt-get install -y -q "./release/Edukors-Graph-Editor-$VERSION-linux-amd64.deb"
+          "${apt[@]}" install --no-install-recommends "./release/Edukors-Graph-Editor-$VERSION-linux-amd64.deb"
           dpkg -s edukors-graph-editor | grep "^Version: $VERSION"
           test -x "$(readlink -f /usr/bin/edukors-graph-editor)"
           grep -q 'application/vnd.edukors.graph+zip' /usr/share/applications/edukors-graph-editor.desktop
