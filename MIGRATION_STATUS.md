@@ -21,6 +21,18 @@ Pedido do usuário: deploy completo (notarização da Apple e Microsoft Store), 
   - a Store só recebe o pacote depois que a release do GitHub sai;
   - `STORE_AUTO_SUBMIT=true` foi mantido, como o usuário pediu.
 - **Docs:** README, `docs/distribution.md`, `docs/development.md`, `docs/formats/egrx-v1.md` e os guias do professor (pt/en/es).
+- **Encontrado e corrigido no ensaio (PR #3):**
+  - **Common `4af1699`:** Ctrl+Z, Ctrl+Shift+Z/Ctrl+Y, Ctrl+A e Ctrl+, no Windows e no Linux. Antes, só Ctrl+W chegava à página, porque esses sistemas não têm menu. Publicado na `main` do Common.
+  - **Build num checkout do Windows (CRLF):** o `graph-styles.css` saía vazio, e o app do Windows ficaria sem o CSS do Graph. Agora as quebras de linha são normalizadas e o build falha se o marcador faltar.
+  - **Mapa:** não enquadra enquanto ele ou os passos não têm tamanho (o viewport virava `NaN`).
+  - **Mac:** o DMG passou a ser assinado também.
+  - **Release em PR:** assina e notariza o Mac (`CSC_FOR_PULL_REQUEST`).
+  - **Linux:** a instalação por cima da 2.20 usa `dpkg -i`.
+  - Removidos `gen:locales`, `build-locales.py` e `strings_table.py`: estavam desatualizados e apagariam as traduções. Os JSON são a fonte.
+- **Ensaio final (`fd1856e`):**
+  - CI verde nos três sistemas;
+  - app e DMG do Mac `Notarized Developer ID`, conferidos também nesta máquina;
+  - Windows e Linux instalam por cima da v2.20.0 real.
 
 ## Rodada 9 (04/11/2026) — build local instalado em /Applications (prevalece sobre o abaixo)
 
