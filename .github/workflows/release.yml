@@ -95,6 +95,9 @@ jobs:
         shell: bash
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: ${{ env.HAS_MAC_CERT == 'true' }}
+          # electron-builder skips signing in pull requests; with the secrets (never given to forks' pull requests)
+          # they are signed and notarized too, so a release's Mac build has been rehearsed before its tag.
+          CSC_FOR_PULL_REQUEST: ${{ env.HAS_MAC_CERT == 'true' }}
         run: node scripts/package.mjs ${{ matrix.args }} $BUILDER_ARGS
 
       - name: Check universal Mac executable
