@@ -25,9 +25,30 @@
   <sub>Free, for Windows 10/11 (x64), macOS 11+ (Apple Silicon and Intel) and Linux (x64, AppImage). See <a href="#download">Download</a> for the details.</sub>
 </p>
 
-## Part of the Edukors Graph project
+## Part of Edukors.org
 
-[Edukors Graph](https://github.com/mgarlabx/edukors_graph) is an open standard for adaptive courses, linked to the [Edukors.org](https://edukors.org) project. The idea is an old one in education: give each student what they need, taking into account what they already know. To do this, the course is described as a graph. The **nodes** are what the student sees: a text, a video, a quiz, a writing task assessed by AI. The **edges** say where they go next, based on what they have done so far. Students who pass the quiz move on; those who don't receive a different explanation before trying again.
+[Edukors.org](https://edukors.org) is a project of open tools for teaching and learning. The Graph Editor is its course builder: made for teachers and course authors who want adaptive courses without depending on an online service or writing code.
+
+<table>
+  <tr>
+    <td width="33%" valign="top">
+      <h3>📝 <a href="https://github.com/mgarlabx/edukors_text_editor">Text Editor</a></h3>
+      For documents laid out like Word's, opening and saving DOCX, Markdown, text and PDF.
+    </td>
+    <td width="33%" valign="top">
+      <h3>🎞️ <a href="https://github.com/mgarlabx/edukors_slides_editor">Slides Editor</a></h3>
+      For presentations, exported as a single HTML file that opens offline.
+    </td>
+    <td width="33%" valign="top">
+      <h3>🗺️ Graph Editor</h3>
+      <strong>This app</strong>, for adaptive courses in the Edukors Graph format.
+    </td>
+  </tr>
+</table>
+
+### The Edukors Graph standard
+
+[Edukors Graph](https://github.com/mgarlabx/edukors_graph) is an open standard for adaptive courses. The idea is an old one in education: give each student what they need, taking into account what they already know. To do this, the course is described as a graph. The **nodes** are what the student sees: a text, a video, a quiz, a writing task assessed by AI. The **edges** say where they go next, based on what they have done so far. Students who pass the quiz move on; those who don't receive a different explanation before trying again.
 
 ```mermaid
 flowchart LR
@@ -137,9 +158,9 @@ The links always give the latest version; every version is on the [releases](htt
 
 **On Linux**, an `.AppImage` file. Make the file executable (`chmod +x`) and open it, no installation needed. On Debian, Ubuntu and their relatives, the `.deb` is an alternative that adds the editor to the applications menu and opens `.egrx` and `.egf` files with a double click: `sudo apt install ./Edukors-Graph-Editor-linux.deb` (it asks for your password).
 
-**Updates.** When a new version is out, the editor says so and links to its download; from the Microsoft Store, updates come through the store. **From version 2.20:** the 2.20 update notice offers this version and installs it over the old one; your settings, AI settings and skills, recent files and accepted terms come along on its first start (the OpenRouter key is asked for again), and the 2.20 data stays where it was.
+**Help and terms of use.** Help opens a quick guide, the full teacher's guide and the [terms of use](docs/terms-of-use.en.md) (the MIT license, explained), which the editor asks you to accept the first time it opens.
 
-**Terms of use.** The first time it opens, the editor asks you to accept the [terms of use](docs/terms-of-use.en.md) (the MIT license, explained), which stay under Help → Terms of use.
+**Updates.** When a new version is out, the editor says so and links to its download; from the Microsoft Store, updates come through the store. **From version 2.20:** the 2.20 update notice offers this version and installs it over the old one; your settings, AI settings and skills, recent files and accepted terms come along on its first start (the OpenRouter key is asked for again), and the 2.20 data stays where it was.
 
 **Optional: AI in the preview.** Create a key at [OpenRouter](https://openrouter.ai) and paste it into **Settings → Preview AI** (⌘, on the Mac, Ctrl+, on Windows and Linux).
 
@@ -151,7 +172,7 @@ The links always give the latest version; every version is on the [releases](htt
 
 ## Building from source
 
-The editor can also be built from source. It needs [Node.js](https://nodejs.org) 22.12 or later and git (Edukors Common is installed from its GitHub repository).
+Requirements: [Node.js](https://nodejs.org) 22.12 or later, npm and git (Edukors Common is installed from its GitHub repository).
 
 ```sh
 git clone https://github.com/mgarlabx/edukors_graph_editor.git
