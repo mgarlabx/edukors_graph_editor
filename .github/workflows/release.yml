@@ -9,14 +9,13 @@ name: Release
 # Pull requests that touch packaging, and runs by hand (Actions → Release → Run workflow), build the installers too
 # and run the same checks, without publishing: a run by hand gives store.yml a package of package.json's version.
 #
-# The release also carries the latest.json that the 2.x versions (Tauri) read, so they update to this one
-# (scripts/tauri-update.mjs); on Windows and Linux, installing over the real v2.20.0 is checked on every run.
+# On Windows and Linux, installing by hand over the real v2.20.0 (Tauri) is checked on every run.
 on:
   workflow_dispatch:
   push:
     tags: ['v*']
   pull_request:
-    paths: [electron-builder.yml, build/**, scripts/package.mjs, scripts/public-installers.mjs, scripts/tauri-update.mjs, scripts/build.mjs, package.json, package-lock.json, .github/workflows/release.yml]
+    paths: [electron-builder.yml, build/**, scripts/package.mjs, scripts/public-installers.mjs, scripts/build.mjs, package.json, package-lock.json, .github/workflows/release.yml]
 
 permissions:
   contents: read
@@ -116,16 +115,7 @@ jobs:
           xcrun notarytool submit "$dmg" --key "$APPLE_API_KEY" --key-id "$APPLE_API_KEY_ID" --issuer "$APPLE_API_ISSUER" --wait
           xcrun stapler staple "$dmg"
           spctl -a -vv -t open --context context:primary-signature "$dmg"
-      # For the 2.x updater (scripts/tauri-update.mjs): the notarized .app, the archive's first level being the .app
-      # (the updater puts what is inside it in place of the old app). Without macOS metadata (no ._ files).
-      - name: The .app for the 2.x updater
-        if: runner.os == 'macOS'
-        run: |
-          COPYFILE_DISABLE=1 tar --no-mac-metadata -czf "release/Edukors-Graph-Editor-$VERSION-mac-universal.app.tar.gz" -C release/mac-universal "Edukors Graph Editor.app"
-          mkdir "$RUNNER_TEMP/x" && tar -xzf "release/Edukors-Graph-Editor-$VERSION-mac-universal.app.tar.gz" -C "$RUNNER_TEMP/x"
-          codesign --verify --deep --strict "$RUNNER_TEMP/x/Edukors Graph Editor.app"
-
-      # Whoever has 2.20 installed by its own installer gets this one over it (from the 2.x updater or by hand): the
+      # Whoever has 2.20 installed by its own installer gets this one over it when installing it by hand: the
       # old app removed (build/installer.nsh), its data kept for the migration, this one installed and starting.
       - name: Install over 2.20 (Windows)
         if: runner.os == 'Windows'
@@ -155,7 +145,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
       - name: Install over 2.20 (Linux .deb)
         if: runner.os == 'Linux'
-        # With dpkg -i, as the 2.x updater installs a .deb. 2.20's own libraries (WebKitGTK) are not fetched: only the
+        # With dpkg -i. 2.20's own libraries (WebKitGTK) are not fetched: only the
         # package's upgrade is checked, not 2.20 running.
         timeout-minutes: 10
         run: |
@@ -175,7 +165,6 @@ jobs:
           path: |
             release/*.dmg
             release/*.zip
-            release/*.app.tar.gz
             release/*.exe
             release/*.AppImage
             release/*.deb
@@ -214,18 +203,6 @@ jobs:
           node-version: 22
       - name: Public installer names (keep the versioned originals)
         run: node scripts/public-installers.mjs files "$VERSION"
-      # The 2.x updater's signatures, with its key (minisign, through the Tauri CLI the 2.x versions were built with),
-      # then latest.json, which checks each signature against the 2.x public key.
-      - name: Update for the 2.x versions (latest.json)
-        if: needs.check.outputs.prerelease == 'false'
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: |
-          for f in mac-universal.app.tar.gz setup.exe linux-x86_64.AppImage linux-amd64.deb; do
-            npx --yes @tauri-apps/cli@2.12.1 signer sign "files/Edukors-Graph-Editor-$VERSION-$f"
-          done
-          node scripts/tauri-update.mjs files "$VERSION" "$GITHUB_REF_NAME"
       - name: Checksums
         working-directory: files
         run: sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
@@ -242,7 +219,7 @@ jobs:
             --title "Edukors Graph Editor $VERSION" --notes-file notes.md
 
   # The Windows package to the Microsoft Store (store.yml), once the GitHub release is out: the Store never gets a
-  # version the release (notarized Mac app, latest.json for the 2.x versions) does not have. Final versions only: a
+  # version the release (notarized Mac app) does not have. Final versions only: a
   # pre-release's package would carry the same X.Y.Z.0 as the final one.
   store:
     needs: [check, publish]

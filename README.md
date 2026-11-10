@@ -162,7 +162,7 @@ The links always give the latest version; every version is on the [releases](htt
 
 **Help and terms of use.** Help opens a quick guide, the full teacher's guide and the [terms of use](docs/terms-of-use.en.md) (the MIT license, explained), which the editor asks you to accept the first time it opens.
 
-**Updates.** When a new version is out, the editor says so and links to its download; from the Microsoft Store, updates come through the store. **From version 2.20:** the 2.20 update notice offers this version and installs it over the old one; your settings, AI settings and skills, recent files and accepted terms come along on its first start (the OpenRouter key is asked for again), and the 2.20 data stays where it was.
+**Updates.** When a new version is out, the editor says so and links to its download; from the Microsoft Store, updates come through the store. **From version 2.20:** download this version and install it over the old one; your settings, AI settings and skills, recent files and accepted terms come along on its first start (the OpenRouter key is asked for again), and the 2.20 data stays where it was.
 
 **Optional: AI in the preview.** Create a key at [OpenRouter](https://openrouter.ai) and paste it into **Settings → Preview AI** (⌘, on the Mac, Ctrl+, on Windows and Linux).
 

@@ -71,7 +71,7 @@ src/
   agent/        o prompt e as especificações das ferramentas do curso, usadas pelo assistente do Common
 build/          ícone, entitlements, after-pack, instalador NSIS (installer.nsh), blocos da Store (appx/)
 assets/         course_player.html e course_viewer.html (cópias verbatim)
-scripts/        build, package, smoke, update-assets, gen-types, gen-validators, release-notes, public-installers, tauri-update
+scripts/        build, package, smoke, update-assets, gen-types, gen-validators, release-notes, public-installers
 ```
 
 ## Manter em dia com o repositório

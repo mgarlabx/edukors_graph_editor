@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 /**
  * Prints the notes of one version, from its section of CHANGELOG.md ("## 2.12.0",
- * up to the next "## "): what the release on GitHub says, and what the app shows
- * when it offers the update (the latest.json is written by the build, with these).
+ * up to the next "## "): what the release on GitHub says.
  *
  *   node scripts/release-notes.mjs 2.12.0
  *

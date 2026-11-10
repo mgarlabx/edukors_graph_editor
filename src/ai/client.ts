@@ -1,6 +1,6 @@
 /**
- * How the preview's generation talks to a chat model: through the Rust side
- * (which adds the key), with every call landing in the call log.
+ * How the preview's generation talks to a chat model: through the main process
+ * (src/main, which adds the key), with every call landing in the call log.
  */
 import { native, type HttpAnswer } from "../app/platform";
 import { usePrefs } from "../store/prefs";

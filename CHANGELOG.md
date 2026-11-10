@@ -1,6 +1,6 @@
 # Changelog
 
-Each version has its own section, written before the tag, **always in English**: its text goes to the release page on GitHub and to the update notice that versions 2.x show (`scripts/release-notes.mjs`, `scripts/tauri-update.mjs`). A section changed after the release does not reach that notice.
+Each version has its own section, written before the tag, **always in English**: its text goes to the release page on GitHub (`scripts/release-notes.mjs`). A section changed after the release does not reach that page.
 
 ## 26.11.5
 

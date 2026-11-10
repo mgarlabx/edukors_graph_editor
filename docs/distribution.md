@@ -135,25 +135,10 @@ workflow on every run, over the real v2.20.0 `.deb`). x64 only; there is nothing
 when there is a newer version, says so with a link to the download; it installs nothing by itself. From the
 Microsoft Store, the Store updates the app.
 
-**The 2.x versions** (Tauri) have their own updater, which reads
-`releases/latest/download/latest.json` and installs what it points to, checked against the updater's minisign key.
-Each final release carries a `latest.json` for them (`scripts/tauri-update.mjs`), pointing at its own installers,
-signed with that key:
-
-| 2.x install | What the 2.x updater does with it |
-| --- | --- |
-| macOS | `…-mac-universal.app.tar.gz`, the notarized `.app`, put in place of the old one (same name and identifier) |
-| Windows (`.exe`) | runs the NSIS installer, which removes the 2.x install first |
-| Linux AppImage | replaces the AppImage |
-| Linux `.deb` | `dpkg -i` of the new `.deb` (same package; asks for the administrator password) |
-| Microsoft Store | nothing: the Store updates it |
-
-The signatures are made in the release's **publish** job with the Tauri CLI (`tauri signer sign`) and the secrets
-`TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`; `scripts/tauri-update.mjs` checks each one
-against the public key of v2.20.0 before writing `latest.json`, and the release stops if one does not match. **Keep
-the key and its password** in the password manager while there are 2.x installs around: without it, they can no
-longer be offered an update. Each later release carries its own `latest.json`, so a 2.x install that opens months
-from now still gets the latest version.
+**The 2.x versions** (Tauri) are no longer offered updates. Their updater reads
+`releases/latest/download/latest.json`, which only v26.11.5 carries; once a later release is the latest, the 2.x
+updater finds nothing. Whoever still has 2.x installs the current version by hand: `build/installer.nsh` removes the
+old Windows install, the `.deb` upgrades the 2.x package, and the 2.x data is read on the first start.
 
 ## Releasing a version
 
@@ -162,20 +147,17 @@ Versions are numbered by date, `YY.M.D` (Common's rule); the app shows `v.YY.MM.
 1. `node scripts/build.mjs` writes today's date to `package.json` (`--version=X.Y.Z` for a second release on the
    same day). Run `npm install --package-lock-only` (or edit the lockfile's two `version` fields) so the lockfile
    follows.
-2. Write the version's section in `CHANGELOG.md` (`## 26.11.5`), **always in English**: it becomes the release notes
-   and the text the 2.x update notice shows.
+2. Write the version's section in `CHANGELOG.md` (`## 26.11.5`), **always in English**: it becomes the release notes.
 3. Commit, open a pull request and wait for CI and the Release workflow's checks (packaging, the installs over 2.20).
    Merge.
 4. `git tag v26.11.5 && git push origin v26.11.5`. The Release workflow checks the tag against `package.json`, builds
-   and notarizes, publishes the release with all the installers, the fixed-name copies, `latest.json`, the `.sig`
-   files and `SHA256SUMS.txt` (with build provenance), and then sends the MSIX to the Store. It takes 30 to 50
+   and notarizes, publishes the release with all the installers, the fixed-name copies and `SHA256SUMS.txt` (with build provenance), and then sends the MSIX to the Store. It takes 30 to 50
    minutes, most of it Apple's notarization.
 
-A tag `vX.Y.Z-rc.N` makes a pre-release, without `latest.json` and without the Store: `releases/latest` ignores it,
+A tag `vX.Y.Z-rc.N` makes a pre-release, without the Store: `releases/latest` ignores it,
 so no installed app sees it.
 
-The release notes come from `CHANGELOG.md` at the tag; a section changed afterwards does not reach the 2.x notice
-(`latest.json` is already written).
+The release notes come from `CHANGELOG.md` at the tag; a section changed afterwards does not reach the release page.
 
 ### Download links
 

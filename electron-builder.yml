@@ -33,8 +33,7 @@ fileAssociations:
     mimeType: application/vnd.edukors.graph+json
     role: Editor
     rank: Owner
-# Common's update notice reads the GitHub releases (package.json → edukors.updates); the releases also carry the
-# latest.json that the 2.x versions read (scripts/tauri-update.mjs).
+# Common's update notice reads the GitHub releases (package.json → edukors.updates).
 publish:
   provider: github
   owner: mgarlabx
