@@ -946,8 +946,6 @@
   "update.title": "Update",
   "update.versions": "A new version is available: {current} → {next}",
   "update.windows": "When the download ends, the editor closes, and the installer updates it and opens it again.",
-  "welcome.lead": "Create and edit Edukors Graph courses: draw the graph, write each step, validate, translate and test with the real AI.",
-  "welcome.samples": "Samples",
   "where.course": "course",
   "where.edge": "edge",
   "where.graph": "graph",

@@ -7,7 +7,7 @@
  * holds the errors to the player's src/validate.php -- the editor refuses what
  * the player would refuse to import -- over the samples and over courses broken
  * on purpose, and keeps the lines in a snapshot. A rule changed in validate.php
- * must be changed here, and in the rule.* rows of scripts/strings_table.py
+ * must be changed here, and in the rule.* keys of src/i18n/locales/*.json
  * (tests/errors.test.ts checks them).
  *
  * Besides the lines, every issue carries where it points -- a node, an edge --

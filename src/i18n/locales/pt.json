@@ -946,8 +946,6 @@
   "update.title": "Atualização",
   "update.versions": "Versão nova disponível: {current} → {next}",
   "update.windows": "Ao fim do download, o editor fecha, o instalador atualiza e abre o editor de novo.",
-  "welcome.lead": "Crie e edite cursos no padrão Edukors Graph: desenhe o grafo, escreva cada passo, valide, traduza e teste com a IA de verdade.",
-  "welcome.samples": "Exemplos",
   "where.course": "curso",
   "where.edge": "edge",
   "where.graph": "grafo",

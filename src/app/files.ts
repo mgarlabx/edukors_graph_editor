@@ -1,6 +1,6 @@
 /**
  * What the editor does with course files besides Save and Open, which are Common's (src/common/document.ts): a
- * course's name, a new course, the samples, and the two exports -- the course as .egf for the player, the Moodle
+ * course's name, a new course, and the two exports -- the course as .egf for the player, the Moodle
  * plugin and the gallery, and the standalone player (HTML).
  *
  * Exports are not saves: they never write the course's .egrx or the .egf it came from (checked again in the main
@@ -9,9 +9,8 @@
 import { native } from "./platform";
 import { baseName as fileName } from "./os";
 import { buildPlayer, titleOf } from "./export";
-import { useEditor, type DocSlice } from "../store/editor";
+import type { DocSlice } from "../store/editor";
 import { docState, openDoc } from "../store/docs";
-import { detectStyle } from "../course/serialize";
 import { exportEgf } from "../course/egrx";
 import { newCourse } from "../course/factory";
 import { getUiLang, t } from "../i18n";
@@ -23,13 +22,6 @@ export const docLabel = (doc: Pick<DocSlice, "path" | "course">): string =>
 
 /** A new course, in a tab of its own; nothing in it is the author's yet. */
 export const createCourse = () => openDoc(newCourse(getUiLang(), t("file.newTitle")), { path: null, saved: true });
-
-/** One of the samples, in a tab of its own. */
-export function openSample(raw: string) {
-  const id = openDoc(JSON.parse(raw), { path: null, style: detectStyle(raw), saved: true });
-  useEditor.getState().requestLayout();
-  return id;
-}
 
 export const slug = (text: string) =>
   text

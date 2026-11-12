@@ -2,7 +2,6 @@
 // help, panels), document tabs, Save/Open/Recent, drafts and recovery, the AI assistant, Settings, Help, terms and
 // update notices. The editor owns what is inside: the map, the EGF tab, the preview, the inspector (left sidebar), the
 // problems panel, the content editor, the course's languages, the judge probe and the exports.
-import "../polyfills";
 import "@xyflow/react/dist/style.css";
 import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
